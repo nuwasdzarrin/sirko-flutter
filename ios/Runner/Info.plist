@@ -43,6 +43,10 @@
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Sirko memakai Face ID sebagai jalan pintas untuk masuk (opsional).</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Sirko memakai kamera untuk memindai barcode dan mengambil foto produk.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Sirko memakai galeri untuk memilih foto produk.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

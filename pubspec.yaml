@@ -42,6 +42,16 @@ dependencies:
 
   # Preferensi ringan
   shared_preferences: ^2.3.0
+  mobile_scanner: ^7.4.0
+  image_picker: ^1.2.1
+  path_provider: ^2.1.5
+  path: ^1.9.1
+
+  # Cetak struk (Fase 2): PDF preview/share + thermal Bluetooth (58/80mm)
+  pdf: ^3.11.1
+  printing: ^5.13.4
+  print_bluetooth_thermal: ^1.1.1
+  esc_pos_utils_plus: ^2.0.4
 
 dev_dependencies:
   flutter_test:
@@ -55,6 +65,8 @@ dev_dependencies:
   drift_dev: ^2.20.0
   freezed: ^3.0.0
   json_serializable: ^6.8.0
+  integration_test:
+    sdk: flutter
 
   # Catatan: custom_lint + riverpod_lint sementara tidak dipasang karena
   # analyzer_plugin-nya bentrok dengan analyzer 7.6 (memutus build_runner).
