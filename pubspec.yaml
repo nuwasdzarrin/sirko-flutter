@@ -1,0 +1,64 @@
+name: sirko
+description: "Sirko — POS/kasir digital untuk ritel (kelontong, grosir, supermarket). Local-first."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management (Riverpod v3, code-gen)
+  flutter_riverpod: ^3.0.0
+  riverpod_annotation: ^3.0.0
+
+  # Database lokal (Drift / SQLite) — local-first
+  drift: ^2.20.0
+  drift_flutter: ^0.2.0
+  sqlite3_flutter_libs: ^0.5.0
+
+  # Navigasi
+  go_router: ^14.6.0
+
+  # Model / immutability
+  freezed_annotation: ^3.0.0
+  json_annotation: ^4.9.0
+
+  # ID & format
+  uuid: ^4.5.1
+  intl: ^0.20.2
+
+  # Auth lokal (PIN + biometrik)
+  crypto: ^3.0.6
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.2.4
+
+  # Preferensi ringan
+  shared_preferences: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+  # Code generation
+  build_runner: ^2.4.13
+  riverpod_generator: ^3.0.0
+  drift_dev: ^2.20.0
+  freezed: ^3.0.0
+  json_serializable: ^6.8.0
+
+  # Catatan: custom_lint + riverpod_lint sementara tidak dipasang karena
+  # analyzer_plugin-nya bentrok dengan analyzer 7.6 (memutus build_runner).
+  # Tambahkan kembali saat rilis yang kompatibel tersedia.
+
+flutter:
+  uses-material-design: true

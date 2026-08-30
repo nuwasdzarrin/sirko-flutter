@@ -1,0 +1,15 @@
+# Normalisasi line-ending: simpan LF di repo, checkout sesuai OS.
+* text=auto eol=lf
+
+# Berkas biner — jangan diutak-atik git.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.jar binary
+*.keystore binary
