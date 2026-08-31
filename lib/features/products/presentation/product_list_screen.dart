@@ -5,9 +5,13 @@ import '../../../core/database/app_database.dart';
 import '../application/catalog_providers.dart';
 import '../application/product_providers.dart';
 import '../domain/product_list_item.dart';
+import 'inventory_alerts_screen.dart';
 import 'product_form_screen.dart';
 import 'product_recycle_bin_screen.dart';
+import 'stock_flow_screen.dart';
+import 'variant_management_screen.dart';
 import 'widgets/product_tile.dart';
+import 'widgets/stock_adjustment_dialog.dart';
 
 /// Layar utama katalog produk: pencarian, filter kategori, daftar reaktif,
 /// tambah/edit/hapus, dan pintasan ke Recycle Bin.
@@ -34,6 +38,39 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
       ),
     );
   }
+
+  /// Penyesuaian stok (§5). Produk bervarian → arahkan ke kelola varian
+  /// (stok dikelola per varian).
+  Future<void> _adjustStock(ProductListItem item) async {
+    if (item.product.hasVariants) {
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => VariantManagementScreen(
+          productId: item.id,
+          productName: item.name,
+        ),
+      ));
+      return;
+    }
+    final ok = await showStockAdjustmentDialog(
+      context,
+      productId: item.id,
+      name: item.name,
+      currentStock: item.stock,
+    );
+    if (ok == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Stok "${item.name}" disesuaikan')),
+      );
+    }
+  }
+
+  void _openAlerts() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const InventoryAlertsScreen()),
+      );
+
+  void _openStockFlow() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const StockFlowScreen()),
+      );
 
   Future<void> _delete(ProductListItem item) async {
     final confirmed = await showDialog<bool>(
@@ -90,6 +127,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               MaterialPageRoute(
                   builder: (_) => const ProductRecycleBinScreen()),
             ),
+            onOpenAlerts: _openAlerts,
+            onOpenStockFlow: _openStockFlow,
           ),
           _CategoryFilterBar(
             selectedId: query.categoryId,
@@ -121,6 +160,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       onTap: () => _openForm(existing: item.product),
                       onEdit: () => _openForm(existing: item.product),
                       onDelete: () => _delete(item),
+                      onAdjustStock: () => _adjustStock(item),
                     );
                   },
                 );
@@ -137,11 +177,15 @@ class _Toolbar extends StatelessWidget {
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onOpenBin;
+  final VoidCallback onOpenAlerts;
+  final VoidCallback onOpenStockFlow;
 
   const _Toolbar({
     required this.searchController,
     required this.onSearchChanged,
     required this.onOpenBin,
+    required this.onOpenAlerts,
+    required this.onOpenStockFlow,
   });
 
   @override
@@ -174,9 +218,18 @@ class _Toolbar extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Recycle Bin',
-            icon: const Icon(Icons.delete_outline),
-            onPressed: onOpenBin,
+            tooltip: 'Peringatan stok',
+            icon: const Icon(Icons.warning_amber_outlined),
+            onPressed: onOpenAlerts,
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Menu inventory',
+            onSelected: (v) =>
+                v == 'flow' ? onOpenStockFlow() : onOpenBin(),
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'flow', child: Text('Arus stok')),
+              PopupMenuItem(value: 'bin', child: Text('Recycle Bin')),
+            ],
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import '../../../core/money/money.dart';
+import '../../products/domain/wholesale_tier.dart';
 import 'pos_enums.dart';
 
 /// Satu baris keranjang kasir. Immutable; ubah lewat [copyWith].
@@ -14,8 +15,12 @@ class CartLine {
   /// Nama saat ditambahkan (→ `nameSnapshot`).
   final String nameSnapshot;
 
-  /// Harga satuan (harga jual; grosir menyusul Fase 3).
+  /// Harga jual dasar/normal (sebelum grosir). Grosir menggantikan nilai ini
+  /// bila qty memenuhi tier (§2) — dihitung oleh kalkulator, bukan di sini.
   final int unitPrice;
+
+  /// Tier harga grosir milik produk (§2). Kosong = tanpa grosir.
+  final List<WholesaleTier> wholesaleTiers;
 
   /// Harga modal saat transaksi (→ `costPriceSnapshot`, §9).
   final int costPriceSnapshot;
@@ -38,6 +43,7 @@ class CartLine {
     this.variantId,
     required this.nameSnapshot,
     required this.unitPrice,
+    this.wholesaleTiers = const [],
     this.costPriceSnapshot = 0,
     this.qty = 1,
     this.discountType = DiscountType.nominal,
@@ -62,6 +68,7 @@ class CartLine {
       variantId: variantId,
       nameSnapshot: nameSnapshot,
       unitPrice: unitPrice ?? this.unitPrice,
+      wholesaleTiers: wholesaleTiers,
       costPriceSnapshot: costPriceSnapshot,
       qty: qty ?? this.qty,
       discountType: discountType ?? this.discountType,

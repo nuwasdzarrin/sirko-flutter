@@ -126,7 +126,7 @@ void main() {
       final business = await db.select(db.businesses).getSingle();
       expect(business.name, 'Toko Lama');
 
-      expect(db.schemaVersion, 3);
+      expect(db.schemaVersion, 4);
     });
 
     test('tabel Fase 2 baru dibuat & bisa dipakai', () async {
@@ -181,6 +181,36 @@ void main() {
       expect((await db.select(db.units).get()).isEmpty, isTrue);
       expect((await db.select(db.transactions).get()).isEmpty, isTrue);
       expect((await db.select(db.stockLogs).get()).isEmpty, isTrue);
+      // Tabel v4 (from<4) juga terbuat.
+      expect((await db.select(db.productVariants).get()).isEmpty, isTrue);
+      expect((await db.select(db.wholesalePrices).get()).isEmpty, isTrue);
+    });
+  });
+
+  group('Fase 3 (v4) — varian & harga grosir', () {
+    test('onCreate: tabel v4 tersedia & bisa ditulis pada DB kosong', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+
+      await db.into(db.products).insert(ProductsCompanion.insert(
+            id: 'p1', name: 'Kaos', createdAt: 0, updatedAt: 0));
+      await db.into(db.productVariants).insert(ProductVariantsCompanion.insert(
+            id: 'v1',
+            productId: 'p1',
+            name: 'Merah / L',
+            createdAt: 0,
+            updatedAt: 0));
+      await db.into(db.wholesalePrices).insert(WholesalePricesCompanion.insert(
+            id: 'w1',
+            productId: 'p1',
+            minQty: 5,
+            price: 9000,
+            createdAt: 0,
+            updatedAt: 0));
+
+      expect((await db.select(db.productVariants).get()).length, 1);
+      expect((await db.select(db.wholesalePrices).get()).single.price, 9000);
+      expect(db.schemaVersion, 4);
     });
   });
 

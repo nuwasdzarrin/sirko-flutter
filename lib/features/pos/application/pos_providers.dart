@@ -12,6 +12,7 @@ import '../domain/pos_config.dart';
 import '../domain/pos_enums.dart';
 import '../domain/payment_calculator.dart';
 import '../domain/transaction_calculator.dart';
+import '../../products/domain/wholesale_tier.dart';
 
 part 'pos_providers.g.dart';
 
@@ -44,8 +45,13 @@ class CartController extends _$CartController {
   @override
   CartState build() => const CartState();
 
-  /// Tambah produk; bila sudah ada, +1 qty (dibatasi stok bila perlu di UI).
-  void addProduct(Product product, {String? unitName}) {
+  /// Tambah produk (tanpa varian); bila sudah ada, +1 qty. [tiers] = harga
+  /// grosir produk (§2), dibawa agar kalkulasi qty-tier reaktif.
+  void addProduct(
+    Product product, {
+    String? unitName,
+    List<WholesaleTier> tiers = const [],
+  }) {
     final key = product.id;
     final idx = state.lines.indexWhere((l) => l.key == key);
     final lines = [...state.lines];
@@ -56,9 +62,39 @@ class CartController extends _$CartController {
         productId: product.id,
         nameSnapshot: product.name,
         unitPrice: product.sellingPrice,
+        wholesaleTiers: tiers,
         costPriceSnapshot: product.costPrice,
         qty: 1,
         availableStock: product.stock,
+        unitName: unitName,
+      ));
+    }
+    state = state.copyWith(lines: lines);
+  }
+
+  /// Tambah **varian** produk (stok & harga dari varian, §5). [tiers] = grosir
+  /// milik induk (§2). Bila varian sama sudah ada, +1 qty.
+  void addVariant(
+    Product product,
+    ProductVariant variant, {
+    String? unitName,
+    List<WholesaleTier> tiers = const [],
+  }) {
+    final key = '${product.id}::${variant.id}';
+    final idx = state.lines.indexWhere((l) => l.key == key);
+    final lines = [...state.lines];
+    if (idx >= 0) {
+      lines[idx] = lines[idx].copyWith(qty: lines[idx].qty + 1);
+    } else {
+      lines.add(CartLine(
+        productId: product.id,
+        variantId: variant.id,
+        nameSnapshot: '${product.name} — ${variant.name}',
+        unitPrice: variant.sellingPrice,
+        wholesaleTiers: tiers,
+        costPriceSnapshot: variant.costPrice,
+        qty: 1,
+        availableStock: variant.stock,
         unitName: unitName,
       ));
     }

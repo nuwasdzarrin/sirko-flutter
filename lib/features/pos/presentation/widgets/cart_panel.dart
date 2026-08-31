@@ -212,8 +212,28 @@ class _CartLineTile extends StatelessWidget {
           ),
           Row(
             children: [
-              Text(line.unitPriceMoney.format(),
+              Text(Money(result.effectiveUnitPrice).format(),
                   style: theme.textTheme.bodySmall),
+              if (result.isWholesale) ...[
+                const SizedBox(width: 6),
+                Text(line.unitPriceMoney.format(),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      decoration: TextDecoration.lineThrough,
+                      color: theme.colorScheme.outline,
+                    )),
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('Grosir',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onTertiaryContainer)),
+                ),
+              ],
               const Spacer(),
               _QtyStepper(qty: line.qty, onInc: onInc, onDec: onDec),
             ],

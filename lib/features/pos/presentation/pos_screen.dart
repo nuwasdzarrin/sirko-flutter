@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/money/money.dart';
 import '../../products/application/catalog_providers.dart';
+import '../../products/application/inventory_providers.dart';
 import '../../products/application/product_providers.dart';
 import '../../products/domain/product_list_item.dart';
 import '../application/pos_providers.dart';
@@ -12,6 +13,7 @@ import 'widgets/cart_panel.dart';
 import 'widgets/payment_sheet.dart';
 import 'widgets/pos_product_grid.dart';
 import 'widgets/receipt_actions.dart';
+import 'widgets/variant_picker_sheet.dart';
 
 /// Layar kasir (Fase 2): pilih produk → keranjang → bayar → struk.
 class PosScreen extends ConsumerStatefulWidget {
@@ -95,6 +97,33 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     ));
   }
 
+  /// Tambah produk ke keranjang. Muat tier grosir (§2); untuk produk bervarian,
+  /// tampilkan pemilih varian dulu (§5).
+  Future<void> _onTapProduct(ProductListItem item) async {
+    final cart = ref.read(cartControllerProvider.notifier);
+    final tiers =
+        await ref.read(wholesaleRepositoryProvider).getTiers(item.id);
+    if (item.product.hasVariants) {
+      final variants =
+          await ref.read(variantRepositoryProvider).getVariants(item.id);
+      if (!mounted) return;
+      if (variants.isEmpty) {
+        cart.addProduct(item.product, unitName: item.unitName, tiers: tiers);
+        return;
+      }
+      final chosen = await showVariantPicker(
+        context,
+        product: item.product,
+        variants: variants,
+      );
+      if (chosen == null) return;
+      cart.addVariant(item.product, chosen,
+          unitName: item.unitName, tiers: tiers);
+    } else {
+      cart.addProduct(item.product, unitName: item.unitName, tiers: tiers);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -104,11 +133,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           final productArea = _ProductArea(
             searchController: _searchController,
             onOpenHistory: _openHistory,
-            onTapProduct: (item) =>
-                ref.read(cartControllerProvider.notifier).addProduct(
-                      item.product,
-                      unitName: item.unitName,
-                    ),
+            onTapProduct: _onTapProduct,
           );
 
           if (wide) {

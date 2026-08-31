@@ -83,6 +83,7 @@ class ProductRepository {
     int? minStock,
     int? expiryDate,
     String? imagePath,
+    bool hasVariants = false,
   }) async {
     final now = DateTimeUtils.nowEpochMs();
     final id = _uuid.v4();
@@ -99,6 +100,7 @@ class ProductRepository {
             minStock: Value(minStock),
             expiryDate: Value(expiryDate),
             imagePath: Value(imagePath),
+            hasVariants: Value(hasVariants),
             createdAt: now,
             updatedAt: now,
           ),
@@ -118,6 +120,7 @@ class ProductRepository {
     int? minStock,
     int? expiryDate,
     String? imagePath,
+    bool hasVariants = false,
   }) {
     return (_db.update(_db.products)..where((t) => t.id.equals(id))).write(
       ProductsCompanion(
@@ -131,6 +134,7 @@ class ProductRepository {
         minStock: Value(minStock),
         expiryDate: Value(expiryDate),
         imagePath: Value(imagePath),
+        hasVariants: Value(hasVariants),
         updatedAt: Value(DateTimeUtils.nowEpochMs()),
         isDirty: const Value(true),
       ),

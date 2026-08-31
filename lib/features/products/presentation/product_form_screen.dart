@@ -5,11 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/utils/date_time_utils.dart';
 import '../application/catalog_providers.dart';
 import '../application/product_providers.dart';
 import 'barcode_scanner_screen.dart';
 import 'category_management_screen.dart';
 import 'unit_management_screen.dart';
+import 'variant_management_screen.dart';
+import 'wholesale_price_screen.dart';
 import 'widgets/rupiah_field.dart';
 
 /// Form tambah/edit produk. [existing] null = tambah baru.
@@ -33,6 +36,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   String? _categoryId;
   String? _unitId;
   String? _imagePath;
+  int? _expiryDate;
+  bool _hasVariants = false;
   bool _submitting = false;
 
   bool get _isEdit => widget.existing != null;
@@ -52,6 +57,30 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _categoryId = p?.categoryId;
     _unitId = p?.unitId;
     _imagePath = p?.imagePath;
+    _expiryDate = p?.expiryDate;
+    _hasVariants = p?.hasVariants ?? false;
+  }
+
+  Future<void> _pickExpiry() async {
+    final now = DateTime.now();
+    final initial = _expiryDate == null
+        ? now
+        : DateTimeUtils.toLocal(_expiryDate!);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 10),
+    );
+    if (picked != null) {
+      setState(() => _expiryDate = DateTimeUtils.startOfDayLocal(picked));
+    }
+  }
+
+  static String _formatExpiry(int epochMs) {
+    final d = DateTimeUtils.toLocal(epochMs);
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.day)}/${two(d.month)}/${d.year}';
   }
 
   @override
@@ -138,6 +167,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       'stock': int.tryParse(_stockController.text.trim()) ?? 0,
       'minStock': minStockText.isEmpty ? null : int.tryParse(minStockText),
       'imagePath': _imagePath,
+      'expiryDate': _expiryDate,
+      'hasVariants': _hasVariants,
     };
     try {
       if (_isEdit) {
@@ -152,6 +183,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           stock: args['stock'] as int,
           minStock: args['minStock'] as int?,
           imagePath: args['imagePath'] as String?,
+          expiryDate: args['expiryDate'] as int?,
+          hasVariants: args['hasVariants'] as bool,
         );
       } else {
         await repo.create(
@@ -164,6 +197,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           stock: args['stock'] as int,
           minStock: args['minStock'] as int?,
           imagePath: args['imagePath'] as String?,
+          expiryDate: args['expiryDate'] as int?,
+          hasVariants: args['hasVariants'] as bool,
         );
       }
       if (mounted) Navigator.of(context).pop(true);
@@ -269,6 +304,67 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.event_outlined),
+              title: const Text('Tanggal kadaluarsa'),
+              subtitle: Text(_expiryDate == null
+                  ? 'Tidak diset'
+                  : _formatExpiry(_expiryDate!)),
+              trailing: _expiryDate == null
+                  ? const Icon(Icons.chevron_right)
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () => setState(() => _expiryDate = null),
+                    ),
+              onTap: _pickExpiry,
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(Icons.style_outlined),
+              title: const Text('Produk bervarian'),
+              subtitle: const Text(
+                  'Stok & harga dikelola per varian (mis. warna/ukuran).'),
+              value: _hasVariants,
+              onChanged: (v) => setState(() => _hasVariants = v),
+            ),
+            if (_isEdit) ...[
+              const Divider(height: 24),
+              if (_hasVariants)
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => VariantManagementScreen(
+                        productId: widget.existing!.id,
+                        productName: _nameController.text.trim(),
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.style_outlined),
+                  label: const Text('Kelola Varian'),
+                ),
+              if (_hasVariants) const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => WholesalePriceScreen(
+                      productId: widget.existing!.id,
+                      productName: _nameController.text.trim(),
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.sell_outlined),
+                label: const Text('Harga Grosir'),
+              ),
+            ] else
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Simpan dulu untuk mengelola varian & harga grosir.',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
             const SizedBox(height: 24),
             FilledButton.icon(
               key: const ValueKey('product_save_button'),

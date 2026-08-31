@@ -11,6 +11,7 @@ class ProductTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onAdjustStock;
 
   const ProductTile({
     super.key,
@@ -18,6 +19,7 @@ class ProductTile extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    required this.onAdjustStock,
   });
 
   @override
@@ -51,9 +53,14 @@ class ProductTile extends StatelessWidget {
         ],
       ),
       trailing: PopupMenuButton<String>(
-        onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
+        onSelected: (v) => switch (v) {
+          'edit' => onEdit(),
+          'adjust' => onAdjustStock(),
+          _ => onDelete(),
+        },
         itemBuilder: (_) => const [
           PopupMenuItem(value: 'edit', child: Text('Edit')),
+          PopupMenuItem(value: 'adjust', child: Text('Sesuaikan stok')),
           PopupMenuItem(value: 'delete', child: Text('Hapus')),
         ],
       ),

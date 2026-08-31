@@ -1,4 +1,6 @@
 import '../../../core/database/tables/businesses.dart';
+import '../../products/domain/wholesale_pricing.dart';
+import '../../products/domain/wholesale_tier.dart';
 import 'cart_line.dart';
 import 'pos_enums.dart';
 
@@ -31,10 +33,19 @@ class TransactionCalculator {
     return ((value + half) ~/ step) * step;
   }
 
-  /// Hitung satu baris: `lineSubtotal = unitPrice*qty`,
-  /// `discount` dari tipe%/nominal, `lineTotal = (lineSubtotal - discount)` (≥0).
+  /// Hitung satu baris. Urutan §1 + precedence grosir §2:
+  /// 1. harga efektif = harga grosir bila qty memenuhi tier, else harga jual —
+  ///    **sebelum** diskon item;
+  /// 2. `lineSubtotal = effectiveUnitPrice * qty`;
+  /// 3. `discount` dari tipe%/nominal; `lineTotal = (lineSubtotal - discount)` (≥0).
   static LineResult calculateLine(CartLine line) {
-    final lineSubtotal = line.unitPrice * line.qty;
+    final tier = WholesalePricing.tierForQty(
+      tiers: line.wholesaleTiers,
+      qty: line.qty,
+    );
+    final effectiveUnitPrice = tier?.price ?? line.unitPrice;
+
+    final lineSubtotal = effectiveUnitPrice * line.qty;
     final rawDiscount = line.discountType == DiscountType.percent
         ? percentOf(lineSubtotal, line.discountValue)
         : line.discountValue;
@@ -45,6 +56,8 @@ class TransactionCalculator {
     final lineTotal = lineSubtotal - discount;
     return LineResult(
       line: line,
+      effectiveUnitPrice: effectiveUnitPrice,
+      appliedWholesale: tier,
       lineSubtotal: lineSubtotal,
       discount: discount,
       lineTotal: lineTotal,
@@ -115,16 +128,29 @@ class TransactionCalculator {
 /// Hasil kalkulasi satu baris.
 class LineResult {
   final CartLine line;
+
+  /// Harga satuan yang benar-benar dipakai (grosir bila berlaku, else harga
+  /// jual). Disimpan ke `transaction_items.unitPrice` saat commit.
+  final int effectiveUnitPrice;
+
+  /// Tier grosir yang berlaku (null bila harga jual normal) — untuk UI/struk.
+  final WholesaleTier? appliedWholesale;
+
   final int lineSubtotal;
   final int discount;
   final int lineTotal;
 
   const LineResult({
     required this.line,
+    required this.effectiveUnitPrice,
+    this.appliedWholesale,
     required this.lineSubtotal,
     required this.discount,
     required this.lineTotal,
   });
+
+  /// True bila baris ini memakai harga grosir.
+  bool get isWholesale => appliedWholesale != null;
 }
 
 /// Ringkasan kalkulasi transaksi (semua int rupiah).

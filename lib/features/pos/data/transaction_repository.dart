@@ -72,21 +72,36 @@ class TransactionRepository {
       final now = DateTimeUtils.nowEpochMs();
       final allowNegative = await _settings.allowNegativeStock();
 
-      // 1. Validasi stok (fresh dari DB dalam transaksi ini).
+      // 1. Validasi stok (fresh dari DB dalam transaksi ini). Untuk baris
+      //    bervarian, stok dikelola di `product_variants` (§5).
       final products = <String, Product>{};
+      final variants = <String, ProductVariant>{};
       for (final r in req.totals.lineResults) {
         final line = r.line;
-        final product = await (_db.select(_db.products)
-              ..where((t) => t.id.equals(line.productId)))
-            .getSingleOrNull();
-        if (product == null) {
-          throw AppException('Produk "${line.nameSnapshot}" tak ditemukan.');
+        final int available;
+        if (line.variantId != null) {
+          final variant = await (_db.select(_db.productVariants)
+                ..where((t) => t.id.equals(line.variantId!)))
+              .getSingleOrNull();
+          if (variant == null) {
+            throw AppException('Varian "${line.nameSnapshot}" tak ditemukan.');
+          }
+          variants[line.variantId!] = variant;
+          available = variant.stock;
+        } else {
+          final product = await (_db.select(_db.products)
+                ..where((t) => t.id.equals(line.productId)))
+              .getSingleOrNull();
+          if (product == null) {
+            throw AppException('Produk "${line.nameSnapshot}" tak ditemukan.');
+          }
+          products[line.productId] = product;
+          available = product.stock;
         }
-        products[line.productId] = product;
-        if (!allowNegative && product.stock < line.qty) {
+        if (!allowNegative && available < line.qty) {
           throw InsufficientStockException(
             productName: line.nameSnapshot,
-            available: product.stock,
+            available: available,
             requested: line.qty,
           );
         }
@@ -134,7 +149,7 @@ class TransactionRepository {
               variantId: Value(line.variantId),
               nameSnapshot: line.nameSnapshot,
               qty: line.qty,
-              unitPrice: line.unitPrice,
+              unitPrice: r.effectiveUnitPrice,
               costPriceSnapshot: Value(line.costPriceSnapshot),
               discount: Value(r.discount),
               lineTotal: r.lineTotal,
@@ -163,20 +178,36 @@ class TransactionRepository {
         }
       });
 
-      // 6. Kurangi stok + stock_logs (type: sale) per item (§5).
+      // 6. Kurangi stok + stock_logs (type: sale) per item (§5). Produk
+      //    bervarian mengurangi stok varian; selainnya stok produk.
       for (final r in req.totals.lineResults) {
         final line = r.line;
-        final product = products[line.productId]!;
-        final stockAfter = product.stock - line.qty;
-        await (_db.update(_db.products)
-              ..where((t) => t.id.equals(line.productId)))
-            .write(
-          ProductsCompanion(
-            stock: Value(stockAfter),
-            updatedAt: Value(now),
-            isDirty: const Value(true),
-          ),
-        );
+        final int stockAfter;
+        if (line.variantId != null) {
+          final variant = variants[line.variantId]!;
+          stockAfter = variant.stock - line.qty;
+          await (_db.update(_db.productVariants)
+                ..where((t) => t.id.equals(line.variantId!)))
+              .write(
+            ProductVariantsCompanion(
+              stock: Value(stockAfter),
+              updatedAt: Value(now),
+              isDirty: const Value(true),
+            ),
+          );
+        } else {
+          final product = products[line.productId]!;
+          stockAfter = product.stock - line.qty;
+          await (_db.update(_db.products)
+                ..where((t) => t.id.equals(line.productId)))
+              .write(
+            ProductsCompanion(
+              stock: Value(stockAfter),
+              updatedAt: Value(now),
+              isDirty: const Value(true),
+            ),
+          );
+        }
         await _db.into(_db.stockLogs).insert(
               StockLogsCompanion.insert(
                 id: _uuid.v4(),
