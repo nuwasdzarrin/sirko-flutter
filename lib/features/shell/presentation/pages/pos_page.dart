@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/widgets/placeholder_page.dart';
+import '../../../pos/presentation/pos_screen.dart';
 
+/// Halaman Kasir di dalam shell → layar kasir Fase 2.
 class PosPage extends StatelessWidget {
   const PosPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const PlaceholderPage(
-      title: 'Kasir',
-      icon: Icons.point_of_sale_outlined,
-      subtitle: 'Layar kasir (jual → bayar → struk) akan hadir di Fase 2.',
-    );
-  }
+  Widget build(BuildContext context) => const PosScreen();
 }
