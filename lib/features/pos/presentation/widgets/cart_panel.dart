@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/money/money.dart';
+import '../../../customers/application/customer_providers.dart';
+import '../../../customers/presentation/widgets/customer_picker_sheet.dart';
 import '../../application/pos_providers.dart';
 import '../../domain/cart_line.dart';
 import '../../domain/pos_enums.dart';
@@ -25,6 +27,8 @@ class CartPanel extends ConsumerWidget {
           count: cart.totalQty,
           onClear: cart.isEmpty ? null : ctrl.clear,
         ),
+        const Divider(height: 1),
+        _CustomerRow(customerId: cart.customerId),
         const Divider(height: 1),
         Expanded(
           child: cart.isEmpty
@@ -140,6 +144,66 @@ class _Header extends StatelessWidget {
               label: const Text('Kosongkan'),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Baris pemilih pelanggan (wajib untuk transaksi kredit, §7).
+class _CustomerRow extends ConsumerWidget {
+  final String? customerId;
+  const _CustomerRow({required this.customerId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final customer = customerId == null
+        ? null
+        : ref.watch(customerByIdProvider(customerId!)).asData?.value;
+    final label = customer?.name ?? 'Pilih pelanggan (untuk hutang)';
+
+    Future<void> pick() async {
+      final result = await showCustomerPicker(context);
+      if (result == null) return;
+      ref
+          .read(cartControllerProvider.notifier)
+          .setCustomer(result.cleared ? null : result.customerId);
+    }
+
+    return InkWell(
+      onTap: pick,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Icon(Icons.person_outline,
+                size: 20, color: theme.colorScheme.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: customer == null ? theme.colorScheme.outline : null,
+                  fontWeight:
+                      customer == null ? null : FontWeight.w600,
+                ),
+              ),
+            ),
+            if (customer != null)
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: 'Lepas pelanggan',
+                onPressed: () => ref
+                    .read(cartControllerProvider.notifier)
+                    .setCustomer(null),
+              )
+            else
+              const Icon(Icons.chevron_right),
+          ],
+        ),
       ),
     );
   }

@@ -81,6 +81,35 @@ CREATE TABLE products (
 );
 ''';
 
+const _createProductVariants = '''
+CREATE TABLE product_variants (
+  id TEXT NOT NULL PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products (id),
+  name TEXT NOT NULL,
+  barcode TEXT,
+  selling_price INTEGER NOT NULL DEFAULT 0,
+  cost_price INTEGER NOT NULL DEFAULT 0,
+  stock INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  is_dirty INTEGER NOT NULL DEFAULT 1
+);
+''';
+
+const _createWholesalePrices = '''
+CREATE TABLE wholesale_prices (
+  id TEXT NOT NULL PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products (id),
+  min_qty INTEGER NOT NULL,
+  price INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  is_dirty INTEGER NOT NULL DEFAULT 1
+);
+''';
+
 void main() {
   /// Buka [AppDatabase] di atas DB mentah [raw] & paksa migrasi jalan
   /// dengan satu query.
@@ -126,7 +155,7 @@ void main() {
       final business = await db.select(db.businesses).getSingle();
       expect(business.name, 'Toko Lama');
 
-      expect(db.schemaVersion, 4);
+      expect(db.schemaVersion, 5);
     });
 
     test('tabel Fase 2 baru dibuat & bisa dipakai', () async {
@@ -210,11 +239,11 @@ void main() {
 
       expect((await db.select(db.productVariants).get()).length, 1);
       expect((await db.select(db.wholesalePrices).get()).single.price, 9000);
-      expect(db.schemaVersion, 4);
+      expect(db.schemaVersion, 5);
     });
   });
 
-  group('instalasi baru (onCreate) langsung v3', () {
+  group('instalasi baru (onCreate) langsung v5', () {
     test('semua tabel tersedia pada DB kosong', () async {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(db.close);
@@ -222,6 +251,52 @@ void main() {
       expect((await db.select(db.transactions).get()).isEmpty, isTrue);
       expect((await db.select(db.products).get()).isEmpty, isTrue);
       expect((await db.select(db.appSettings).get()).isEmpty, isTrue);
+      // Tabel Fase 4.
+      expect((await db.select(db.customers).get()).isEmpty, isTrue);
+      expect((await db.select(db.installments).get()).isEmpty, isTrue);
+      expect((await db.select(db.creditPayments).get()).isEmpty, isTrue);
+      expect(db.schemaVersion, 5);
+    });
+  });
+
+  group('Fase 4 (v5) — migrasi v4 → v5', () {
+    test('tabel Fase 4 dibuat & data lama utuh', () async {
+      final raw = sqlite3.openInMemory();
+      raw.execute(_createBusinesses);
+      raw.execute(_createCategories);
+      raw.execute(_createUnits);
+      raw.execute(_createProducts);
+      raw.execute(_createProductVariants);
+      raw.execute(_createWholesalePrices);
+      raw.execute(
+        "INSERT INTO products (id, name, selling_price, cost_price, stock, "
+        "created_at, updated_at) "
+        "VALUES ('p1', 'Indomie', 3500, 2800, 10, 0, 0);",
+      );
+      raw.execute('PRAGMA user_version = 4;');
+
+      final db = await openOver(raw);
+      addTearDown(db.close);
+
+      // Data v4 utuh.
+      final product =
+          await (db.select(db.products)..where((t) => t.id.equals('p1')))
+              .getSingle();
+      expect(product.name, 'Indomie');
+
+      // Tabel v5 baru dibuat & bisa dipakai (kolom wajib saja → tanpa Value).
+      await db.into(db.customers).insert(CustomersCompanion.insert(
+            id: 'c1',
+            name: 'Budi',
+            createdAt: 0,
+            updatedAt: 0,
+          ));
+      final cust = await db.select(db.customers).getSingle();
+      expect(cust.name, 'Budi');
+      expect(cust.debtBalance, 0); // default
+      expect((await db.select(db.installments).get()).isEmpty, isTrue);
+      expect((await db.select(db.creditPayments).get()).isEmpty, isTrue);
+      expect(db.schemaVersion, 5);
     });
   });
 }

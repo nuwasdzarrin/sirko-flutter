@@ -4,6 +4,8 @@
     <!-- Kamera untuk scan barcode (mobile_scanner) & foto produk (image_picker) -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <!-- Baca kontak untuk impor pelanggan (Fase 4, opsional — flutter_contacts) -->
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <application
         android:label="Sirko"
         android:name="${applicationName}"

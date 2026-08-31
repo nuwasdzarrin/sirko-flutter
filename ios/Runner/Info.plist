@@ -47,6 +47,8 @@
 	<string>Sirko memakai kamera untuk memindai barcode dan mengambil foto produk.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Sirko memakai galeri untuk memilih foto produk.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Sirko memakai kontak untuk mengimpor daftar pelanggan (opsional).</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

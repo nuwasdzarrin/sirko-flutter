@@ -4,6 +4,9 @@ import 'connection.dart';
 import 'tables/app_settings.dart';
 import 'tables/businesses.dart';
 import 'tables/categories.dart';
+import 'tables/credit_payments.dart';
+import 'tables/customers.dart';
+import 'tables/installments.dart';
 import 'tables/payments.dart';
 import 'tables/product_variants.dart';
 import 'tables/products.dart';
@@ -21,6 +24,7 @@ part 'app_database.g.dart';
 /// - v3 (Fase 2): [Transactions], [TransactionItems], [Payments], [StockLogs],
 ///   [AppSettings] — inti kasir.
 /// - v4 (Fase 3): [ProductVariants], [WholesalePrices] — inventory & grosir.
+/// - v5 (Fase 4): [Customers], [Installments], [CreditPayments] — CRM & hutang.
 ///
 /// Katalog data ditambahkan per fase sesuai spec 02-data-model.
 @DriftDatabase(tables: [
@@ -35,12 +39,15 @@ part 'app_database.g.dart';
   AppSettings,
   ProductVariants,
   WholesalePrices,
+  Customers,
+  Installments,
+  CreditPayments,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -64,6 +71,12 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             await m.createTable(productVariants);
             await m.createTable(wholesalePrices);
+          }
+          // v4 → v5: pelanggan, hutang & cicilan (Fase 4).
+          if (from < 5) {
+            await m.createTable(customers);
+            await m.createTable(installments);
+            await m.createTable(creditPayments);
           }
         },
         beforeOpen: (details) async {

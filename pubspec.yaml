@@ -47,6 +47,9 @@ dependencies:
   path_provider: ^2.1.5
   path: ^1.9.1
 
+  # Impor pelanggan dari kontak HP (Fase 4, opsional — minta izin runtime)
+  flutter_contacts: ^1.1.9
+
   # Cetak struk (Fase 2): PDF preview/share + thermal Bluetooth (58/80mm)
   pdf: ^3.11.1
   printing: ^5.13.4

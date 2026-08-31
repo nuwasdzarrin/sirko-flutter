@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/database/tables/payments.dart';
 import '../../../../core/money/money.dart';
+import '../../../customers/application/customer_providers.dart';
+import '../../../customers/presentation/widgets/customer_picker_sheet.dart';
 import '../../application/pos_providers.dart';
 import '../../data/transaction_repository.dart';
 import '../../domain/payment_calculator.dart';
@@ -76,12 +78,13 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     });
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit({bool allowCredit = false}) async {
     setState(() => _submitting = true);
     try {
       final result = await ref
           .read(checkoutControllerProvider.notifier)
-          .submit(_entries.where((e) => e.amount > 0).toList());
+          .submit(_entries.where((e) => e.amount > 0).toList(),
+              allowCredit: allowCredit);
       if (mounted) Navigator.of(context).pop(result);
     } catch (e) {
       if (mounted) {
@@ -169,22 +172,79 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
             _kv('Kembalian', Money(result.change).format(),
                 color: theme.colorScheme.primary, bold: true),
             const SizedBox(height: 16),
-            FilledButton(
-              onPressed: (_submitting || !result.isPaid) ? null : _submit,
-              style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14)),
-              child: _submitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(result.isPaid
-                      ? 'Selesaikan & Cetak Struk'
-                      : 'Pembayaran belum cukup'),
-            ),
+            _actionArea(result),
           ],
         ),
       ),
+    );
+  }
+
+  /// Tombol aksi: lunas → selesaikan; kurang → simpan hutang (butuh pelanggan).
+  Widget _actionArea(PaymentResult result) {
+    final theme = Theme.of(context);
+    if (_submitting) {
+      return const FilledButton(
+        onPressed: null,
+        child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    if (result.isPaid) {
+      return FilledButton(
+        onPressed: _submit,
+        style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14)),
+        child: const Text('Selesaikan & Cetak Struk'),
+      );
+    }
+    // Kurang bayar → jalur kredit/partial (§7). Wajib pelanggan.
+    final customerId = ref.watch(cartControllerProvider).customerId;
+    final customer = customerId == null
+        ? null
+        : ref.watch(customerByIdProvider(customerId)).asData?.value;
+    if (customerId == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Sisa ${Money(result.remaining).format()} akan jadi hutang. '
+            'Pilih pelanggan dulu.',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.error),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final picked = await showCustomerPicker(context);
+              if (picked != null && !picked.cleared) {
+                ref
+                    .read(cartControllerProvider.notifier)
+                    .setCustomer(picked.customerId);
+              }
+            },
+            icon: const Icon(Icons.person_add_alt_1),
+            label: const Text('Pilih Pelanggan'),
+          ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Pelanggan: ${customer?.name ?? '—'}',
+            style: theme.textTheme.bodySmall),
+        const SizedBox(height: 8),
+        FilledButton.tonal(
+          onPressed: () => _submit(allowCredit: true),
+          style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14)),
+          child: Text(result.paidTotal > 0
+              ? 'Simpan Sebagian — Hutang ${Money(result.remaining).format()}'
+              : 'Simpan sebagai Hutang ${Money(result.remaining).format()}'),
+        ),
+      ],
     );
   }
 

@@ -61,12 +61,19 @@ class TransactionRepository {
 
   static const _uuid = Uuid();
 
-  /// Commit transaksi (§1,§3,§5,§8) — **atomik**:
+  /// Commit transaksi (§1,§3,§5,§7,§8) — **atomik**:
   /// validasi stok → generate invoice → simpan nota+item+bayar →
-  /// kurangi stok + buat `stock_logs (sale)`. Semua atau tak sama sekali.
+  /// kurangi stok + buat `stock_logs (sale)` → (kredit/partial) tambah
+  /// `debtBalance` pelanggan. Semua atau tak sama sekali.
   Future<CommitResult> commit(CommitRequest req) async {
     if (req.totals.isEmpty) {
       throw const AppException('Keranjang kosong.');
+    }
+    // Transaksi kredit/partial wajib punya pelanggan (§7 — tak boleh anonim).
+    final isCredit = req.payment.status != TxStatus.paid;
+    if (isCredit && req.customerId == null) {
+      throw const AppException(
+          'Transaksi kredit/partial wajib memilih pelanggan.');
     }
     return _db.transaction(() async {
       final now = DateTimeUtils.nowEpochMs();
@@ -223,6 +230,24 @@ class TransactionRepository {
                 updatedAt: now,
               ),
             );
+      }
+
+      // 7. Kredit/partial: sisa menambah debtBalance pelanggan (§7). Stok tetap
+      //    berkurang (di atas). Dalam transaksi yang sama → konsisten.
+      if (isCredit && p.remaining > 0) {
+        final customer = await (_db.select(_db.customers)
+              ..where((t) => t.id.equals(req.customerId!)))
+            .getSingleOrNull();
+        if (customer == null) {
+          throw const AppException('Pelanggan tak ditemukan.');
+        }
+        await (_db.update(_db.customers)
+              ..where((t) => t.id.equals(req.customerId!)))
+            .write(CustomersCompanion(
+          debtBalance: Value(customer.debtBalance + p.remaining),
+          updatedAt: Value(now),
+          isDirty: const Value(true),
+        ));
       }
 
       return CommitResult(transactionId: txId, invoiceNo: invoiceNo);

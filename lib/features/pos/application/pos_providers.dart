@@ -178,17 +178,26 @@ class CheckoutController extends _$CheckoutController {
   FutureOr<CommitResult?> build() => null;
 
   /// Commit dengan daftar [payments]. Mengosongkan keranjang bila sukses.
-  /// Fase 2: hanya menerima transaksi lunas (paidTotal ≥ grandTotal).
-  Future<CommitResult> submit(List<PaymentEntry> payments) async {
+  ///
+  /// - Lunas (paidTotal ≥ grandTotal) → status `paid`.
+  /// - [allowCredit] true → izinkan `partial`/`credit`; sisa jadi hutang (§7),
+  ///   maka pelanggan **wajib** dipilih. Bila false & belum lunas → ditolak.
+  Future<CommitResult> submit(
+    List<PaymentEntry> payments, {
+    bool allowCredit = false,
+  }) async {
     final totals = ref.read(cartTotalsProvider);
     final cart = ref.read(cartControllerProvider);
     final payment = PaymentCalculator.resolve(
       grandTotal: totals.grandTotal,
       payments: payments,
     );
-    if (!payment.isPaid) {
+    if (!payment.isPaid && !allowCredit) {
+      throw const _CheckoutException('Pembayaran kurang dari total.');
+    }
+    if (!payment.isPaid && cart.customerId == null) {
       throw const _CheckoutException(
-          'Pembayaran kurang dari total. Kredit/partial menyusul di Fase 4.');
+          'Transaksi kredit/partial wajib memilih pelanggan.');
     }
     state = const AsyncLoading();
     final repo = ref.read(transactionRepositoryProvider);
