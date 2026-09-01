@@ -11,7 +11,12 @@ import 'tables/installments.dart';
 import 'tables/payments.dart';
 import 'tables/product_variants.dart';
 import 'tables/products.dart';
+import 'tables/purchase_items.dart';
+import 'tables/purchases.dart';
 import 'tables/stock_logs.dart';
+import 'tables/stock_opname_items.dart';
+import 'tables/stock_opnames.dart';
+import 'tables/suppliers.dart';
 import 'tables/transaction_items.dart';
 import 'tables/transactions.dart';
 import 'tables/units.dart';
@@ -32,6 +37,8 @@ part 'app_database.g.dart';
 /// - v6 (Fase 6): [Users], [Bills] + kolom `bill_id` di [Transactions] —
 ///   multi-user/RBAC & bill/shift.
 /// - v7 (Fase 7): [Wallets], [WalletTransactions] — multi-wallet & arus kas.
+/// - v8 (Fase 8): [Suppliers], [Purchases], [PurchaseItems], [StockOpnames],
+///   [StockOpnameItems] — pembelian/kulakan, hutang supplier & stock opname.
 ///
 /// Katalog data ditambahkan per fase sesuai spec 02-data-model.
 @DriftDatabase(tables: [
@@ -53,12 +60,17 @@ part 'app_database.g.dart';
   Bills,
   Wallets,
   WalletTransactions,
+  Suppliers,
+  Purchases,
+  PurchaseItems,
+  StockOpnames,
+  StockOpnameItems,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -106,6 +118,17 @@ class AppDatabase extends _$AppDatabase {
           if (from < 7) {
             await m.createTable(wallets);
             await m.createTable(walletTransactions);
+          }
+          // v7 → v8: pembelian/supplier & stock opname (Fase 8). Urutan tak
+          // kritis (tak ada FK antar-tabel baru di skema Drift — relasi lewat
+          // id string, pola sama `transactions`/`customers`), tapi dibuat sesuai
+          // urutan logis: master `suppliers` → `purchases`+item → opname+item.
+          if (from < 8) {
+            await m.createTable(suppliers);
+            await m.createTable(purchases);
+            await m.createTable(purchaseItems);
+            await m.createTable(stockOpnames);
+            await m.createTable(stockOpnameItems);
           }
         },
         beforeOpen: (details) async {

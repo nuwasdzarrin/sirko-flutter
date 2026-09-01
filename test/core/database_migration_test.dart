@@ -181,7 +181,7 @@ void main() {
       final business = await db.select(db.businesses).getSingle();
       expect(business.name, 'Toko Lama');
 
-      expect(db.schemaVersion, 7);
+      expect(db.schemaVersion, 8);
     });
 
     test('tabel Fase 2 baru dibuat & bisa dipakai', () async {
@@ -265,7 +265,7 @@ void main() {
 
       expect((await db.select(db.productVariants).get()).length, 1);
       expect((await db.select(db.wholesalePrices).get()).single.price, 9000);
-      expect(db.schemaVersion, 7);
+      expect(db.schemaVersion, 8);
     });
   });
 
@@ -281,7 +281,7 @@ void main() {
       expect((await db.select(db.customers).get()).isEmpty, isTrue);
       expect((await db.select(db.installments).get()).isEmpty, isTrue);
       expect((await db.select(db.creditPayments).get()).isEmpty, isTrue);
-      expect(db.schemaVersion, 7);
+      expect(db.schemaVersion, 8);
     });
   });
 
@@ -323,7 +323,7 @@ void main() {
       expect(cust.debtBalance, 0); // default
       expect((await db.select(db.installments).get()).isEmpty, isTrue);
       expect((await db.select(db.creditPayments).get()).isEmpty, isTrue);
-      expect(db.schemaVersion, 7);
+      expect(db.schemaVersion, 8);
     });
   });
 }

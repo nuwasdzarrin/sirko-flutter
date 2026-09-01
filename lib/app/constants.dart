@@ -25,6 +25,9 @@ class Routes {
   static const String shifts = '/shifts';
   static const String wallets = '/wallets';
   static const String walletCashFlow = '/wallet-cashflow';
+  static const String suppliers = '/suppliers';
+  static const String purchases = '/purchases';
+  static const String stockOpname = '/stock-opname';
   static const String reports = '/reports';
   static const String employeeSummary = '/employee-summary';
   static const String users = '/users';
@@ -63,6 +66,21 @@ class Routes {
         icon: Icons.account_balance_wallet_outlined,
         path: wallets,
         permission: Permission.walletView),
+    NavDestinationItem(
+        label: 'Supplier',
+        icon: Icons.storefront_outlined,
+        path: suppliers,
+        permission: Permission.productManagement),
+    NavDestinationItem(
+        label: 'Pembelian',
+        icon: Icons.local_shipping_outlined,
+        path: purchases,
+        permission: Permission.productManagement),
+    NavDestinationItem(
+        label: 'Stok Opname',
+        icon: Icons.fact_check_outlined,
+        path: stockOpname,
+        permission: Permission.productManagement),
     NavDestinationItem(
         label: 'Laporan',
         icon: Icons.bar_chart_outlined,

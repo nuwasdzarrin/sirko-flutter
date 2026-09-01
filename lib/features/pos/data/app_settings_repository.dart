@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/date_time_utils.dart';
+import '../../purchasing/domain/costing_policy.dart';
 
 /// Akses key-value `app_settings` (spec 02). Dipakai untuk feature flag lokal
 /// & counter invoice (§8). Application/presentation tak menyentuh Drift langsung.
@@ -17,6 +18,9 @@ class AppSettingsRepository {
 
   /// Kunci flag: wajib ada bill/shift open sebelum transaksi (§10, default: tidak).
   static const keyRequireOpenBill = 'require_open_bill';
+
+  /// Kunci: metode harga modal saat pembelian (§15, default: last-cost).
+  static const keyCostingMethod = 'costing_method';
 
   Future<String?> getValue(String key) async {
     final row = await (_db.select(_db.appSettings)
@@ -75,4 +79,11 @@ class AppSettingsRepository {
 
   Future<void> setRequireOpenBill(bool value) =>
       setBool(keyRequireOpenBill, value);
+
+  /// Metode harga modal saat pembelian (§15, default: last-cost).
+  Future<CostingMethod> costingMethod() async =>
+      CostingMethodLabel.fromSetting(await getValue(keyCostingMethod));
+
+  Future<void> setCostingMethod(CostingMethod method) =>
+      setValue(keyCostingMethod, method.settingValue);
 }

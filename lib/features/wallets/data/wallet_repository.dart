@@ -240,6 +240,41 @@ class WalletRepository {
     });
   }
 
+  /// Pengeluaran kas **di dalam** transaksi DB pemanggil (tanpa membuka
+  /// transaksi baru) — untuk pembelian tunai / bayar hutang supplier (Fase 8,
+  /// §11). Menolak bila saldo tak cukup; no-op bila `amount <= 0`. Dipanggil dari
+  /// dalam `db.transaction()` milik [PurchaseRepository] agar kas keluar konsisten
+  /// dengan pembelian/pelunasan.
+  Future<void> spendWithin({
+    required String walletId,
+    required int amount,
+    required int now,
+    String? category,
+    String? refType,
+    String? refId,
+    String? note,
+  }) async {
+    if (amount <= 0) return;
+    final wallet = await getById(walletId);
+    if (wallet == null) throw const AppException('Wallet tak ditemukan.');
+    if (!WalletMutation.canWithdraw(wallet.balance, amount)) {
+      throw AppException('Saldo "${wallet.name}" tak cukup '
+          '(tersedia ${wallet.balance}, diminta $amount).');
+    }
+    await _writeBalance(
+        walletId, WalletMutation.applyOut(wallet.balance, amount), now);
+    await _insertMutation(
+      walletId: walletId,
+      type: WalletTxType.out,
+      amount: amount,
+      category: category,
+      refType: refType,
+      refId: refId,
+      note: note,
+      now: now,
+    );
+  }
+
   // --- Integrasi penjualan tunai (§ Fase 7) ----------------------------------
 
   /// Catat penjualan tunai [cashAmount] sebagai **pemasukan** ke wallet default

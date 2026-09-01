@@ -107,7 +107,7 @@ void main() {
           ..where((t) => t.id.equals('wt2')))
         .getSingle();
     expect(income.type, WalletTxType.income);
-    expect(db.schemaVersion, 7);
+    expect(db.schemaVersion, 8);
   });
 
   test('instalasi baru (onCreate) langsung v7 — tabel wallet ada', () async {
@@ -115,6 +115,6 @@ void main() {
     addTearDown(db.close);
     expect((await db.select(db.wallets).get()).isEmpty, isTrue);
     expect((await db.select(db.walletTransactions).get()).isEmpty, isTrue);
-    expect(db.schemaVersion, 7);
+    expect(db.schemaVersion, 8);
   });
 }
