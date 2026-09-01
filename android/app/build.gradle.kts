@@ -30,6 +30,17 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // --- Patrol (E2E native Android) ---
+        // Runner instrumentasi Patrol menggantikan AndroidJUnitRunner default.
+        testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
+    }
+
+    // Patrol butuh AndroidX Test Orchestrator agar tiap skenario dart dijalankan
+    // dalam proses bersih (mencegah state bocor antar-skenario).
+    testOptions {
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
 
     buildTypes {
@@ -43,4 +54,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Orchestrator runtime untuk instrumentasi Patrol.
+    androidTestUtil("androidx.test:orchestrator:1.5.1")
 }

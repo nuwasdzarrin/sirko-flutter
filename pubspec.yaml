@@ -68,6 +68,14 @@ dev_dependencies:
 
   flutter_lints: ^5.0.0
 
+  # --- Automation testing (agen QA) ---
+  # Mock/fake repository & service hardware (printer BT, kontak, biometrik).
+  mocktail: ^1.0.4
+  # E2E native Android + finder ringkas. Dijalankan via `patrol test` di
+  # emulator; harness native diatur di android/app + blok `patrol:` di bawah.
+  patrol: ^3.13.2
+  patrol_finders: ^2.7.0
+
   # Uji migrasi Drift (buka DB skema lama secara mentah)
   sqlite3: ^2.4.0
 
@@ -86,3 +94,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+# Konfigurasi Patrol (E2E native Android). Dipakai oleh `patrol_cli`.
+patrol:
+  app_name: Sirko
+  android:
+    package_name: com.sirko.app
+  ios:
+    bundle_id: com.sirko.app
