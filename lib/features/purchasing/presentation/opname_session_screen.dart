@@ -8,7 +8,7 @@ import '../../../core/errors/failures.dart';
 import '../../../core/money/money.dart';
 import '../application/purchasing_providers.dart';
 
-/// Sesi opname: input qty fisik per baris, lihat selisih, finalisasi (§16).
+/// Sesi opname: input qty fisik per baris, lihat selisih, finalisasi.
 class OpnameSessionScreen extends ConsumerWidget {
   final String opnameId;
   const OpnameSessionScreen({super.key, required this.opnameId});

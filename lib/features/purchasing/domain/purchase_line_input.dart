@@ -1,4 +1,4 @@
-/// Satu baris input pembelian/kulakan (§11). Uang = **int rupiah**.
+/// Satu baris input pembelian/kulakan. Uang = **int rupiah**.
 ///
 /// Salah satu dari [productId]/[variantId] mengarah ke sasaran stok yang
 /// bertambah saat diterima. [nameSnapshot] disimpan ke `purchase_items` untuk

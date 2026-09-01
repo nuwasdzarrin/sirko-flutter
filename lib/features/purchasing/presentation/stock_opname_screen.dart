@@ -9,7 +9,7 @@ import '../../users/application/user_providers.dart';
 import '../application/purchasing_providers.dart';
 import 'opname_session_screen.dart';
 
-/// Daftar sesi stock opname (Fase 8, §16). Buat sesi baru → snapshot stok.
+/// Daftar sesi stock opname (Fase 8). Buat sesi baru → snapshot stok.
 class StockOpnameScreen extends ConsumerWidget {
   const StockOpnameScreen({super.key});
 

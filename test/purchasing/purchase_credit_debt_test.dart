@@ -10,7 +10,7 @@ import 'package:sirko/features/purchasing/data/supplier_repository.dart';
 import 'package:sirko/features/purchasing/domain/purchase_line_input.dart';
 import 'package:sirko/features/wallets/data/wallet_repository.dart';
 
-/// Test hutang supplier (§11): pembelian kredit/partial menambah
+/// Test hutang supplier: pembelian kredit/partial menambah
 /// `suppliers.debtBalance`; bayar hutang menguranginya; kaitan kas keluar wallet.
 void main() {
   late AppDatabase db;

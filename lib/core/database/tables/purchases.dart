@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'standard_columns.dart';
 
-/// Status pembelian/kulakan (spec 02 `purchases.status`, §11). Tanpa reserved
+/// Status pembelian/kulakan (spec 02 `purchases.status`). Tanpa reserved
 /// word → aman untuk `textEnum` (`.name` tersimpan apa adanya).
 enum PurchaseStatus { paid, credit, partial }
 
@@ -17,7 +17,7 @@ extension PurchaseStatusLabel on PurchaseStatus {
 
 /// Pembelian / Kulakan / Stok Masuk (spec 02-data-model, Fase 8). Uang = **int
 /// rupiah**. Saat diterima: stok bertambah + `stock_logs (type: in)` + update
-/// harga modal (§15); kredit/partial menambah `suppliers.debtBalance` (§11) —
+/// harga modal; kredit/partial menambah `suppliers.debtBalance` —
 /// semua dalam **satu** transaksi DB (lihat `PurchaseRepository.receive`).
 class Purchases extends Table with StandardColumns {
   /// No. nota supplier (referensi eksternal, bebas/nullable).

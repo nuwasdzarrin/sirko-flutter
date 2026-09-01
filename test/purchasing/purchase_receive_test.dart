@@ -10,7 +10,7 @@ import 'package:sirko/features/purchasing/domain/costing_policy.dart';
 import 'package:sirko/features/purchasing/domain/purchase_line_input.dart';
 import 'package:sirko/features/wallets/data/wallet_repository.dart';
 
-/// Test terima pembelian (§11, §15): stok bertambah + `stock_logs(in)` +
+/// Test terima pembelian: stok bertambah + `stock_logs(in)` +
 /// harga modal ter-update (last-cost default & moving-average).
 void main() {
   late AppDatabase db;
@@ -114,7 +114,7 @@ void main() {
     expect(logs.single.stockAfter, 5);
   });
 
-  test('moving-average meng-update cost berbobot stok (§15)', () async {
+  test('moving-average meng-update cost berbobot stok', () async {
     await settings.setCostingMethod(CostingMethod.movingAverage);
     await seedProduct('p3', stock: 10, cost: 8000);
 

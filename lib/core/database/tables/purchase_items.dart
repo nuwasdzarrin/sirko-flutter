@@ -5,7 +5,7 @@ import 'standard_columns.dart';
 /// Baris pembelian (spec 02-data-model, Fase 8). Uang = **int rupiah**.
 ///
 /// [costPrice] = harga beli/modal per unit pada nota ini; dipakai untuk
-/// meng-update harga modal produk/varian saat diterima (§15). `nameSnapshot`
+/// meng-update harga modal produk/varian saat diterima. `nameSnapshot`
 /// menjaga histori bila produk kelak diedit/dihapus.
 class PurchaseItems extends Table with StandardColumns {
   TextColumn get purchaseId => text()();

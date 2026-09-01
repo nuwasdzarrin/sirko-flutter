@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sirko/features/purchasing/domain/opname_calculator.dart';
 
-/// Test kalkulasi opname **murni** (§16): diff & nilai kerugian.
+/// Test kalkulasi opname **murni**: diff & nilai kerugian.
 void main() {
   test('diff = fisik − sistem', () {
     expect(OpnameCalculator.diff(systemQty: 10, physicalQty: 7), -3);

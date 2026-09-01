@@ -1,4 +1,4 @@
-/// Metode penetapan harga modal saat pembelian diterima (§15).
+/// Metode penetapan harga modal saat pembelian diterima.
 enum CostingMethod {
   /// Harga beli terbaru langsung menggantikan `costPrice` (default, paling lazim
   /// untuk warung/grosir).
@@ -26,7 +26,7 @@ extension CostingMethodLabel on CostingMethod {
       };
 }
 
-/// Kebijakan harga modal **murni** (§15). Tidak menyentuh DB — hanya menghitung
+/// Kebijakan harga modal **murni**. Tidak menyentuh DB — hanya menghitung
 /// cost baru dari kondisi lama + pembelian. Uang = **int rupiah**.
 class CostingPolicy {
   const CostingPolicy._();

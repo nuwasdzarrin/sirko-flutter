@@ -75,7 +75,7 @@ final opnameItemsProvider = StreamProvider.autoDispose
   return ref.watch(opnameRepositoryProvider).watchItems(opnameId);
 });
 
-/// Rekap selisih satu sesi opname (nilai kerugian dsb, §16).
+/// Rekap selisih satu sesi opname (nilai kerugian dsb).
 final opnameSummaryProvider =
     FutureProvider.autoDispose.family<OpnameSummary, String>((ref, opnameId) {
   return ref.watch(opnameRepositoryProvider).summary(opnameId);

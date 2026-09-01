@@ -16,8 +16,8 @@ import 'package:sirko/features/purchasing/domain/purchase_line_input.dart';
 import 'package:sirko/features/wallets/data/wallet_repository.dart';
 
 /// Integrasi siklus ritel: **kulakan → jual → opname**. Memastikan stok & arus
-/// stok konsisten sepanjang tiga tahap (§5, §11, §16) dan harga modal ter-update
-/// dipakai sebagai snapshot laba penjualan (§9, §15).
+/// stok konsisten sepanjang tiga tahap dan harga modal ter-update
+/// dipakai sebagai snapshot laba penjualan.
 void main() {
   late AppDatabase db;
   late PurchaseRepository purchases;
@@ -94,7 +94,7 @@ void main() {
         .getSingle();
     expect(product.stock, 15); // 20 − 5
 
-    // Laba pakai snapshot modal kulakan (§9): (2000−1200)×5 = 4000.
+    // Laba pakai snapshot modal kulakan: (2000−1200)×5 = 4000.
     final soldItem = await db.select(db.transactionItems).getSingle();
     expect(soldItem.costPriceSnapshot, 1200);
 

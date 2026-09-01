@@ -16,7 +16,7 @@ class OpnameCountLine {
   int get diff => physicalQty - systemQty;
 }
 
-/// Ringkasan hasil opname (§16).
+/// Ringkasan hasil opname.
 class OpnameSummary {
   /// Jumlah baris ber-selisih (`diff ≠ 0`).
   final int changedCount;
@@ -25,7 +25,7 @@ class OpnameSummary {
   final int surplusQty;
   final int shortageQty;
 
-  /// Nilai kerugian = Σ `diff_negatif × costPrice` (angka positif, §16).
+  /// Nilai kerugian = Σ `diff_negatif × costPrice` (angka positif).
   final int lossValue;
 
   const OpnameSummary({
@@ -36,7 +36,7 @@ class OpnameSummary {
   });
 }
 
-/// Kalkulasi opname **murni** (§16). Tidak menyentuh DB.
+/// Kalkulasi opname **murni**. Tidak menyentuh DB.
 class OpnameCalculator {
   const OpnameCalculator._();
 

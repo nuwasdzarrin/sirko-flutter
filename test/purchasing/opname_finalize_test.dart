@@ -7,7 +7,7 @@ import 'package:sirko/core/database/tables/stock_opnames.dart';
 import 'package:sirko/core/errors/failures.dart';
 import 'package:sirko/features/purchasing/data/opname_repository.dart';
 
-/// Test stock opname (§16): draft tak mengubah stok; finalisasi membuat
+/// Test stock opname: draft tak mengubah stok; finalisasi membuat
 /// `stock_logs(adjustment)` & menyamakan stok sistem = fisik.
 void main() {
   late AppDatabase db;

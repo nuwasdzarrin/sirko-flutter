@@ -13,7 +13,7 @@ import '../domain/purchase_calculator.dart';
 import '../domain/purchase_detail.dart';
 import '../domain/purchase_line_input.dart';
 
-/// Permintaan terima pembelian/kulakan (§11).
+/// Permintaan terima pembelian/kulakan.
 class ReceivePurchaseRequest {
   final List<PurchaseLineInput> lines;
   final String? supplierId;
@@ -23,7 +23,7 @@ class ReceivePurchaseRequest {
   /// Total yang dibayar saat ini (0 = kredit penuh; ≥ grandTotal = lunas).
   final int paidTotal;
 
-  /// Wallet sumber kas keluar untuk porsi tunai (opsional, Fase 7 §11).
+  /// Wallet sumber kas keluar untuk porsi tunai (opsional, Fase 7).
   final String? walletId;
   final String? note;
 
@@ -58,8 +58,8 @@ class ReceivePurchaseResult {
 ///
 /// Prinsip **non-negosiasi**: stok, harga modal & `debtBalance` tak pernah
 /// diubah "diam-diam". Terima pembelian membungkus **satu** `db.transaction()`:
-/// simpan nota+item → tambah stok + `stock_logs(in)` → update cost (§15) →
-/// (kredit/partial) tambah `suppliers.debtBalance` (§11) → (opsional) kas keluar
+/// simpan nota+item → tambah stok + `stock_logs(in)` → update cost →
+/// (kredit/partial) tambah `suppliers.debtBalance` → (opsional) kas keluar
 /// wallet. Gagal di tengah = rollback penuh.
 class PurchaseRepository {
   final AppDatabase _db;
@@ -102,7 +102,7 @@ class PurchaseRepository {
     );
 
     // Kredit/partial wajib punya supplier (hutang tak boleh menggantung tanpa
-    // pihak — cermin aturan §7 untuk pelanggan).
+    // pihak — cermin aturan untuk pelanggan).
     if (debtAdded > 0 && req.supplierId == null) {
       throw const AppException(
           'Pembelian kredit/partial wajib memilih supplier.');
@@ -152,7 +152,7 @@ class PurchaseRepository {
         }
       });
 
-      // 3. Per item: tambah stok + stock_logs(in) + update harga modal (§15).
+      // 3. Per item: tambah stok + stock_logs(in) + update harga modal.
       for (final l in req.lines) {
         if (l.variantId != null) {
           final variant = await (_db.select(_db.productVariants)
@@ -221,7 +221,7 @@ class PurchaseRepository {
         }
       }
 
-      // 4. Kredit/partial → tambah hutang supplier (§11).
+      // 4. Kredit/partial → tambah hutang supplier.
       if (debtAdded > 0) {
         final supplier = await (_db.select(_db.suppliers)
               ..where((t) => t.id.equals(req.supplierId!)))
@@ -238,7 +238,7 @@ class PurchaseRepository {
         ));
       }
 
-      // 5. Porsi tunai → kas keluar wallet (opsional, Fase 7 §11). Dalam
+      // 5. Porsi tunai → kas keluar wallet (opsional, Fase 7). Dalam
       //    transaksi yang sama → saldo wallet konsisten dengan pembelian.
       if (req.walletId != null && paidTotal > 0) {
         await _wallets.spendWithin(
@@ -261,7 +261,7 @@ class PurchaseRepository {
     });
   }
 
-  // --- Bayar hutang supplier (§11) -------------------------------------------
+  // --- Bayar hutang supplier -------------------------------------------
 
   /// Bayar hutang ke supplier — **atomik**: kurangi `debtBalance` (clamp ≥ 0) +
   /// (opsional) kas keluar wallet. Menolak nominal ≤ 0.

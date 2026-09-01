@@ -4,7 +4,7 @@ import 'standard_columns.dart';
 
 /// Supplier / pemasok (spec 02-data-model, Fase 8). Uang = **int rupiah**.
 ///
-/// [debtBalance] = **hutang usaha kita ke supplier** (§11). Selalu diubah lewat
+/// [debtBalance] = **hutang usaha kita ke supplier**. Selalu diubah lewat
 /// transaksi DB bersama pencatatan `purchases`/pembayaran hutang supplier — tak
 /// pernah diedit "diam-diam" (lihat `PurchaseRepository`). Pola paralel dengan
 /// `customers.debtBalance` (piutang), hanya arah lawannya.

@@ -16,12 +16,12 @@ class PurchaseTotals {
   bool get isEmpty => subtotal == 0;
 }
 
-/// Kalkulasi pembelian **murni** (§11) — cermin ringkas dari kalkulasi
+/// Kalkulasi pembelian **murni** — cermin ringkas dari kalkulasi
 /// penjualan, tanpa pajak (pembelian tak dikenai pajak jual toko).
 ///
 /// Urutan: `subtotal = Σ lineTotal` → diskon transaksi (clamp ke [0, subtotal])
 /// → `grandTotal = subtotal − diskon`. Status diturunkan dari `paidTotal` vs
-/// `grandTotal` — sama semantik dengan penjualan (§3).
+/// `grandTotal` — sama semantik dengan penjualan.
 class PurchaseCalculator {
   const PurchaseCalculator._();
 
@@ -40,7 +40,7 @@ class PurchaseCalculator {
   }
 
   /// Status pembelian dari pembayaran: `paid` bila lunas, `credit` bila belum
-  /// bayar sama sekali, `partial` bila sebagian (§11).
+  /// bayar sama sekali, `partial` bila sebagian.
   static PurchaseStatus statusFor({
     required int grandTotal,
     required int paidTotal,

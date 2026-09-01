@@ -22,7 +22,7 @@ class OpnameTarget {
   });
 }
 
-/// Akses tabel `stock_opnames` & `stock_opname_items` (spec 02, Fase 8, §16).
+/// Akses tabel `stock_opnames` & `stock_opname_items` (spec 02, Fase 8).
 ///
 /// Draft **tidak** mengubah stok. Finalisasi membungkus **satu**
 /// `db.transaction()`: untuk tiap baris ber-`diff ≠ 0` buat `stock_logs
@@ -144,9 +144,9 @@ class OpnameRepository {
     });
   }
 
-  // --- Finalisasi (§16) ------------------------------------------------------
+  // --- Finalisasi ------------------------------------------------------
 
-  /// Finalisasi sesi (§16) — **atomik**: untuk tiap baris `diff ≠ 0` set stok
+  /// Finalisasi sesi — **atomik**: untuk tiap baris `diff ≠ 0` set stok
   /// sistem = `physicalQty` + `stock_logs(type: adjustment, qtyChange: diff)`,
   /// lalu status → `finalized`. Menolak finalisasi ganda. Mengembalikan jumlah
   /// baris yang menghasilkan penyesuaian.
@@ -168,7 +168,7 @@ class OpnameRepository {
       for (final item in items) {
         if (item.diff == 0) continue;
         adjusted++;
-        // Set stok sistem = fisik (§16).
+        // Set stok sistem = fisik.
         if (item.variantId != null) {
           await (_db.update(_db.productVariants)
                 ..where((t) => t.id.equals(item.variantId!)))
@@ -234,7 +234,7 @@ class OpnameRepository {
       (_db.select(_db.stockOpnames)..where((t) => t.id.equals(id)))
           .getSingleOrNull();
 
-  /// Rekap selisih sesi (nilai kerugian dsb, §16) memakai harga modal **kini**
+  /// Rekap selisih sesi (nilai kerugian dsb) memakai harga modal **kini**
   /// dari produk/varian. Dipakai laporan sederhana (Task 6).
   Future<OpnameSummary> summary(String opnameId) async {
     final items = await (_db.select(_db.stockOpnameItems)

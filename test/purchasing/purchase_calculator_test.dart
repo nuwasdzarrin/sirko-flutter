@@ -3,7 +3,7 @@ import 'package:sirko/core/database/tables/purchases.dart';
 import 'package:sirko/features/purchasing/domain/purchase_calculator.dart';
 import 'package:sirko/features/purchasing/domain/purchase_line_input.dart';
 
-/// Test kalkulasi pembelian **murni** (§11): subtotal, diskon, grandTotal &
+/// Test kalkulasi pembelian **murni**: subtotal, diskon, grandTotal &
 /// penurunan status dari pembayaran.
 void main() {
   PurchaseLineInput line(int qty, int cost) =>

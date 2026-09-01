@@ -82,7 +82,7 @@ class SupplierRepository {
     );
   }
 
-  /// Soft delete → masuk Recycle Bin (§12). Ditolak bila masih ada hutang
+  /// Soft delete → masuk Recycle Bin. Ditolak bila masih ada hutang
   /// menggantung agar akuntansi tidak "hilang".
   Future<void> softDelete(String id) async {
     final supplier = await getById(id);

@@ -7,7 +7,7 @@ import 'standard_columns.dart';
 /// [systemQty] = stok sistem saat sesi **dimulai** (snapshot, tidak berubah);
 /// [physicalQty] = hasil hitung fisik petugas; [diff] = `physicalQty −
 /// systemQty` (boleh negatif). Saat finalisasi, `diff ≠ 0` menghasilkan
-/// `stock_logs (type: adjustment, qtyChange: diff)` (§16).
+/// `stock_logs (type: adjustment, qtyChange: diff)`.
 class StockOpnameItems extends Table with StandardColumns {
   TextColumn get opnameId => text()();
 

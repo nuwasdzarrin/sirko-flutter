@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sirko/features/purchasing/domain/costing_policy.dart';
 
-/// Test kebijakan harga modal **murni** (§15): last-cost & moving-average.
+/// Test kebijakan harga modal **murni**: last-cost & moving-average.
 void main() {
   group('last-cost (default)', () {
     test('cost baru = harga beli terbaru, apapun stok/cost lama', () {

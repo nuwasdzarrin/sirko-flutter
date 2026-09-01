@@ -8,7 +8,7 @@ import '../../wallets/application/wallet_providers.dart';
 import '../application/purchasing_providers.dart';
 import 'supplier_form_dialog.dart';
 
-/// Detail supplier: info, saldo hutang usaha, dan tombol bayar hutang (§11).
+/// Detail supplier: info, saldo hutang usaha, dan tombol bayar hutang.
 class SupplierDetailScreen extends ConsumerWidget {
   final String supplierId;
   const SupplierDetailScreen({super.key, required this.supplierId});

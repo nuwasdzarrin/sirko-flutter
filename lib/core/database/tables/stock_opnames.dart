@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'standard_columns.dart';
 
-/// Status sesi stock opname (spec 02 `stock_opnames.status`, §16). Tanpa
+/// Status sesi stock opname (spec 02 `stock_opnames.status`). Tanpa
 /// reserved word → aman untuk `textEnum`.
 enum OpnameStatus { draft, finalized }
 
@@ -16,7 +16,7 @@ extension OpnameStatusLabel on OpnameStatus {
 
 /// Sesi cek fisik stok (spec 02-data-model, Fase 8). Draft belum mengubah stok;
 /// finalisasi menyamakan stok sistem = fisik + `stock_logs (type: adjustment)`
-/// (§16, lihat `OpnameRepository.finalize`). Setelah `finalized` = immutable
+/// (lihat `OpnameRepository.finalize`). Setelah `finalized` = immutable
 /// (jejak audit).
 class StockOpnames extends Table with StandardColumns {
   /// No. referensi sesi opname (bebas/nullable).
