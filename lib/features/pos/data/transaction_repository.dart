@@ -33,6 +33,9 @@ class CommitRequest {
   final PaymentResult payment;
   final String? customerId;
   final String? cashierId;
+
+  /// Bill/shift terkait (Fase 6). Tunai selama bill dikaitkan lewat ini (§10).
+  final String? billId;
   final String? note;
 
   const CommitRequest({
@@ -41,6 +44,7 @@ class CommitRequest {
     required this.payment,
     this.customerId,
     this.cashierId,
+    this.billId,
     this.note,
   });
 }
@@ -128,6 +132,7 @@ class TransactionRepository {
               datetime: now,
               cashierId: Value(req.cashierId),
               customerId: Value(req.customerId),
+              billId: Value(req.billId),
               subtotal: Value(t.subtotal),
               discountTotal: Value(t.discountTotal),
               taxTotal: Value(t.taxTotal),

@@ -15,6 +15,9 @@ class AppSettingsRepository {
   /// Kunci flag: boleh jual saat stok < qty (§5, default: tidak).
   static const keyAllowNegativeStock = 'allow_negative_stock';
 
+  /// Kunci flag: wajib ada bill/shift open sebelum transaksi (§10, default: tidak).
+  static const keyRequireOpenBill = 'require_open_bill';
+
   Future<String?> getValue(String key) async {
     final row = await (_db.select(_db.appSettings)
           ..where((t) => t.key.equals(key))
@@ -65,4 +68,11 @@ class AppSettingsRepository {
 
   Future<void> setAllowNegativeStock(bool value) =>
       setBool(keyAllowNegativeStock, value);
+
+  /// Wajib bill open sebelum transaksi (§10, default: tidak).
+  Future<bool> requireOpenBill() =>
+      getBool(keyRequireOpenBill, orElse: false);
+
+  Future<void> setRequireOpenBill(bool value) =>
+      setBool(keyRequireOpenBill, value);
 }

@@ -22,4 +22,28 @@ class DateTimeUtils {
 
   /// Awal hari ini (lokal) sebagai epoch ms UTC.
   static int startOfTodayLocal() => startOfDayLocal(DateTime.now());
+
+  /// Awal hari **berikutnya** (00:00 keesokan hari, lokal) sebagai epoch ms UTC.
+  /// Dipakai sebagai batas atas **eksklusif** rentang laporan `[start, end)`
+  /// agar seluruh transaksi hari [day] (termasuk 23:59:59.999) ikut terhitung.
+  static int endOfDayLocal(DateTime day) {
+    final next = DateTime(day.year, day.month, day.day).add(
+      const Duration(days: 1),
+    );
+    return next.toUtc().millisecondsSinceEpoch;
+  }
+
+  /// Awal bulan (tanggal 1, 00:00 lokal) untuk [day], sebagai epoch ms UTC.
+  static int startOfMonthLocal(DateTime day) {
+    final start = DateTime(day.year, day.month, 1);
+    return start.toUtc().millisecondsSinceEpoch;
+  }
+
+  /// Kunci hari lokal `YYYY-MM-DD` dari epoch ms UTC — untuk mengelompokkan
+  /// transaksi per hari zona perangkat (grafik omzet harian, §14).
+  static String localDayKey(int epochMs) {
+    final dt = toLocal(epochMs);
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${dt.year.toString().padLeft(4, '0')}-${two(dt.month)}-${two(dt.day)}';
+  }
 }

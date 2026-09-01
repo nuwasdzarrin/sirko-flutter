@@ -2,7 +2,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../../bills/application/bill_providers.dart';
 import '../../onboarding/application/onboarding_providers.dart';
+import '../../users/application/user_providers.dart';
 import '../data/app_settings_repository.dart';
 import '../data/receipt_thermal_printer.dart';
 import '../data/transaction_repository.dart';
@@ -199,6 +201,20 @@ class CheckoutController extends _$CheckoutController {
       throw const _CheckoutException(
           'Transaksi kredit/partial wajib memilih pelanggan.');
     }
+
+    // Fase 6: kaitkan kasir & bill/shift. Bila setting wajib-bill aktif, tolak
+    // transaksi tanpa bill open (§10).
+    final cashierId = ref.read(currentUserProvider)?.id;
+    final openBill = cashierId == null
+        ? null
+        : await ref.read(billRepositoryProvider).getOpenBillFor(cashierId);
+    final requireOpenBill =
+        await ref.read(appSettingsRepositoryProvider).requireOpenBill();
+    if (requireOpenBill && openBill == null) {
+      throw const _CheckoutException(
+          'Buka bill/shift dulu sebelum bertransaksi.');
+    }
+
     state = const AsyncLoading();
     final repo = ref.read(transactionRepositoryProvider);
     final result = await AsyncValue.guard(() => repo.commit(CommitRequest(
@@ -206,6 +222,8 @@ class CheckoutController extends _$CheckoutController {
           payments: payments,
           payment: payment,
           customerId: cart.customerId,
+          cashierId: cashierId,
+          billId: openBill?.id,
           note: cart.note,
         )));
     state = result;

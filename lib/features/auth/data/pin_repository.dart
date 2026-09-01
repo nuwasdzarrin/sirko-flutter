@@ -1,21 +1,19 @@
-import 'dart:convert';
-import 'dart:math';
-import 'dart:typed_data';
-
-import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Penyimpanan & verifikasi PIN lokal.
+import 'pin_hasher.dart';
+
+/// Penyimpanan & verifikasi PIN **tunggal** legacy (Fase 0).
 ///
-/// PIN tidak pernah disimpan plain: di-hash dengan **PBKDF2-HMAC-SHA256 + salt
-/// acak**, hasil disimpan terenkripsi di [FlutterSecureStorage]
+/// PIN tak pernah disimpan plain: di-hash dengan **PBKDF2-HMAC-SHA256 + salt
+/// acak** ([PinHasher]), hasil disimpan terenkripsi di [FlutterSecureStorage]
 /// (Keystore/Keychain OS). Lihat spec 03-business-rules §13.
+///
+/// Sejak Fase 6, PIN dikelola **per user** di tabel `users`. Repo ini tetap
+/// dipakai untuk (a) dukungan biometrik & (b) migrasi PIN owner lama →
+/// user owner (lihat [exportLegacyCredential]).
 class PinRepository {
   static const _keyHash = 'sirko_pin_hash';
   static const _keySalt = 'sirko_pin_salt';
-  static const _iterations = 60000;
-  static const _saltLength = 16;
-  static const _keyLength = 32; // = panjang output SHA-256
 
   final FlutterSecureStorage _storage;
 
@@ -26,55 +24,29 @@ class PinRepository {
       (await _storage.read(key: _keyHash)) != null;
 
   Future<void> setPin(String pin) async {
-    final salt = _randomBytes(_saltLength);
-    final hash = _pbkdf2(pin, salt);
-    await _storage.write(key: _keySalt, value: base64Encode(salt));
-    await _storage.write(key: _keyHash, value: base64Encode(hash));
+    // Simpan tetap sebagai (salt, hash) terpisah agar kompatibel instalasi lama.
+    final parts = PinHasher.hash(pin).split(':'); // [saltB64, hashB64]
+    await _storage.write(key: _keySalt, value: parts[0]);
+    await _storage.write(key: _keyHash, value: parts[1]);
   }
 
   Future<bool> verifyPin(String pin) async {
+    final credential = await exportLegacyCredential();
+    if (credential == null) return false;
+    return PinHasher.verify(pin, credential);
+  }
+
+  /// Kredensial legacy ter-encode (`saltB64:hashB64`) atau null bila belum ada.
+  /// Dipakai saat Fase 6 menyeed user owner dari PIN lama **tanpa reset**.
+  Future<String?> exportLegacyCredential() async {
     final saltB64 = await _storage.read(key: _keySalt);
     final hashB64 = await _storage.read(key: _keyHash);
-    if (saltB64 == null || hashB64 == null) return false;
-    final expected = base64Decode(hashB64);
-    final actual = _pbkdf2(pin, base64Decode(saltB64));
-    return _constantTimeEquals(expected, actual);
+    if (saltB64 == null || hashB64 == null) return null;
+    return '$saltB64:$hashB64';
   }
 
   Future<void> clear() async {
     await _storage.delete(key: _keyHash);
     await _storage.delete(key: _keySalt);
-  }
-
-  // --- internal ---
-
-  /// PBKDF2-HMAC-SHA256, dkLen = hLen (32) → cukup 1 blok.
-  Uint8List _pbkdf2(String pin, List<int> salt) {
-    final hmac = Hmac(sha256, utf8.encode(pin));
-    // U1 = PRF(salt || INT_32_BE(1))
-    var u = hmac.convert([...salt, 0, 0, 0, 1]).bytes;
-    final result = Uint8List.fromList(u);
-    for (var i = 1; i < _iterations; i++) {
-      u = hmac.convert(u).bytes;
-      for (var j = 0; j < _keyLength; j++) {
-        result[j] ^= u[j];
-      }
-    }
-    return result;
-  }
-
-  Uint8List _randomBytes(int length) {
-    final rnd = Random.secure();
-    return Uint8List.fromList(
-        List<int>.generate(length, (_) => rnd.nextInt(256)));
-  }
-
-  bool _constantTimeEquals(List<int> a, List<int> b) {
-    if (a.length != b.length) return false;
-    var diff = 0;
-    for (var i = 0; i < a.length; i++) {
-      diff |= a[i] ^ b[i];
-    }
-    return diff == 0;
   }
 }

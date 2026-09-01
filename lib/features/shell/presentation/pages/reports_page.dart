@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/widgets/placeholder_page.dart';
+import '../../../reports/presentation/reports_screen.dart';
 
+/// Halaman Laporan di dalam shell → layar laporan & ekspor Fase 5.
 class ReportsPage extends StatelessWidget {
   const ReportsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const PlaceholderPage(
-      title: 'Laporan',
-      icon: Icons.bar_chart_outlined,
-      subtitle: 'Laporan penjualan/laba & ekspor akan hadir di Fase 5.',
-    );
-  }
+  Widget build(BuildContext context) => const ReportsScreen();
 }

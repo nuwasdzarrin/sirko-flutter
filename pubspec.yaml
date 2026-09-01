@@ -55,6 +55,12 @@ dependencies:
   printing: ^5.13.4
   print_bluetooth_thermal: ^1.1.1
   esc_pos_utils_plus: ^2.0.4
+  # fl_chart dipatok ke 0.69.x: versi 1.x memakai Matrix4.translateByDouble yang
+  # butuh vector_math lebih baru dari yang dibawa toolchain Flutter proyek ini.
+  fl_chart: ^0.69.0
+  excel: ^4.0.6
+  share_plus: ^12.0.2
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:

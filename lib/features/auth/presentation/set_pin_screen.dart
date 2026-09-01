@@ -5,10 +5,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/constants.dart';
 import '../../../app/session_controller.dart';
+import '../../users/application/user_providers.dart';
+import '../../users/domain/current_user.dart';
+import '../../users/domain/permission_resolver.dart';
+import '../../../core/database/tables/users.dart';
 import '../application/auth_providers.dart';
 
 const _minPinLength = 6;
 
+/// Setup **pemilik** (Fase 6): buat user owner pertama + PIN, lalu login.
+/// Menggantikan "set PIN" tunggal Fase 0 (kini PIN dikelola per user).
 class SetPinScreen extends ConsumerStatefulWidget {
   const SetPinScreen({super.key});
 
@@ -18,12 +24,14 @@ class SetPinScreen extends ConsumerStatefulWidget {
 
 class _SetPinScreenState extends ConsumerState<SetPinScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController(text: 'Pemilik');
   final _pinController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _submitting = false;
 
   @override
   void dispose() {
+    _nameController.dispose();
     _pinController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -33,14 +41,32 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
     try {
-      await ref.read(pinRepositoryProvider).setPin(_pinController.text);
-      ref.read(sessionControllerProvider.notifier).onPinCreated();
+      final name = _nameController.text.trim();
+      final pin = _pinController.text;
+      final id = await ref.read(userRepositoryProvider).create(
+            name: name,
+            username: 'owner',
+            pin: pin,
+            role: AppRole.owner,
+          );
+      // Simpan juga PIN owner ke secure storage → dukungan biometrik (§13).
+      await ref.read(pinRepositoryProvider).setPin(pin);
+
+      ref.read(sessionControllerProvider.notifier).onOwnerCreated(
+            CurrentUser(
+              id: id,
+              name: name,
+              username: 'owner',
+              role: AppRole.owner,
+              permissions: PermissionResolver.resolve(AppRole.owner),
+            ),
+          );
       if (mounted) context.go(Routes.dashboard);
     } catch (e) {
       if (mounted) {
         setState(() => _submitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan PIN: $e')),
+          SnackBar(content: Text('Gagal membuat pemilik: $e')),
         );
       }
     }
@@ -50,7 +76,7 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Buat PIN')),
+      appBar: AppBar(title: const Text('Buat Akun Pemilik')),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -62,25 +88,38 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(Icons.lock_outline,
+                    Icon(Icons.admin_panel_settings_outlined,
                         size: 64, color: theme.colorScheme.primary),
                     const SizedBox(height: 16),
-                    Text('Amankan aplikasi',
+                    Text('Akun Pemilik',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.headlineSmall),
                     const SizedBox(height: 8),
-                    Text('Buat PIN minimal $_minPinLength digit untuk login.',
+                    Text(
+                        'Pemilik punya akses penuh. Buat nama & PIN minimal '
+                        '$_minPinLength digit untuk login.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium
                             ?.copyWith(color: theme.colorScheme.outline)),
                     const SizedBox(height: 32),
                     TextFormField(
+                      controller: _nameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Nama pemilik',
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Nama wajib diisi'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
                       controller: _pinController,
                       obscureText: true,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: const InputDecoration(
                         labelText: 'PIN',
                         prefixIcon: Icon(Icons.pin_outlined),
@@ -95,17 +134,14 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
                       controller: _confirmController,
                       obscureText: true,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: const InputDecoration(
                         labelText: 'Ulangi PIN',
                         prefixIcon: Icon(Icons.pin_outlined),
                         border: OutlineInputBorder(),
                       ),
-                      validator: (v) => (v != _pinController.text)
-                          ? 'PIN tidak sama'
-                          : null,
+                      validator: (v) =>
+                          (v != _pinController.text) ? 'PIN tidak sama' : null,
                     ),
                     const SizedBox(height: 32),
                     FilledButton.icon(
@@ -117,7 +153,7 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.check),
-                      label: const Text('Simpan PIN'),
+                      label: const Text('Buat & Masuk'),
                     ),
                   ],
                 ),

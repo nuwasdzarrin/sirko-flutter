@@ -44,6 +44,10 @@ class Transactions extends Table with StandardColumns {
   /// Pelanggan (nullable — opsional; kredit butuh customer di Fase 4).
   TextColumn get customerId => text().nullable()();
 
+  /// Bill/shift terkait (Fase 6, nullable **tanpa** FK — sama pola [customerId],
+  /// agar `ALTER TABLE ADD COLUMN` saat migrasi v5→v6 tetap sederhana).
+  TextColumn get billId => text().nullable()();
+
   IntColumn get subtotal => integer().withDefault(const Constant(0))();
   IntColumn get discountTotal => integer().withDefault(const Constant(0))();
   IntColumn get taxTotal => integer().withDefault(const Constant(0))();

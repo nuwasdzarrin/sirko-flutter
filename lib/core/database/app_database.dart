@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'connection.dart';
 import 'tables/app_settings.dart';
+import 'tables/bills.dart';
 import 'tables/businesses.dart';
 import 'tables/categories.dart';
 import 'tables/credit_payments.dart';
@@ -14,6 +15,7 @@ import 'tables/stock_logs.dart';
 import 'tables/transaction_items.dart';
 import 'tables/transactions.dart';
 import 'tables/units.dart';
+import 'tables/users.dart';
 import 'tables/wholesale_prices.dart';
 
 part 'app_database.g.dart';
@@ -25,6 +27,8 @@ part 'app_database.g.dart';
 ///   [AppSettings] — inti kasir.
 /// - v4 (Fase 3): [ProductVariants], [WholesalePrices] — inventory & grosir.
 /// - v5 (Fase 4): [Customers], [Installments], [CreditPayments] — CRM & hutang.
+/// - v6 (Fase 6): [Users], [Bills] + kolom `bill_id` di [Transactions] —
+///   multi-user/RBAC & bill/shift.
 ///
 /// Katalog data ditambahkan per fase sesuai spec 02-data-model.
 @DriftDatabase(tables: [
@@ -42,12 +46,14 @@ part 'app_database.g.dart';
   Customers,
   Installments,
   CreditPayments,
+  Users,
+  Bills,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -77,6 +83,18 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(customers);
             await m.createTable(installments);
             await m.createTable(creditPayments);
+          }
+          // v5 → v6: multi-user/RBAC & bill/shift (Fase 6). Urutan penting:
+          // `users` dulu (dirujuk FK oleh `bills`), lalu kolom `bill_id`.
+          if (from < 6) {
+            await m.createTable(users);
+            await m.createTable(bills);
+            // `bill_id` hanya di-`addColumn` bila `transactions` **sudah** ada
+            // dari skema lama (from ≥ 3). Bila from < 3, tabel baru saja dibuat
+            // di blok atas dengan definisi terkini (sudah termasuk `bill_id`).
+            if (from >= 3) {
+              await m.addColumn(transactions, transactions.billId);
+            }
           }
         },
         beforeOpen: (details) async {

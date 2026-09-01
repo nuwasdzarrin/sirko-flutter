@@ -339,7 +339,7 @@ final class CheckoutControllerProvider
 }
 
 String _$checkoutControllerHash() =>
-    r'bd8609b318ac1dad452468b3d5db771466930df1';
+    r'5cdae047006bfe7b0335c7e84963e9bb1d4e06f9';
 
 /// Controller checkout: commit transaksi & simpan hasil terakhir untuk struk.
 

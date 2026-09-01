@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../features/users/domain/permission.dart';
+
 /// Info aplikasi.
 class AppInfo {
   const AppInfo._();
@@ -13,41 +15,80 @@ class Routes {
   const Routes._();
   static const String splash = '/splash';
   static const String onboarding = '/onboarding';
-  static const String setPin = '/set-pin';
-  static const String pin = '/pin';
+  static const String setPin = '/set-pin'; // buat owner (Fase 6)
+  static const String pin = '/pin'; // login user + PIN
 
   static const String dashboard = '/dashboard';
   static const String products = '/products';
   static const String pos = '/pos';
   static const String customers = '/customers';
+  static const String shifts = '/shifts';
   static const String reports = '/reports';
+  static const String employeeSummary = '/employee-summary';
+  static const String users = '/users';
   static const String settings = '/settings';
 
   /// Rute di dalam shell (drawer). Urutan = urutan tampil di drawer.
+  /// `permission` null = selalu tampil; selain itu difilter sesuai izin (§13).
   static const List<NavDestinationItem> shellDestinations = [
     NavDestinationItem(
-        label: 'Dashboard', icon: Icons.dashboard_outlined, path: dashboard),
+        label: 'Dashboard',
+        icon: Icons.dashboard_outlined,
+        path: dashboard,
+        permission: Permission.dashboardAccess),
     NavDestinationItem(
-        label: 'Produk', icon: Icons.inventory_2_outlined, path: products),
+        label: 'Produk',
+        icon: Icons.inventory_2_outlined,
+        path: products,
+        permission: Permission.productManagement),
     NavDestinationItem(
-        label: 'Kasir', icon: Icons.point_of_sale_outlined, path: pos),
+        label: 'Kasir',
+        icon: Icons.point_of_sale_outlined,
+        path: pos,
+        permission: Permission.transactionList),
     NavDestinationItem(
-        label: 'Pelanggan', icon: Icons.people_alt_outlined, path: customers),
+        label: 'Pelanggan',
+        icon: Icons.people_alt_outlined,
+        path: customers,
+        permission: Permission.customerManagement),
     NavDestinationItem(
-        label: 'Laporan', icon: Icons.bar_chart_outlined, path: reports),
+        label: 'Shift / Bill',
+        icon: Icons.point_of_sale,
+        path: shifts,
+        permission: Permission.transactionList),
     NavDestinationItem(
-        label: 'Pengaturan', icon: Icons.settings_outlined, path: settings),
+        label: 'Laporan',
+        icon: Icons.bar_chart_outlined,
+        path: reports,
+        permission: Permission.transactionExport),
+    NavDestinationItem(
+        label: 'Ringkasan Karyawan',
+        icon: Icons.badge_outlined,
+        path: employeeSummary,
+        permission: Permission.employeeSummary),
+    NavDestinationItem(
+        label: 'Karyawan',
+        icon: Icons.manage_accounts_outlined,
+        path: users,
+        permission: Permission.userService),
+    NavDestinationItem(
+        label: 'Pengaturan',
+        icon: Icons.settings_outlined,
+        path: settings,
+        permission: Permission.settingCompany),
   ];
 }
 
-/// Item navigasi drawer.
+/// Item navigasi drawer. [permission] null = selalu tampil.
 class NavDestinationItem {
   final String label;
   final IconData icon;
   final String path;
+  final Permission? permission;
   const NavDestinationItem({
     required this.label,
     required this.icon,
     required this.path,
+    this.permission,
   });
 }

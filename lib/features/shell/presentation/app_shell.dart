@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/constants.dart';
+import '../../../app/session_controller.dart';
+import '../../users/application/user_providers.dart';
 
-/// Kerangka aplikasi: AppBar + Drawer navigasi + body (halaman aktif).
+/// Kerangka aplikasi: AppBar + Drawer navigasi (di-filter permission) + body.
 class AppShell extends StatelessWidget {
   final Widget child;
   const AppShell({super.key, required this.child});
@@ -24,13 +27,21 @@ class AppShell extends StatelessWidget {
   }
 }
 
-class _AppDrawer extends StatelessWidget {
+class _AppDrawer extends ConsumerWidget {
   final String currentPath;
   const _AppDrawer({required this.currentPath});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final user = ref.watch(currentUserProvider);
+    final permissions = ref.watch(permissionsProvider);
+
+    // Filter menu sesuai izin (§13): item tanpa permission selalu tampil.
+    final visible = Routes.shellDestinations
+        .where((d) => d.permission == null || permissions.contains(d.permission))
+        .toList();
+
     return Drawer(
       child: SafeArea(
         child: Column(
@@ -50,7 +61,7 @@ class _AppDrawer extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    AppInfo.tagline,
+                    user == null ? AppInfo.tagline : '${user.name} · masuk',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onPrimary,
                     ),
@@ -62,7 +73,7 @@ class _AppDrawer extends StatelessWidget {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  for (final d in Routes.shellDestinations)
+                  for (final d in visible)
                     ListTile(
                       leading: Icon(d.icon),
                       title: Text(d.label),
@@ -74,6 +85,15 @@ class _AppDrawer extends StatelessWidget {
                     ),
                 ],
               ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Keluar'),
+              onTap: () {
+                Navigator.of(context).pop();
+                ref.read(sessionControllerProvider.notifier).logout();
+              },
             ),
           ],
         ),

@@ -110,6 +110,32 @@ CREATE TABLE wholesale_prices (
 );
 ''';
 
+/// `transactions` skema v3–v5 (tanpa `bill_id`) — DB v4/v5 nyata pasti punya
+/// tabel ini (dibuat saat v3). Diperlukan agar migrasi v6 `addColumn` bekerja.
+const _createTransactionsPreV6 = '''
+CREATE TABLE transactions (
+  id TEXT NOT NULL PRIMARY KEY,
+  invoice_no TEXT NOT NULL,
+  datetime INTEGER NOT NULL,
+  cashier_id TEXT,
+  customer_id TEXT,
+  subtotal INTEGER NOT NULL DEFAULT 0,
+  discount_total INTEGER NOT NULL DEFAULT 0,
+  tax_total INTEGER NOT NULL DEFAULT 0,
+  grand_total INTEGER NOT NULL DEFAULT 0,
+  paid_total INTEGER NOT NULL DEFAULT 0,
+  change_total INTEGER NOT NULL DEFAULT 0,
+  rounding_adjustment INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL,
+  is_credit INTEGER NOT NULL DEFAULT 0,
+  note TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  is_dirty INTEGER NOT NULL DEFAULT 1
+);
+''';
+
 void main() {
   /// Buka [AppDatabase] di atas DB mentah [raw] & paksa migrasi jalan
   /// dengan satu query.
@@ -155,7 +181,7 @@ void main() {
       final business = await db.select(db.businesses).getSingle();
       expect(business.name, 'Toko Lama');
 
-      expect(db.schemaVersion, 5);
+      expect(db.schemaVersion, 6);
     });
 
     test('tabel Fase 2 baru dibuat & bisa dipakai', () async {
@@ -239,7 +265,7 @@ void main() {
 
       expect((await db.select(db.productVariants).get()).length, 1);
       expect((await db.select(db.wholesalePrices).get()).single.price, 9000);
-      expect(db.schemaVersion, 5);
+      expect(db.schemaVersion, 6);
     });
   });
 
@@ -255,7 +281,7 @@ void main() {
       expect((await db.select(db.customers).get()).isEmpty, isTrue);
       expect((await db.select(db.installments).get()).isEmpty, isTrue);
       expect((await db.select(db.creditPayments).get()).isEmpty, isTrue);
-      expect(db.schemaVersion, 5);
+      expect(db.schemaVersion, 6);
     });
   });
 
@@ -268,6 +294,7 @@ void main() {
       raw.execute(_createProducts);
       raw.execute(_createProductVariants);
       raw.execute(_createWholesalePrices);
+      raw.execute(_createTransactionsPreV6); // v4 nyata sudah punya transactions
       raw.execute(
         "INSERT INTO products (id, name, selling_price, cost_price, stock, "
         "created_at, updated_at) "
@@ -296,7 +323,7 @@ void main() {
       expect(cust.debtBalance, 0); // default
       expect((await db.select(db.installments).get()).isEmpty, isTrue);
       expect((await db.select(db.creditPayments).get()).isEmpty, isTrue);
-      expect(db.schemaVersion, 5);
+      expect(db.schemaVersion, 6);
     });
   });
 }
