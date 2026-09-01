@@ -5,6 +5,7 @@ import '../../../core/database/database_provider.dart';
 import '../../bills/application/bill_providers.dart';
 import '../../onboarding/application/onboarding_providers.dart';
 import '../../users/application/user_providers.dart';
+import '../../wallets/application/wallet_providers.dart';
 import '../data/app_settings_repository.dart';
 import '../data/receipt_thermal_printer.dart';
 import '../data/transaction_repository.dart';
@@ -26,6 +27,7 @@ AppSettingsRepository appSettingsRepository(Ref ref) =>
 TransactionRepository transactionRepository(Ref ref) => TransactionRepository(
       ref.watch(appDatabaseProvider),
       ref.watch(appSettingsRepositoryProvider),
+      ref.watch(walletRepositoryProvider),
     );
 
 @riverpod

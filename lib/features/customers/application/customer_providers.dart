@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../../wallets/application/wallet_providers.dart';
 import '../data/contact_import_service.dart';
 import '../data/credit_repository.dart';
 import '../data/customer_repository.dart';
@@ -15,8 +16,10 @@ CustomerRepository customerRepository(Ref ref) =>
     CustomerRepository(ref.watch(appDatabaseProvider));
 
 @riverpod
-CreditRepository creditRepository(Ref ref) =>
-    CreditRepository(ref.watch(appDatabaseProvider));
+CreditRepository creditRepository(Ref ref) => CreditRepository(
+      ref.watch(appDatabaseProvider),
+      ref.watch(walletRepositoryProvider),
+    );
 
 @riverpod
 ContactImportService contactImportService(Ref ref) =>

@@ -100,7 +100,7 @@ void main() {
     expect(newTx.billId, 'b1');
     expect((await db.select(db.users).get()).single.role, AppRole.owner);
     expect((await db.select(db.bills).get()).single.status, BillStatus.open);
-    expect(db.schemaVersion, 6);
+    expect(db.schemaVersion, 7);
   });
 
   test('instalasi baru (onCreate) langsung v6 — semua tabel ada', () async {
@@ -108,6 +108,6 @@ void main() {
     addTearDown(db.close);
     expect((await db.select(db.users).get()).isEmpty, isTrue);
     expect((await db.select(db.bills).get()).isEmpty, isTrue);
-    expect(db.schemaVersion, 6);
+    expect(db.schemaVersion, 7);
   });
 }

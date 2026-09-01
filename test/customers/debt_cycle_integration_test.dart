@@ -12,6 +12,7 @@ import 'package:sirko/features/customers/data/customer_repository.dart';
 import 'package:sirko/features/customers/domain/installment_view.dart';
 import 'package:sirko/features/pos/data/app_settings_repository.dart';
 import 'package:sirko/features/pos/data/transaction_repository.dart';
+import 'package:sirko/features/wallets/data/wallet_repository.dart';
 import 'package:sirko/features/pos/domain/cart_line.dart';
 import 'package:sirko/features/pos/domain/payment_calculator.dart';
 import 'package:sirko/features/pos/domain/transaction_calculator.dart';
@@ -29,8 +30,10 @@ void main() {
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
     customers = CustomerRepository(db);
-    credit = CreditRepository(db);
-    txRepo = TransactionRepository(db, AppSettingsRepository(db));
+    final settingsRepo = AppSettingsRepository(db);
+    final walletRepo = WalletRepository(db, settingsRepo);
+    credit = CreditRepository(db, walletRepo);
+    txRepo = TransactionRepository(db, settingsRepo, walletRepo);
   });
 
   tearDown(() async => db.close());

@@ -10,6 +10,7 @@ import 'package:sirko/core/errors/failures.dart';
 import 'package:sirko/features/customers/data/credit_repository.dart';
 import 'package:sirko/features/pos/data/app_settings_repository.dart';
 import 'package:sirko/features/pos/data/transaction_repository.dart';
+import 'package:sirko/features/wallets/data/wallet_repository.dart';
 import 'package:sirko/features/pos/domain/cart_line.dart';
 import 'package:sirko/features/pos/domain/payment_calculator.dart';
 import 'package:sirko/features/pos/domain/transaction_calculator.dart';
@@ -23,8 +24,10 @@ void main() {
 
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
-    txRepo = TransactionRepository(db, AppSettingsRepository(db));
-    credit = CreditRepository(db);
+    final settingsRepo = AppSettingsRepository(db);
+    final walletRepo = WalletRepository(db, settingsRepo);
+    txRepo = TransactionRepository(db, settingsRepo, walletRepo);
+    credit = CreditRepository(db, walletRepo);
   });
 
   tearDown(() async => db.close());

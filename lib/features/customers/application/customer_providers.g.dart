@@ -101,7 +101,7 @@ final class CreditRepositoryProvider
   }
 }
 
-String _$creditRepositoryHash() => r'1b6185f279ceae06d9fcdb1019610037378756ec';
+String _$creditRepositoryHash() => r'4939d9152bb4fa9c6fd01258076c909abf7e2ef0';
 
 @ProviderFor(contactImportService)
 const contactImportServiceProvider = ContactImportServiceProvider._();

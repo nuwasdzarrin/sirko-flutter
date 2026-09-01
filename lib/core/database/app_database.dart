@@ -16,6 +16,8 @@ import 'tables/transaction_items.dart';
 import 'tables/transactions.dart';
 import 'tables/units.dart';
 import 'tables/users.dart';
+import 'tables/wallet_transactions.dart';
+import 'tables/wallets.dart';
 import 'tables/wholesale_prices.dart';
 
 part 'app_database.g.dart';
@@ -29,6 +31,7 @@ part 'app_database.g.dart';
 /// - v5 (Fase 4): [Customers], [Installments], [CreditPayments] — CRM & hutang.
 /// - v6 (Fase 6): [Users], [Bills] + kolom `bill_id` di [Transactions] —
 ///   multi-user/RBAC & bill/shift.
+/// - v7 (Fase 7): [Wallets], [WalletTransactions] — multi-wallet & arus kas.
 ///
 /// Katalog data ditambahkan per fase sesuai spec 02-data-model.
 @DriftDatabase(tables: [
@@ -48,12 +51,14 @@ part 'app_database.g.dart';
   CreditPayments,
   Users,
   Bills,
+  Wallets,
+  WalletTransactions,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -95,6 +100,12 @@ class AppDatabase extends _$AppDatabase {
             if (from >= 3) {
               await m.addColumn(transactions, transactions.billId);
             }
+          }
+          // v6 → v7: multi-wallet & arus kas (Fase 7). Urutan penting: `wallets`
+          // dulu (dirujuk FK oleh `wallet_transactions`).
+          if (from < 7) {
+            await m.createTable(wallets);
+            await m.createTable(walletTransactions);
           }
         },
         beforeOpen: (details) async {

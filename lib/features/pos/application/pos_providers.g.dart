@@ -103,7 +103,7 @@ final class TransactionRepositoryProvider
 }
 
 String _$transactionRepositoryHash() =>
-    r'88b0be926e4fceb7439812e045065f99b22a8a03';
+    r'601419ea6b0cdeb024feb05e43bd6011ec9eddb7';
 
 @ProviderFor(receiptThermalPrinter)
 const receiptThermalPrinterProvider = ReceiptThermalPrinterProvider._();

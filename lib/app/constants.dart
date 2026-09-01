@@ -23,6 +23,8 @@ class Routes {
   static const String pos = '/pos';
   static const String customers = '/customers';
   static const String shifts = '/shifts';
+  static const String wallets = '/wallets';
+  static const String walletCashFlow = '/wallet-cashflow';
   static const String reports = '/reports';
   static const String employeeSummary = '/employee-summary';
   static const String users = '/users';
@@ -56,6 +58,11 @@ class Routes {
         icon: Icons.point_of_sale,
         path: shifts,
         permission: Permission.transactionList),
+    NavDestinationItem(
+        label: 'Kas / Wallet',
+        icon: Icons.account_balance_wallet_outlined,
+        path: wallets,
+        permission: Permission.walletView),
     NavDestinationItem(
         label: 'Laporan',
         icon: Icons.bar_chart_outlined,

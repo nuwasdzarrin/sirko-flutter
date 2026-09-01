@@ -8,6 +8,7 @@ import 'package:sirko/core/database/tables/stock_logs.dart';
 import 'package:sirko/core/database/tables/transactions.dart';
 import 'package:sirko/features/pos/data/app_settings_repository.dart';
 import 'package:sirko/features/pos/data/transaction_repository.dart';
+import 'package:sirko/features/wallets/data/wallet_repository.dart';
 import 'package:sirko/features/pos/domain/cart_line.dart';
 import 'package:sirko/features/pos/domain/payment_calculator.dart';
 import 'package:sirko/features/pos/domain/transaction_calculator.dart';
@@ -21,7 +22,7 @@ void main() {
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
     settings = AppSettingsRepository(db);
-    repo = TransactionRepository(db, settings);
+    repo = TransactionRepository(db, settings, WalletRepository(db, settings));
   });
 
   tearDown(() async => db.close());

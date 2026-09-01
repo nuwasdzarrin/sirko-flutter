@@ -7,6 +7,8 @@ import 'package:sirko/core/database/tables/payments.dart';
 import 'package:sirko/core/database/tables/transactions.dart';
 import 'package:sirko/core/errors/failures.dart';
 import 'package:sirko/features/customers/data/credit_repository.dart';
+import 'package:sirko/features/pos/data/app_settings_repository.dart';
+import 'package:sirko/features/wallets/data/wallet_repository.dart';
 
 /// §7 — bayar hutang mengurangi `debtBalance`; pembayaran cicilan menaikkan
 /// `amountPaid` & menandai lunas. Semua atomik.
@@ -16,7 +18,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
-    repo = CreditRepository(db);
+    repo = CreditRepository(db, WalletRepository(db, AppSettingsRepository(db)));
   });
 
   tearDown(() async => db.close());

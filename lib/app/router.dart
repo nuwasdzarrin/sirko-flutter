@@ -15,6 +15,7 @@ import '../features/shell/presentation/pages/pos_page.dart';
 import '../features/shell/presentation/pages/products_page.dart';
 import '../features/shell/presentation/pages/reports_page.dart';
 import '../features/shell/presentation/pages/settings_page.dart';
+import '../features/shell/presentation/pages/wallets_page.dart';
 import '../features/users/domain/permission.dart';
 import '../features/users/presentation/users_page.dart';
 import 'constants.dart';
@@ -115,6 +116,11 @@ GoRouter router(Ref ref) {
             path: Routes.shifts,
             builder: (_, __) =>
                 _guarded(Permission.transactionList, const ShiftsPage()),
+          ),
+          GoRoute(
+            path: Routes.wallets,
+            builder: (_, __) =>
+                _guarded(Permission.walletView, const WalletsPage()),
           ),
           GoRoute(
             path: Routes.reports,

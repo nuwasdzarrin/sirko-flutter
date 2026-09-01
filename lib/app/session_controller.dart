@@ -5,6 +5,7 @@ import '../features/auth/application/auth_providers.dart';
 import '../features/onboarding/application/onboarding_providers.dart';
 import '../features/users/data/user_repository.dart';
 import '../features/users/domain/current_user.dart';
+import '../features/wallets/application/wallet_providers.dart';
 
 part 'session_controller.g.dart';
 
@@ -71,6 +72,13 @@ class SessionController extends _$SessionController {
     );
 
     final hasUsers = await _users.hasAnyActiveUser();
+
+    // Fase 7: pastikan ada wallet kas default (penerima penjualan tunai) hanya
+    // setelah toko dibuat — idempoten, aman dipanggil tiap start.
+    if (business != null) {
+      await ref.read(walletRepositoryProvider).ensureDefaultCashWallet();
+    }
+
     state = state.copyWith(
       ready: true,
       hasBusiness: business != null,

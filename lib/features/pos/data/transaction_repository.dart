@@ -2,10 +2,12 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/tables/payments.dart';
 import '../../../core/database/tables/stock_logs.dart';
 import '../../../core/database/tables/transactions.dart';
 import '../../../core/errors/failures.dart';
 import '../../../core/utils/date_time_utils.dart';
+import '../../wallets/data/wallet_repository.dart';
 import '../domain/payment_calculator.dart';
 import '../domain/transaction_calculator.dart';
 import '../domain/transaction_detail.dart';
@@ -61,7 +63,8 @@ class CommitResult {
 class TransactionRepository {
   final AppDatabase _db;
   final AppSettingsRepository _settings;
-  const TransactionRepository(this._db, this._settings);
+  final WalletRepository _wallets;
+  const TransactionRepository(this._db, this._settings, this._wallets);
 
   static const _uuid = Uuid();
 
@@ -237,7 +240,24 @@ class TransactionRepository {
             );
       }
 
-      // 7. Kredit/partial: sisa menambah debtBalance pelanggan (§7). Stok tetap
+      // 7. Penjualan tunai → pemasukan wallet kas default (Fase 7). Nilai =
+      //    tunai bersih laci (Σ pembayaran cash − kembalian), konsisten dengan
+      //    rekap bill (§10). Dicatat dalam transaksi commit yang sama → saldo
+      //    wallet selalu sinkron dengan penjualan. No-op bila wallet belum diset.
+      final cashPaid = req.payments
+          .where((pay) => pay.method == PaymentMethod.cash)
+          .fold<int>(0, (sum, pay) => sum + pay.amount);
+      final netCash = cashPaid - p.change;
+      if (netCash > 0) {
+        await _wallets.recordCashSale(
+          cashAmount: netCash,
+          transactionId: txId,
+          invoiceNo: invoiceNo,
+          now: now,
+        );
+      }
+
+      // 8. Kredit/partial: sisa menambah debtBalance pelanggan (§7). Stok tetap
       //    berkurang (di atas). Dalam transaksi yang sama → konsisten.
       if (isCredit && p.remaining > 0) {
         final customer = await (_db.select(_db.customers)

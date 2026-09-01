@@ -8,6 +8,7 @@ import '../../../core/database/tables/stock_logs.dart';
 import '../../../core/database/tables/transactions.dart';
 import '../../../core/errors/failures.dart';
 import '../../../core/utils/date_time_utils.dart';
+import '../../wallets/data/wallet_repository.dart';
 import '../domain/installment_plan.dart';
 
 /// Hasil pembayaran hutang.
@@ -37,7 +38,8 @@ class VoidResult {
 /// `stock_logs`, dalam satu `db.transaction()`.
 class CreditRepository {
   final AppDatabase _db;
-  const CreditRepository(this._db);
+  final WalletRepository _wallets;
+  const CreditRepository(this._db, this._wallets);
 
   static const _uuid = Uuid();
 
@@ -289,6 +291,14 @@ class CreditRepository {
           }
         }
       }
+
+      // 2b. Balik pemasukan wallet dari penjualan tunai transaksi ini (Fase 7).
+      //     Dalam transaksi void yang sama → saldo wallet tetap konsisten.
+      await _wallets.reverseForTransaction(
+        transactionId: transactionId,
+        invoiceNo: tx.invoiceNo,
+        now: now,
+      );
 
       // 3. Tandai void + soft delete (audit — tak dihapus permanen, §6/§12).
       await (_db.update(_db.transactions)
