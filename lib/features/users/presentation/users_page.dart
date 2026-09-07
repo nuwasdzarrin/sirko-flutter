@@ -96,15 +96,18 @@ class _UserTile extends ConsumerWidget {
     if (action == 'delete') {
       final ok = await showDialog<bool>(
         context: context,
-        builder: (_) => AlertDialog(
+        // Pakai context dialog (dialogCtx): showDialog menaruh dialog di root
+        // navigator; pakai context halaman (dalam ShellRoute) → pop menutup
+        // halaman → layar blank.
+        builder: (dialogCtx) => AlertDialog(
           title: const Text('Hapus karyawan?'),
           content: Text('Hapus "${user.name}"? Bisa dipulihkan dari Recycle Bin.'),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(dialogCtx, false),
                 child: const Text('Batal')),
             FilledButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(dialogCtx, true),
                 child: const Text('Hapus')),
           ],
         ),

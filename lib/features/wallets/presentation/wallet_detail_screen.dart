@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
@@ -7,6 +6,7 @@ import '../../../core/database/tables/wallet_transactions.dart';
 import '../../../core/database/tables/wallets.dart';
 import '../../../core/errors/failures.dart';
 import '../../../core/money/money.dart';
+import '../../../core/money/rupiah_input_formatter.dart';
 import '../../../core/utils/date_time_utils.dart';
 import '../../users/application/user_providers.dart';
 import '../../users/domain/permission.dart';
@@ -216,7 +216,7 @@ Future<void> _mutationDialog(
             controller: amountCtrl,
             autofocus: true,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: const [RupiahInputFormatter()],
             decoration: const InputDecoration(
               labelText: 'Nominal',
               prefixText: 'Rp ',
@@ -253,7 +253,7 @@ Future<void> _mutationDialog(
     ),
   );
   if (ok != true) return;
-  final amount = int.tryParse(amountCtrl.text) ?? 0;
+  final amount = parseRupiah(amountCtrl.text);
   final category = categoryCtrl.text.trim().isEmpty ? null : categoryCtrl.text.trim();
   final note = noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim();
   try {
@@ -310,7 +310,7 @@ Future<void> _transferDialog(
               controller: amountCtrl,
               autofocus: true,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: const [RupiahInputFormatter()],
               decoration: InputDecoration(
                 labelText: 'Nominal (saldo ${Money(from.balance).format()})',
                 prefixText: 'Rp ',
@@ -339,7 +339,7 @@ Future<void> _transferDialog(
     ),
   );
   if (ok != true) return;
-  final amount = int.tryParse(amountCtrl.text) ?? 0;
+  final amount = parseRupiah(amountCtrl.text);
   final note = noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim();
   try {
     await ref.read(walletRepositoryProvider).transfer(
@@ -386,16 +386,18 @@ Future<void> _deleteWallet(
     BuildContext context, WidgetRef ref, Wallet wallet) async {
   final ok = await showDialog<bool>(
     context: context,
-    builder: (_) => AlertDialog(
+    // Pakai context dialog (dialogCtx): showDialog di root navigator; memakai
+    // context halaman (dalam ShellRoute) → pop menutup HALAMAN, bukan dialog.
+    builder: (dialogCtx) => AlertDialog(
       title: const Text('Hapus wallet?'),
       content: Text('"${wallet.name}" akan dihapus. '
           'Hanya bisa bila saldo Rp0.'),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogCtx, false),
             child: const Text('Batal')),
         FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             child: const Text('Hapus')),
       ],
     ),

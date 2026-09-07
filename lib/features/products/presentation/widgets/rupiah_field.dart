@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
+import '../../../../core/money/rupiah_input_formatter.dart';
 
 /// Input rupiah: hanya angka, ditampilkan dengan pemisah ribuan (1.000).
 /// Nilai dibaca sebagai **int rupiah** lewat [RupiahEditingController.rupiah].
+/// Formatter bersama: [RupiahInputFormatter] (R1).
 class RupiahField extends StatelessWidget {
   final RupiahEditingController controller;
   final String label;
@@ -20,7 +22,7 @@ class RupiahField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       keyboardType: TextInputType.number,
-      inputFormatters: [_ThousandsFormatter()],
+      inputFormatters: const [RupiahInputFormatter()],
       decoration: InputDecoration(
         labelText: label,
         prefixText: 'Rp ',
@@ -34,39 +36,12 @@ class RupiahField extends StatelessWidget {
 /// Controller yang mengekspos nilai integer dari teks berformat ribuan.
 class RupiahEditingController extends TextEditingController {
   RupiahEditingController({int initial = 0})
-      : super(text: initial == 0 ? '' : _format(initial));
+      : super(text: initial == 0 ? '' : formatRupiahThousands(initial));
 
-  int get rupiah {
-    final digits = text.replaceAll(RegExp(r'[^0-9]'), '');
-    return digits.isEmpty ? 0 : int.parse(digits);
-  }
+  int get rupiah => parseRupiah(text);
 
-  static String _format(int value) {
-    final s = value.toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
-      buf.write(s[i]);
-    }
-    return buf.toString();
-  }
-}
-
-/// Formatter yang menyisipkan titik ribuan saat mengetik.
-class _ThousandsFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) {
-      return const TextEditingValue(text: '');
-    }
-    final formatted = RupiahEditingController._format(int.parse(digits));
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
+  /// Set nilai dari int (mis. saat memuat ulang form). Kosongkan bila 0.
+  set rupiah(int value) {
+    text = value == 0 ? '' : formatRupiahThousands(value);
   }
 }

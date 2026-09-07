@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/failures.dart';
 import '../../../core/money/money.dart';
+import '../../../core/money/rupiah_input_formatter.dart';
 import '../../products/application/inventory_providers.dart';
 import '../../products/application/product_providers.dart';
 import '../../wallets/application/wallet_providers.dart';
@@ -60,8 +61,8 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
     super.dispose();
   }
 
-  int get _discount => int.tryParse(_discountCtrl.text) ?? 0;
-  int get _paid => int.tryParse(_paidCtrl.text) ?? 0;
+  int get _discount => parseRupiah(_discountCtrl.text);
+  int get _paid => parseRupiah(_paidCtrl.text);
 
   PurchaseTotals get _totals => PurchaseCalculator.compute(
         lines: _lines.map((e) => e.toInput()).toList(),
@@ -174,7 +175,7 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
           TextField(
             controller: _discountCtrl,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: const [RupiahInputFormatter()],
             onChanged: (_) => setState(() {}),
             decoration: const InputDecoration(
               labelText: 'Diskon nota',
@@ -190,7 +191,7 @@ class _PurchaseFormScreenState extends ConsumerState<PurchaseFormScreen> {
           TextField(
             controller: _paidCtrl,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: const [RupiahInputFormatter()],
             onChanged: (_) => setState(() {}),
             decoration: const InputDecoration(
               labelText: 'Dibayar sekarang (0 = kredit penuh)',
@@ -295,15 +296,17 @@ class _LineEditor extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
-                    initialValue: line.cost.toString(),
+                    initialValue: line.cost == 0
+                        ? ''
+                        : formatRupiahThousands(line.cost),
                     keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    inputFormatters: const [RupiahInputFormatter()],
                     decoration: const InputDecoration(
                         labelText: 'Harga beli',
                         prefixText: 'Rp ',
                         border: OutlineInputBorder()),
                     onChanged: (v) {
-                      line.cost = int.tryParse(v) ?? 0;
+                      line.cost = parseRupiah(v);
                       onChanged();
                     },
                   ),

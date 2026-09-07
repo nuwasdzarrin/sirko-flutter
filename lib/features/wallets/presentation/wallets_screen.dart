@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/tables/wallets.dart';
 import '../../../core/errors/failures.dart';
 import '../../../core/money/money.dart';
+import '../../../core/money/rupiah_input_formatter.dart';
 import '../../users/application/user_providers.dart';
 import '../../users/domain/permission.dart';
 import '../application/wallet_providers.dart';
@@ -163,7 +163,7 @@ Future<void> _createWalletDialog(BuildContext context, WidgetRef ref) async {
             TextField(
               controller: balanceCtrl,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: const [RupiahInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Saldo awal',
                 prefixText: 'Rp ',
@@ -188,7 +188,7 @@ Future<void> _createWalletDialog(BuildContext context, WidgetRef ref) async {
     await ref.read(walletRepositoryProvider).createWallet(
           name: nameCtrl.text,
           type: type,
-          openingBalance: int.tryParse(balanceCtrl.text) ?? 0,
+          openingBalance: parseRupiah(balanceCtrl.text),
         );
   } on AppException catch (e) {
     if (context.mounted) {

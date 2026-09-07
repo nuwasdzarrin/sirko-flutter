@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/money/money.dart';
+import '../../../../core/money/rupiah_input_formatter.dart';
 import '../../../customers/application/customer_providers.dart';
 import '../../../customers/presentation/widgets/customer_picker_sheet.dart';
 import '../../application/pos_providers.dart';
@@ -9,10 +11,26 @@ import '../../domain/cart_line.dart';
 import '../../domain/pos_enums.dart';
 import '../../domain/transaction_calculator.dart';
 
-/// Panel keranjang: daftar item + stepper qty + diskon + ringkasan total + Bayar.
+/// Panel keranjang (R3): 3 zona tegas — **Header statis**, **Body scroll**,
+/// **Footer statis** — dengan pemisah visual jelas & tipografi proporsional.
+/// Footer memuat ringkasan total + [Tunda] & [Bayar], aman dari keyboard.
 class CartPanel extends ConsumerWidget {
   final VoidCallback onCheckout;
-  const CartPanel({super.key, required this.onCheckout});
+
+  /// Aksi Tunda (R4). Bila null, tombol Tunda disembunyikan (mis. konteks tanpa
+  /// hold sale).
+  final VoidCallback? onHold;
+
+  /// Controller scroll dari bottom sheet (DraggableScrollableSheet) agar hanya
+  /// **body** yang ikut drag/scroll — header & footer tetap diam.
+  final ScrollController? scrollController;
+
+  const CartPanel({
+    super.key,
+    required this.onCheckout,
+    this.onHold,
+    this.scrollController,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,17 +41,26 @@ class CartPanel extends ConsumerWidget {
 
     return Column(
       children: [
-        _Header(
-          count: cart.totalQty,
-          onClear: cart.isEmpty ? null : ctrl.clear,
+        // ---- HEADER (statis) ----
+        Material(
+          color: theme.colorScheme.surfaceContainerHighest,
+          child: Column(
+            children: [
+              _Header(
+                count: cart.totalQty,
+                onClear: cart.isEmpty ? null : ctrl.clear,
+              ),
+              _CustomerRow(customerId: cart.customerId),
+            ],
+          ),
         ),
-        const Divider(height: 1),
-        _CustomerRow(customerId: cart.customerId),
-        const Divider(height: 1),
+        const Divider(height: 1, thickness: 1),
+        // ---- BODY (scroll) ----
         Expanded(
           child: cart.isEmpty
               ? const _EmptyCart()
               : ListView.separated(
+                  controller: scrollController,
                   itemCount: totals.lineResults.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (_, i) {
@@ -48,35 +75,18 @@ class CartPanel extends ConsumerWidget {
                   },
                 ),
         ),
-        const Divider(height: 1),
-        _Summary(
+        // ---- FOOTER (statis, aman keyboard) ----
+        _Footer(
           totals: totals,
+          isEmpty: cart.isEmpty,
           txDiscountLabel: cart.txDiscountValue > 0
               ? (cart.txDiscountType == DiscountType.percent
                   ? '${cart.txDiscountValue}%'
                   : Money(cart.txDiscountValue).format())
               : null,
           onEditTxDiscount: () => _editTxDiscount(context, ref),
-        ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: cart.isEmpty || totals.grandTotal <= 0
-                    ? null
-                    : onCheckout,
-                icon: const Icon(Icons.payments_outlined),
-                label: Text('Bayar  ${Money(totals.grandTotal).format()}',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(color: theme.colorScheme.onPrimary)),
-                style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14)),
-              ),
-            ),
-          ),
+          onCheckout: onCheckout,
+          onHold: onHold,
         ),
       ],
     );
@@ -380,73 +390,129 @@ class _RoundBtn extends StatelessWidget {
   }
 }
 
-class _Summary extends StatelessWidget {
+/// Footer statis (R3): ringkasan total + tombol [Tunda] & [Bayar]. Diberi latar
+/// & elevasi berbeda dari body sebagai pemisah visual; padding bawah mengikuti
+/// `viewInsets` agar tombol tak tertutup keyboard.
+class _Footer extends StatelessWidget {
   final TransactionTotals totals;
+  final bool isEmpty;
   final String? txDiscountLabel;
   final VoidCallback onEditTxDiscount;
+  final VoidCallback onCheckout;
+  final VoidCallback? onHold;
 
-  const _Summary({
+  const _Footer({
     required this.totals,
+    required this.isEmpty,
     required this.txDiscountLabel,
     required this.onEditTxDiscount,
+    required this.onCheckout,
+    required this.onHold,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    Widget row(String k, String v, {bool bold = false}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+
+    Widget row(String k, String v) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 1),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(k,
-                  style: bold
-                      ? theme.textTheme.titleMedium
-                      : theme.textTheme.bodyMedium),
-              Text(v,
-                  style: bold
-                      ? theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold)
-                      : theme.textTheme.bodyMedium),
+              Text(k, style: theme.textTheme.bodyMedium),
+              Text(v, style: theme.textTheme.bodyMedium),
             ],
           ),
         );
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Column(
-        children: [
-          row('Subtotal', Money(totals.subtotal).format()),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Material(
+      elevation: 8,
+      color: theme.colorScheme.surfaceContainerHigh,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 10, 16, 10 + keyboardInset),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              TextButton.icon(
-                onPressed: onEditTxDiscount,
-                style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero, minimumSize: const Size(0, 32)),
-                icon: const Icon(Icons.discount_outlined, size: 16),
-                label: Text(txDiscountLabel == null
-                    ? 'Diskon transaksi'
-                    : 'Diskon ($txDiscountLabel)'),
+              row('Subtotal', Money(totals.subtotal).format()),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton.icon(
+                    onPressed: onEditTxDiscount,
+                    style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 32)),
+                    icon: const Icon(Icons.discount_outlined, size: 16),
+                    label: Text(txDiscountLabel == null
+                        ? 'Diskon transaksi'
+                        : 'Diskon ($txDiscountLabel)'),
+                  ),
+                  Text(
+                    totals.discountTotal > 0
+                        ? '-${Money(totals.discountTotal).format()}'
+                        : Money.zero().format(),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
               ),
-              Text(
-                totals.discountTotal > 0
-                    ? '-${Money(totals.discountTotal).format()}'
-                    : Money.zero().format(),
-                style: theme.textTheme.bodyMedium,
+              if (totals.taxTotal > 0)
+                row('Pajak', Money(totals.taxTotal).format()),
+              if (totals.roundingAdjustment != 0)
+                row(
+                    'Pembulatan',
+                    '${totals.roundingAdjustment > 0 ? '+' : ''}'
+                        '${Money(totals.roundingAdjustment).format()}'),
+              const Divider(height: 16),
+              // Baris total: label labelLarge, nilai titleLarge (menonjol, wajar).
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text('Total', style: theme.textTheme.labelLarge),
+                  Text(Money(totals.grandTotal).format(),
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  if (onHold != null) ...[
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: isEmpty ? null : onHold,
+                        icon: const Icon(Icons.pause_circle_outline),
+                        label: const Text('Tunda'),
+                        style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.icon(
+                      onPressed:
+                          isEmpty || totals.grandTotal <= 0 ? null : onCheckout,
+                      icon: const Icon(Icons.payments_outlined),
+                      label: Text('Bayar  ${Money(totals.grandTotal).format()}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(color: theme.colorScheme.onPrimary)),
+                      style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14)),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          if (totals.taxTotal > 0)
-            row('Pajak', Money(totals.taxTotal).format()),
-          if (totals.roundingAdjustment != 0)
-            row(
-                'Pembulatan',
-                '${totals.roundingAdjustment > 0 ? '+' : ''}'
-                    '${Money(totals.roundingAdjustment).format()}'),
-          const Divider(),
-          row('Total', Money(totals.grandTotal).format(), bold: true),
-        ],
+        ),
       ),
     );
   }
@@ -478,7 +544,31 @@ class _DiscountDialog extends StatefulWidget {
 class _DiscountDialogState extends State<_DiscountDialog> {
   late DiscountType _type = widget.initialType;
   late final TextEditingController _controller =
-      TextEditingController(text: widget.initialValue == 0 ? '' : widget.initialValue.toString());
+      TextEditingController(text: _initialText());
+
+  String _initialText() {
+    if (widget.initialValue == 0) return '';
+    // Nominal → tampilkan berformat ribuan; persen → apa adanya.
+    return widget.initialType == DiscountType.nominal
+        ? formatRupiahThousands(widget.initialValue)
+        : widget.initialValue.toString();
+  }
+
+  /// Ubah tipe diskon + selaraskan tampilan angka (nominal berformat ribuan,
+  /// persen polos & dibatasi 0–100).
+  void _changeType(DiscountType type) {
+    final raw = parseRupiah(_controller.text);
+    setState(() {
+      _type = type;
+      if (raw == 0) {
+        _controller.text = '';
+      } else if (type == DiscountType.nominal) {
+        _controller.text = formatRupiahThousands(raw);
+      } else {
+        _controller.text = raw.clamp(0, 100).toString();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -505,17 +595,21 @@ class _DiscountDialogState extends State<_DiscountDialog> {
                   icon: Icon(Icons.percent)),
             ],
             selected: {_type},
-            onSelectionChanged: (s) => setState(() => _type = s.first),
+            onSelectionChanged: (s) => _changeType(s.first),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _controller,
             autofocus: true,
             keyboardType: TextInputType.number,
+            inputFormatters: _type == DiscountType.percent
+                ? [FilteringTextInputFormatter.digitsOnly]
+                : const [RupiahInputFormatter()],
             decoration: InputDecoration(
               labelText: _type == DiscountType.percent
                   ? 'Persen (0–100)'
                   : 'Nominal (Rp)',
+              prefixText: _type == DiscountType.percent ? null : 'Rp ',
               border: const OutlineInputBorder(),
             ),
           ),
@@ -529,7 +623,7 @@ class _DiscountDialogState extends State<_DiscountDialog> {
         ),
         FilledButton(
           onPressed: () {
-            final raw = int.tryParse(_controller.text.trim()) ?? 0;
+            final raw = parseRupiah(_controller.text);
             final value = _type == DiscountType.percent ? raw.clamp(0, 100) : raw;
             Navigator.of(context).pop(_DiscountResult(_type, value));
           },

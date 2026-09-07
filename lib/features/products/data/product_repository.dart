@@ -63,6 +63,31 @@ class ProductRepository {
         .getSingleOrNull();
   }
 
+  /// Resolusi produk **by barcode persis** untuk scan kasir (R2). Mengembalikan
+  /// [ProductListItem] (dengan nama satuan) agar bisa langsung dipakai kalkulasi
+  /// grosir/keranjang, atau null bila tak ada produk aktif dengan barcode itu.
+  Future<ProductListItem?> findByBarcode(String barcode) async {
+    final code = barcode.trim();
+    if (code.isEmpty) return null;
+    final products = _db.products;
+    final categories = _db.categories;
+    final units = _db.units;
+
+    final row = await (_db.select(products).join([
+      leftOuterJoin(categories, categories.id.equalsExp(products.categoryId)),
+      leftOuterJoin(units, units.id.equalsExp(products.unitId)),
+    ])
+          ..where(products.deletedAt.isNull() & products.barcode.equals(code))
+          ..limit(1))
+        .getSingleOrNull();
+    if (row == null) return null;
+    return ProductListItem(
+      product: row.readTable(products),
+      categoryName: row.readTableOrNull(categories)?.name,
+      unitName: row.readTableOrNull(units)?.name,
+    );
+  }
+
   /// True bila belum ada produk aktif sama sekali (untuk gate seed contoh).
   Future<bool> isEmpty() async {
     final row = await (_db.select(_db.products)

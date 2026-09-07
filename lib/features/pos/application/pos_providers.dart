@@ -156,6 +156,10 @@ class CartController extends _$CartController {
       : state.copyWith(note: note);
 
   void clear() => state = const CartState();
+
+  /// Muat kembali seluruh state keranjang (dipakai "Lanjutkan" hold sale, R4).
+  /// Mengganti state saat ini apa adanya.
+  void restore(CartState restored) => state = restored;
 }
 
 /// Total transaksi **reaktif** dari keranjang + konfigurasi toko (§1,§4).
@@ -190,8 +194,17 @@ class CheckoutController extends _$CheckoutController {
     List<PaymentEntry> payments, {
     bool allowCredit = false,
   }) async {
+    // Baca SEMUA dependency dari `ref` di awal (sebelum ada `await`). Provider
+    // ini autoDispose; bila `ref` disentuh setelah async gap & provider sudah
+    // ter-dispose → "Cannot use Ref after it has been disposed". Cache di lokal.
     final totals = ref.read(cartTotalsProvider);
     final cart = ref.read(cartControllerProvider);
+    final cartNotifier = ref.read(cartControllerProvider.notifier);
+    final cashierId = ref.read(currentUserProvider)?.id;
+    final billRepo = ref.read(billRepositoryProvider);
+    final settings = ref.read(appSettingsRepositoryProvider);
+    final repo = ref.read(transactionRepositoryProvider);
+
     final payment = PaymentCalculator.resolve(
       grandTotal: totals.grandTotal,
       payments: payments,
@@ -204,39 +217,42 @@ class CheckoutController extends _$CheckoutController {
           'Transaksi kredit/partial wajib memilih pelanggan.');
     }
 
-    // Fase 6: kaitkan kasir & bill/shift. Bila setting wajib-bill aktif, tolak
-    // transaksi tanpa bill open (§10).
-    final cashierId = ref.read(currentUserProvider)?.id;
-    final openBill = cashierId == null
-        ? null
-        : await ref.read(billRepositoryProvider).getOpenBillFor(cashierId);
-    final requireOpenBill =
-        await ref.read(appSettingsRepositoryProvider).requireOpenBill();
-    if (requireOpenBill && openBill == null) {
-      throw const _CheckoutException(
-          'Buka bill/shift dulu sebelum bertransaksi.');
-    }
+    // Jaga provider tetap hidup selama operasi async agar penulisan `state`
+    // aman walau tak ada listener (mis. payment sheet ditutup saat commit).
+    final keepAlive = ref.keepAlive();
+    try {
+      // Fase 6: kaitkan kasir & bill/shift. Bila setting wajib-bill aktif,
+      // tolak transaksi tanpa bill open (§10).
+      final openBill =
+          cashierId == null ? null : await billRepo.getOpenBillFor(cashierId);
+      final requireOpenBill = await settings.requireOpenBill();
+      if (requireOpenBill && openBill == null) {
+        throw const _CheckoutException(
+            'Buka bill/shift dulu sebelum bertransaksi.');
+      }
 
-    state = const AsyncLoading();
-    final repo = ref.read(transactionRepositoryProvider);
-    final result = await AsyncValue.guard(() => repo.commit(CommitRequest(
-          totals: totals,
-          payments: payments,
-          payment: payment,
-          customerId: cart.customerId,
-          cashierId: cashierId,
-          billId: openBill?.id,
-          note: cart.note,
-        )));
-    state = result;
-    return result.when(
-      data: (r) {
-        ref.read(cartControllerProvider.notifier).clear();
-        return r;
-      },
-      error: (e, st) => throw e,
-      loading: () => throw StateError('unreachable'),
-    );
+      state = const AsyncLoading();
+      final result = await AsyncValue.guard(() => repo.commit(CommitRequest(
+            totals: totals,
+            payments: payments,
+            payment: payment,
+            customerId: cart.customerId,
+            cashierId: cashierId,
+            billId: openBill?.id,
+            note: cart.note,
+          )));
+      state = result;
+      return result.when(
+        data: (r) {
+          cartNotifier.clear();
+          return r;
+        },
+        error: (e, st) => throw e,
+        loading: () => throw StateError('unreachable'),
+      );
+    } finally {
+      keepAlive.close();
+    }
   }
 }
 

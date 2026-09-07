@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/tables/bills.dart';
 import '../../../core/errors/failures.dart';
 import '../../../core/money/money.dart';
+import '../../../core/money/rupiah_input_formatter.dart';
 import '../../users/application/user_providers.dart';
 import '../../users/domain/permission.dart';
 import '../application/bill_providers.dart';
@@ -87,13 +87,17 @@ Future<void> _openBillDialog(
   final controller = TextEditingController(text: '0');
   final amount = await showDialog<int>(
     context: context,
-    builder: (_) => AlertDialog(
+    // Pakai context dialog (dialogCtx), BUKAN context pemanggil. showDialog
+    // menaruh dialog di root navigator; memakai context halaman (di dalam
+    // ShellRoute go_router) membuat Navigator.pop menutup HALAMAN shift →
+    // layar blank putih.
+    builder: (dialogCtx) => AlertDialog(
       title: const Text('Buka Shift'),
       content: TextField(
         controller: controller,
         autofocus: true,
         keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        inputFormatters: const [RupiahInputFormatter()],
         decoration: const InputDecoration(
           labelText: 'Kas awal (openingCash)',
           prefixText: 'Rp ',
@@ -102,11 +106,11 @@ Future<void> _openBillDialog(
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: const Text('Batal')),
         FilledButton(
           onPressed: () =>
-              Navigator.pop(context, int.tryParse(controller.text) ?? 0),
+              Navigator.pop(dialogCtx, parseRupiah(controller.text)),
           child: const Text('Buka'),
         ),
       ],
@@ -184,12 +188,12 @@ Future<void> _closeBillDialog(
   final summary = await ref.read(billRepositoryProvider).cashSummary(bill.id);
   if (!context.mounted) return;
   final controller =
-      TextEditingController(text: summary.expectedCash.toString());
+      TextEditingController(text: formatRupiahThousands(summary.expectedCash));
   final closingCash = await showDialog<int>(
     context: context,
     builder: (ctx) {
       return StatefulBuilder(builder: (ctx, setState) {
-        final entered = int.tryParse(controller.text) ?? 0;
+        final entered = parseRupiah(controller.text);
         final variance = summary.varianceFor(entered);
         return AlertDialog(
           title: const Text('Tutup Shift'),
@@ -203,7 +207,7 @@ Future<void> _closeBillDialog(
                 controller: controller,
                 autofocus: true,
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: const [RupiahInputFormatter()],
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
                   labelText: 'Kas fisik (closingCash)',
@@ -283,15 +287,15 @@ class _ClosedBillTile extends ConsumerWidget {
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Hapus shift?'),
         content: const Text('Shift yang sudah ditutup akan dihapus.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogCtx, false),
               child: const Text('Batal')),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogCtx, true),
               child: const Text('Hapus')),
         ],
       ),

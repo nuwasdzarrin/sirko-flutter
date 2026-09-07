@@ -6,8 +6,12 @@ import '../../products/application/catalog_providers.dart';
 import '../../products/application/inventory_providers.dart';
 import '../../products/application/product_providers.dart';
 import '../../products/domain/product_list_item.dart';
+import '../../products/presentation/product_form_screen.dart';
+import '../application/held_sale_providers.dart';
 import '../application/pos_providers.dart';
 import '../data/transaction_repository.dart';
+import 'held_sales_screen.dart';
+import 'pos_scan_screen.dart';
 import 'transaction_history_screen.dart';
 import 'widgets/cart_panel.dart';
 import 'widgets/payment_sheet.dart';
@@ -82,19 +86,162 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         initialChildSize: 0.7,
         maxChildSize: 0.95,
         builder: (_, scrollController) => CartPanel(
+          scrollController: scrollController,
           onCheckout: () {
             Navigator.of(context).pop();
             _checkout();
+          },
+          onHold: () {
+            Navigator.of(context).pop();
+            _holdCart();
           },
         ),
       ),
     );
   }
 
+  void _openHeldSales() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => const HeldSalesScreen(),
+    ));
+  }
+
+  /// Tunda keranjang berjalan (R4): label opsional → simpan held sale →
+  /// keranjang dikosongkan (oleh controller). Stok tak berubah.
+  Future<void> _holdCart() async {
+    if (ref.read(cartControllerProvider).isEmpty) return;
+    final label = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          title: const Text('Tunda Transaksi'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Label (opsional, mis. nama pelanggan)',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (v) => Navigator.pop(dialogCtx, v),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(dialogCtx, ctrl.text),
+                child: const Text('Tunda')),
+          ],
+        );
+      },
+    );
+    if (label == null || !mounted) return; // null = batal
+    await ref
+        .read(heldSaleControllerProvider.notifier)
+        .hold(label: label.trim().isEmpty ? null : label.trim());
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Transaksi ditunda.')),
+      );
+    }
+  }
+
   void _openHistory() {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => const TransactionHistoryScreen(),
     ));
+  }
+
+  /// Buka scanner kasir (R2). Mode beruntun: tetap terbuka sampai **Selesai**.
+  Future<void> _openScanner() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => PosScanScreen(onCode: _resolveScannedCode),
+    ));
+  }
+
+  /// Resolusi barcode → keranjang (R2). Produk lokal by barcode; tangani varian
+  /// & barcode milik varian; bila tak ada, tawarkan opsi (bukan diam).
+  Future<ScanFeedback> _resolveScannedCode(String code) async {
+    final cart = ref.read(cartControllerProvider.notifier);
+    final productRepo = ref.read(productRepositoryProvider);
+
+    final item = await productRepo.findByBarcode(code);
+    if (item != null) {
+      final tiers =
+          await ref.read(wholesaleRepositoryProvider).getTiers(item.id);
+      if (item.product.hasVariants) {
+        final variants =
+            await ref.read(variantRepositoryProvider).getVariants(item.id);
+        if (variants.isEmpty) {
+          cart.addProduct(item.product, unitName: item.unitName, tiers: tiers);
+          return ScanFeedback('Ditambahkan: ${item.product.name}');
+        }
+        if (!mounted) return const ScanFeedback('Dibatalkan', success: false);
+        final chosen = await showVariantPicker(
+          context,
+          product: item.product,
+          variants: variants,
+        );
+        if (chosen == null) {
+          return const ScanFeedback('Pilih varian dibatalkan', success: false);
+        }
+        cart.addVariant(item.product, chosen,
+            unitName: item.unitName, tiers: tiers);
+        return ScanFeedback(
+            'Ditambahkan: ${item.product.name} — ${chosen.name}');
+      }
+      cart.addProduct(item.product, unitName: item.unitName, tiers: tiers);
+      return ScanFeedback('Ditambahkan: ${item.product.name}');
+    }
+
+    // Coba barcode milik varian (§5).
+    final variant = await ref.read(variantRepositoryProvider).findByBarcode(code);
+    if (variant != null) {
+      final product = await productRepo.getById(variant.productId);
+      if (product != null) {
+        final tiers =
+            await ref.read(wholesaleRepositoryProvider).getTiers(product.id);
+        cart.addVariant(product, variant, tiers: tiers);
+        return ScanFeedback('Ditambahkan: ${product.name} — ${variant.name}');
+      }
+    }
+
+    // Tak ditemukan → opsi cari/tambah (bukan error diam).
+    if (mounted) await _handleUnknownBarcode(code);
+    return ScanFeedback('Barcode "$code" tak ditemukan', success: false);
+  }
+
+  Future<void> _handleUnknownBarcode(String code) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Produk tak ditemukan'),
+        content: Text('Barcode "$code" tidak ada di produk toko.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, 'scan'),
+              child: const Text('Lanjut Scan')),
+          TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, 'search'),
+              child: const Text('Cari Manual')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogCtx, 'add'),
+              child: const Text('Tambah Produk')),
+        ],
+      ),
+    );
+    if (choice == null || choice == 'scan' || !mounted) return;
+    // Tutup scanner sebelum berpindah.
+    Navigator.of(context).pop();
+    if (choice == 'search') {
+      _searchController.text = code;
+      ref.read(productQueryControllerProvider.notifier).setSearch(code);
+    } else if (choice == 'add') {
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const ProductFormScreen(),
+      ));
+    }
   }
 
   /// Tambah produk ke keranjang. Muat tier grosir (§2); untuk produk bervarian,
@@ -133,6 +280,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           final productArea = _ProductArea(
             searchController: _searchController,
             onOpenHistory: _openHistory,
+            onOpenScanner: _openScanner,
+            onOpenHeldSales: _openHeldSales,
             onTapProduct: _onTapProduct,
           );
 
@@ -143,7 +292,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 const VerticalDivider(width: 1),
                 SizedBox(
                   width: 380,
-                  child: CartPanel(onCheckout: _checkout),
+                  child: CartPanel(onCheckout: _checkout, onHold: _holdCart),
                 ),
               ],
             );
@@ -165,11 +314,15 @@ class _ProductArea extends ConsumerWidget {
   final TextEditingController searchController;
   final void Function(ProductListItem item) onTapProduct;
   final VoidCallback onOpenHistory;
+  final VoidCallback onOpenScanner;
+  final VoidCallback onOpenHeldSales;
 
   const _ProductArea({
     required this.searchController,
     required this.onTapProduct,
     required this.onOpenHistory,
+    required this.onOpenScanner,
+    required this.onOpenHeldSales,
   });
 
   @override
@@ -208,6 +361,12 @@ class _ProductArea extends ConsumerWidget {
                   ),
                 ),
               ),
+              IconButton(
+                tooltip: 'Scan barcode',
+                icon: const Icon(Icons.qr_code_scanner),
+                onPressed: onOpenScanner,
+              ),
+              _HeldSalesButton(onPressed: onOpenHeldSales),
               IconButton(
                 tooltip: 'Riwayat transaksi',
                 icon: const Icon(Icons.receipt_long_outlined),
@@ -257,6 +416,26 @@ class _ProductArea extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Tombol Daftar Tunda dengan badge jumlah held sale aktif (R4).
+class _HeldSalesButton extends ConsumerWidget {
+  final VoidCallback onPressed;
+  const _HeldSalesButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(heldSaleCountProvider).asData?.value ?? 0;
+    return IconButton(
+      tooltip: 'Daftar tunda',
+      onPressed: onPressed,
+      icon: Badge(
+        isLabelVisible: count > 0,
+        label: Text('$count'),
+        child: const Icon(Icons.pause_circle_outline),
+      ),
     );
   }
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/database/tables/payments.dart';
 import '../../../../core/money/money.dart';
+import '../../../../core/money/rupiah_input_formatter.dart';
 import '../../application/customer_providers.dart';
 import '../../domain/installment_view.dart';
 
@@ -48,7 +48,7 @@ class _PayDebtSheet extends ConsumerStatefulWidget {
 
 class _PayDebtSheetState extends ConsumerState<_PayDebtSheet> {
   late final TextEditingController _amount = TextEditingController(
-    text: _suggestedAmount == 0 ? '' : _suggestedAmount.toString(),
+    text: _suggestedAmount == 0 ? '' : formatRupiahThousands(_suggestedAmount),
   );
   PaymentMethod _method = PaymentMethod.cash;
   bool _submitting = false;
@@ -63,7 +63,7 @@ class _PayDebtSheetState extends ConsumerState<_PayDebtSheet> {
     super.dispose();
   }
 
-  int get _amountValue => int.tryParse(_amount.text.trim()) ?? 0;
+  int get _amountValue => parseRupiah(_amount.text);
 
   Future<void> _submit() async {
     final amount = _amountValue;
@@ -128,7 +128,7 @@ class _PayDebtSheetState extends ConsumerState<_PayDebtSheet> {
             controller: _amount,
             autofocus: true,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: const [RupiahInputFormatter()],
             onChanged: (_) => setState(() {}),
             decoration: const InputDecoration(
               labelText: 'Nominal bayar',

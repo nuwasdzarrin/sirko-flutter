@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/database/tables/payments.dart';
 import '../../../../core/money/money.dart';
+import '../../../../core/money/rupiah_input_formatter.dart';
 import '../../../customers/application/customer_providers.dart';
 import '../../../customers/presentation/widgets/customer_picker_sheet.dart';
 import '../../application/pos_providers.dart';
@@ -28,8 +28,8 @@ class _PayRow {
   PaymentMethod method;
   final TextEditingController controller;
   _PayRow(this.method, int amount)
-      : controller =
-            TextEditingController(text: amount == 0 ? '' : amount.toString());
+      : controller = TextEditingController(
+            text: amount == 0 ? '' : formatRupiahThousands(amount));
 }
 
 class _PaymentSheet extends ConsumerStatefulWidget {
@@ -57,7 +57,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   List<PaymentEntry> get _entries => _rows
       .map((r) => PaymentEntry(
             method: r.method,
-            amount: int.tryParse(r.controller.text.trim()) ?? 0,
+            amount: parseRupiah(r.controller.text),
           ))
       .toList();
 
@@ -71,7 +71,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     final idx = _rows.indexWhere((r) => r.method == PaymentMethod.cash);
     setState(() {
       if (idx >= 0) {
-        _rows[idx].controller.text = amount.toString();
+        _rows[idx].controller.text = formatRupiahThousands(amount);
       } else {
         _rows.insert(0, _PayRow(PaymentMethod.cash, amount));
       }
@@ -273,7 +273,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
             child: TextField(
               controller: row.controller,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: const [RupiahInputFormatter()],
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
                 prefixText: 'Rp ',

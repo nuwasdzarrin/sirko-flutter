@@ -232,7 +232,7 @@ final class CartControllerProvider
   }
 }
 
-String _$cartControllerHash() => r'b6c9a3f1b8f0c6ee6ac44cc5ff4b27c1173e702f';
+String _$cartControllerHash() => r'c1f9e5d5dafb9a685dcce02aff46bafd7c61c7cb';
 
 /// Keranjang kasir aktif. Sumber kebenaran item + diskon transaksi + pelanggan.
 
@@ -339,7 +339,7 @@ final class CheckoutControllerProvider
 }
 
 String _$checkoutControllerHash() =>
-    r'5cdae047006bfe7b0335c7e84963e9bb1d4e06f9';
+    r'37f123ae88f0712280ea6c2d7425d48a5fdaad9d';
 
 /// Controller checkout: commit transaksi & simpan hasil terakhir untuk struk.
 

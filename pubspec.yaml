@@ -43,6 +43,8 @@ dependencies:
   # Preferensi ringan
   shared_preferences: ^2.3.0
   mobile_scanner: ^7.4.0
+  # Izin runtime kamera untuk scan di kasir (R2): penjelasan + buka pengaturan.
+  permission_handler: ^11.3.1
   image_picker: ^1.2.1
   path_provider: ^2.1.5
   path: ^1.9.1

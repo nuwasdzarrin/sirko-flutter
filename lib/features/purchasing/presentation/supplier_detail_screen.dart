@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/failures.dart';
 import '../../../core/money/money.dart';
+import '../../../core/money/rupiah_input_formatter.dart';
 import '../../wallets/application/wallet_providers.dart';
 import '../application/purchasing_providers.dart';
 import 'supplier_form_dialog.dart';
@@ -102,7 +102,8 @@ Future<void> _payDebtDialog(
   required String supplierName,
   required int maxAmount,
 }) async {
-  final amountCtrl = TextEditingController(text: maxAmount.toString());
+  final amountCtrl =
+      TextEditingController(text: formatRupiahThousands(maxAmount));
   String? walletId; // opsional: kas keluar
 
   final wallets = ref.read(walletsProvider).asData?.value ?? const [];
@@ -119,7 +120,7 @@ Future<void> _payDebtDialog(
               controller: amountCtrl,
               autofocus: true,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: const [RupiahInputFormatter()],
               decoration: InputDecoration(
                 labelText: 'Nominal (maks ${Money(maxAmount).format()})',
                 prefixText: 'Rp ',
@@ -158,7 +159,7 @@ Future<void> _payDebtDialog(
   );
   if (ok != true) return;
 
-  final amount = int.tryParse(amountCtrl.text) ?? 0;
+  final amount = parseRupiah(amountCtrl.text);
   try {
     await ref.read(purchaseRepositoryProvider).paySupplierDebt(
           supplierId: supplierId,

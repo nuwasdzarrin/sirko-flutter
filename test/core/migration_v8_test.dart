@@ -99,7 +99,7 @@ void main() {
     expect((await db.select(db.purchases).get()).single.status,
         PurchaseStatus.credit);
     expect((await db.select(db.stockOpnameItems).get()).single.diff, -2);
-    expect(db.schemaVersion, 8);
+    expect(db.schemaVersion, 9);
   });
 
   test('instalasi baru (onCreate) langsung v8 — tabel Fase 8 ada', () async {
@@ -108,6 +108,6 @@ void main() {
     expect((await db.select(db.suppliers).get()).isEmpty, isTrue);
     expect((await db.select(db.purchases).get()).isEmpty, isTrue);
     expect((await db.select(db.stockOpnames).get()).isEmpty, isTrue);
-    expect(db.schemaVersion, 8);
+    expect(db.schemaVersion, 9);
   });
 }

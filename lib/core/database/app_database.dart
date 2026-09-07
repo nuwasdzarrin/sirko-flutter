@@ -7,6 +7,8 @@ import 'tables/businesses.dart';
 import 'tables/categories.dart';
 import 'tables/credit_payments.dart';
 import 'tables/customers.dart';
+import 'tables/held_sale_items.dart';
+import 'tables/held_sales.dart';
 import 'tables/installments.dart';
 import 'tables/payments.dart';
 import 'tables/product_variants.dart';
@@ -39,6 +41,8 @@ part 'app_database.g.dart';
 /// - v7 (Fase 7): [Wallets], [WalletTransactions] — multi-wallet & arus kas.
 /// - v8 (Fase 8): [Suppliers], [Purchases], [PurchaseItems], [StockOpnames],
 ///   [StockOpnameItems] — pembelian/kulakan, hutang supplier & stock opname.
+/// - v9 (patch Fase 2 / R4): [HeldSales], [HeldSaleItems] — transaksi tertunda
+///   (hold sale). Local-only, tak ikut backup/push.
 ///
 /// Katalog data ditambahkan per fase sesuai spec 02-data-model.
 @DriftDatabase(tables: [
@@ -65,12 +69,14 @@ part 'app_database.g.dart';
   PurchaseItems,
   StockOpnames,
   StockOpnameItems,
+  HeldSales,
+  HeldSaleItems,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -129,6 +135,12 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(purchaseItems);
             await m.createTable(stockOpnames);
             await m.createTable(stockOpnameItems);
+          }
+          // v8 → v9: transaksi tertunda / hold sale (R4). Tanpa FK antar-tabel
+          // baru di skema Drift (relasi lewat id string) → urutan tak kritis.
+          if (from < 9) {
+            await m.createTable(heldSales);
+            await m.createTable(heldSaleItems);
           }
         },
         beforeOpen: (details) async {
