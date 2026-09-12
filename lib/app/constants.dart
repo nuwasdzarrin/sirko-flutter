@@ -32,25 +32,48 @@ class Routes {
   static const String employeeSummary = '/employee-summary';
   static const String users = '/users';
   static const String settings = '/settings';
+  static const String more = '/more'; // tab "Lainnya" (hub fitur sekunder)
 
-  /// Rute di dalam shell (drawer). Urutan = urutan tampil di drawer.
+  /// Tab utama **bottom navbar** (urutan = urutan tab). Tab "Lainnya" (→[more])
+  /// ditambahkan terpisah sebagai tab terakhir yang selalu tampil.
   /// `permission` null = selalu tampil; selain itu difilter sesuai izin (§13).
-  static const List<NavDestinationItem> shellDestinations = [
+  static const List<NavDestinationItem> primaryDestinations = [
     NavDestinationItem(
-        label: 'Dashboard',
-        icon: Icons.dashboard_outlined,
+        label: 'Beranda',
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home,
         path: dashboard,
         permission: Permission.dashboardAccess),
     NavDestinationItem(
+        label: 'Kasir',
+        icon: Icons.point_of_sale_outlined,
+        activeIcon: Icons.point_of_sale,
+        path: pos,
+        permission: Permission.transactionList),
+    NavDestinationItem(
         label: 'Produk',
         icon: Icons.inventory_2_outlined,
+        activeIcon: Icons.inventory_2,
         path: products,
         permission: Permission.productManagement),
     NavDestinationItem(
-        label: 'Kasir',
-        icon: Icons.point_of_sale_outlined,
-        path: pos,
-        permission: Permission.transactionList),
+        label: 'Laporan',
+        icon: Icons.bar_chart_outlined,
+        activeIcon: Icons.bar_chart,
+        path: reports,
+        permission: Permission.transactionExport),
+  ];
+
+  /// Item "Lainnya" (tab terakhir bottom navbar) — membuka halaman hub [more].
+  static const NavDestinationItem moreDestination = NavDestinationItem(
+    label: 'Lainnya',
+    icon: Icons.more_horiz,
+    activeIcon: Icons.more_horiz,
+    path: more,
+  );
+
+  /// Fitur sekunder → grid di halaman "Lainnya". Difilter izin (§13).
+  static const List<NavDestinationItem> secondaryDestinations = [
     NavDestinationItem(
         label: 'Pelanggan',
         icon: Icons.people_alt_outlined,
@@ -82,11 +105,6 @@ class Routes {
         path: stockOpname,
         permission: Permission.productManagement),
     NavDestinationItem(
-        label: 'Laporan',
-        icon: Icons.bar_chart_outlined,
-        path: reports,
-        permission: Permission.transactionExport),
-    NavDestinationItem(
         label: 'Ringkasan Karyawan',
         icon: Icons.badge_outlined,
         path: employeeSummary,
@@ -102,17 +120,27 @@ class Routes {
         path: settings,
         permission: Permission.settingCompany),
   ];
+
+  /// Semua destinasi ber-AppBar (untuk resolusi judul & tab aktif).
+  static const List<NavDestinationItem> allDestinations = [
+    ...primaryDestinations,
+    moreDestination,
+    ...secondaryDestinations,
+  ];
 }
 
-/// Item navigasi drawer. [permission] null = selalu tampil.
+/// Item navigasi. [permission] null = selalu tampil. [activeIcon] opsional
+/// (ikon terisi saat tab aktif di bottom navbar).
 class NavDestinationItem {
   final String label;
   final IconData icon;
+  final IconData? activeIcon;
   final String path;
   final Permission? permission;
   const NavDestinationItem({
     required this.label,
     required this.icon,
+    this.activeIcon,
     required this.path,
     this.permission,
   });

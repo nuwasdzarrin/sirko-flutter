@@ -2,7 +2,7 @@ name: sirko
 description: "Sirko — POS/kasir digital untuk ritel (kelontong, grosir, supermarket). Local-first."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.1.0+4
 
 environment:
   sdk: ^3.8.1
@@ -39,6 +39,9 @@ dependencies:
   crypto: ^3.0.6
   local_auth: ^2.3.0
   flutter_secure_storage: ^9.2.4
+
+  # Info versi app (tampil di Beranda/Lainnya untuk verifikasi build)
+  package_info_plus: ^8.1.1
 
   # Preferensi ringan
   shared_preferences: ^2.3.0

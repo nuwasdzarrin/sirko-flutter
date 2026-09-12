@@ -10,6 +10,7 @@ import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/reports/presentation/employee_summary_page.dart';
 import '../features/shell/presentation/app_shell.dart';
 import '../features/shell/presentation/pages/customers_page.dart';
+import '../features/shell/presentation/pages/more_page.dart';
 import '../features/shell/presentation/pages/dashboard_page.dart';
 import '../features/shell/presentation/pages/pos_page.dart';
 import '../features/shell/presentation/pages/products_page.dart';
@@ -159,6 +160,10 @@ GoRouter router(Ref ref) {
             path: Routes.settings,
             builder: (_, __) =>
                 _guarded(Permission.settingCompany, const SettingsPage()),
+          ),
+          GoRoute(
+            path: Routes.more,
+            builder: (_, __) => const MorePage(),
           ),
         ],
       ),

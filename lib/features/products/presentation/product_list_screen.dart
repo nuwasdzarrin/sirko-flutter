@@ -238,13 +238,8 @@ class _Toolbar extends StatelessWidget {
           ),
           PopupMenuButton<String>(
             tooltip: 'Menu inventory',
-            onSelected: (v) => switch (v) {
-              'flow' => onOpenStockFlow(),
-              'stockin' => onOpenStockIn(),
-              _ => onOpenBin(),
-            },
+            onSelected: (v) => v == 'flow' ? onOpenStockFlow() : onOpenBin(),
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'stockin', child: Text('Stok Masuk (scan)')),
               PopupMenuItem(value: 'flow', child: Text('Arus stok')),
               PopupMenuItem(value: 'bin', child: Text('Recycle Bin')),
             ],
