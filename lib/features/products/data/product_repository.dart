@@ -109,6 +109,7 @@ class ProductRepository {
     int? expiryDate,
     String? imagePath,
     bool hasVariants = false,
+    bool needsPrice = false,
   }) async {
     final now = DateTimeUtils.nowEpochMs();
     final id = _uuid.v4();
@@ -126,6 +127,7 @@ class ProductRepository {
             expiryDate: Value(expiryDate),
             imagePath: Value(imagePath),
             hasVariants: Value(hasVariants),
+            needsPrice: Value(needsPrice),
             createdAt: now,
             updatedAt: now,
           ),
@@ -160,6 +162,10 @@ class ProductRepository {
         expiryDate: Value(expiryDate),
         imagePath: Value(imagePath),
         hasVariants: Value(hasVariants),
+        // Harga jual sudah diisi (>0) → lepas penanda "perlu harga" (§ guard
+        // kasir). Bila masih 0, biarkan penanda apa adanya (Value.absent).
+        needsPrice:
+            sellingPrice > 0 ? const Value(false) : const Value.absent(),
         updatedAt: Value(DateTimeUtils.nowEpochMs()),
         isDirty: const Value(true),
       ),

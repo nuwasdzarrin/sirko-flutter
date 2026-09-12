@@ -51,11 +51,16 @@ class CartController extends _$CartController {
 
   /// Tambah produk (tanpa varian); bila sudah ada, +1 qty. [tiers] = harga
   /// grosir produk (§2), dibawa agar kalkulasi qty-tier reaktif.
-  void addProduct(
+  ///
+  /// Return `false` (dan state tak berubah) bila produk bertanda **perlu harga**
+  /// (§ guard kasir) — cegah jual Rp0. Pemanggil menampilkan aksi "Lengkapi
+  /// harga". Return `true` bila berhasil ditambahkan.
+  bool addProduct(
     Product product, {
     String? unitName,
     List<WholesaleTier> tiers = const [],
   }) {
+    if (product.needsPrice) return false;
     final key = product.id;
     final idx = state.lines.indexWhere((l) => l.key == key);
     final lines = [...state.lines];
@@ -74,6 +79,7 @@ class CartController extends _$CartController {
       ));
     }
     state = state.copyWith(lines: lines);
+    return true;
   }
 
   /// Tambah **varian** produk (stok & harga dari varian, §5). [tiers] = grosir

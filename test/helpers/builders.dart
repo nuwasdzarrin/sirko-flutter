@@ -61,6 +61,7 @@ Future<String> buildProduct(
   int? minStock,
   int? expiryDate,
   bool hasVariants = false,
+  bool needsPrice = false,
 }) {
   return ProductRepository(db).create(
     name: name,
@@ -71,6 +72,7 @@ Future<String> buildProduct(
     minStock: minStock,
     expiryDate: expiryDate,
     hasVariants: hasVariants,
+    needsPrice: needsPrice,
   );
 }
 

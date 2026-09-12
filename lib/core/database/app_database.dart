@@ -13,6 +13,7 @@ import 'tables/installments.dart';
 import 'tables/payments.dart';
 import 'tables/product_variants.dart';
 import 'tables/products.dart';
+import 'tables/public_products.dart';
 import 'tables/purchase_items.dart';
 import 'tables/purchases.dart';
 import 'tables/stock_logs.dart';
@@ -43,6 +44,10 @@ part 'app_database.g.dart';
 ///   [StockOpnameItems] — pembelian/kulakan, hutang supplier & stock opname.
 /// - v9 (patch Fase 2 / R4): [HeldSales], [HeldSaleItems] — transaksi tertunda
 ///   (hold sale). Local-only, tak ikut backup/push.
+/// - v10 (seed katalog, spec 13): [PublicProducts], [PublicProductThumbs] —
+///   katalog publik referensi (diisi dari aset seed), + kolom `needs_price` di
+///   [Products] (penanda produk hasil Stok Masuk yang harganya belum diisi).
+///   Tabel publik BUKAN tenant → tak ikut backup/push.
 ///
 /// Katalog data ditambahkan per fase sesuai spec 02-data-model.
 @DriftDatabase(tables: [
@@ -71,12 +76,14 @@ part 'app_database.g.dart';
   StockOpnameItems,
   HeldSales,
   HeldSaleItems,
+  PublicProducts,
+  PublicProductThumbs,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -141,6 +148,18 @@ class AppDatabase extends _$AppDatabase {
           if (from < 9) {
             await m.createTable(heldSales);
             await m.createTable(heldSaleItems);
+          }
+          // v9 → v10: seed katalog publik + penanda perlu-harga (spec 13).
+          // Tabel publik tak punya FK antar-tabel baru → urutan tak kritis.
+          // `needs_price` di-`addColumn` hanya bila `products` sudah ada dari
+          // skema lama (from ≥ 2); bila from < 2, tabel `products` baru dibuat di
+          // blok atas dengan definisi terkini (sudah termasuk `needs_price`).
+          if (from < 10) {
+            await m.createTable(publicProducts);
+            await m.createTable(publicProductThumbs);
+            if (from >= 2) {
+              await m.addColumn(products, products.needsPrice);
+            }
           }
         },
         beforeOpen: (details) async {

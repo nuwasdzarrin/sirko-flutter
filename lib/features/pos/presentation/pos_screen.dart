@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/money/money.dart';
 import '../../products/application/catalog_providers.dart';
 import '../../products/application/inventory_providers.dart';
@@ -168,6 +169,13 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 
     final item = await productRepo.findByBarcode(code);
     if (item != null) {
+      // Guard perlu-harga: cegah jual Rp0 (§7). Tandai gagal + arahkan lengkapi.
+      if (item.product.needsPrice) {
+        if (mounted) _promptCompletePrice(item.product);
+        return ScanFeedback(
+            '"${item.product.name}" perlu harga — lengkapi dulu',
+            success: false);
+      }
       final tiers =
           await ref.read(wholesaleRepositoryProvider).getTiers(item.id);
       if (item.product.hasVariants) {
@@ -244,9 +252,29 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     }
   }
 
+  /// Beri tahu produk perlu harga + aksi cepat "Lengkapi harga" (§7).
+  void _promptCompletePrice(Product product) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('"${product.name}" perlu harga sebelum dijual'),
+        action: SnackBarAction(
+          label: 'Lengkapi harga',
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => ProductFormScreen(existing: product),
+          )),
+        ),
+      ),
+    );
+  }
+
   /// Tambah produk ke keranjang. Muat tier grosir (§2); untuk produk bervarian,
   /// tampilkan pemilih varian dulu (§5).
   Future<void> _onTapProduct(ProductListItem item) async {
+    // Guard perlu-harga (§7): cegah masuk keranjang sampai harga diisi.
+    if (item.product.needsPrice) {
+      _promptCompletePrice(item.product);
+      return;
+    }
     final cart = ref.read(cartControllerProvider.notifier);
     final tiers =
         await ref.read(wholesaleRepositoryProvider).getTiers(item.id);

@@ -96,6 +96,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # Seed katalog produk publik (spec 13). Dibundel ke APK & di-import
+    # sekali saat first-run ke tabel lokal public_products / public_product_thumbs.
+    - assets/seed/catalog_seed.sqlite
 
 # Konfigurasi Patrol (E2E native Android). Dipakai oleh `patrol_cli`.
 patrol:

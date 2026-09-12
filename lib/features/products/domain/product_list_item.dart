@@ -25,4 +25,8 @@ class ProductListItem {
   /// Stok di bawah/serupa minimum (peringatan ringan; blokir menyusul Fase 3).
   bool get isLowStock =>
       product.minStock != null && product.stock <= product.minStock!;
+
+  /// Produk hasil Stok Masuk yang harga jualnya belum diisi → tak boleh masuk
+  /// keranjang kasir sampai harga dilengkapi (cegah jual Rp0).
+  bool get needsPrice => product.needsPrice;
 }

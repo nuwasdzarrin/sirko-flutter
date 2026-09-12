@@ -181,7 +181,7 @@ void main() {
       final business = await db.select(db.businesses).getSingle();
       expect(business.name, 'Toko Lama');
 
-      expect(db.schemaVersion, 9);
+      expect(db.schemaVersion, 10);
     });
 
     test('tabel Fase 2 baru dibuat & bisa dipakai', () async {
@@ -265,7 +265,7 @@ void main() {
 
       expect((await db.select(db.productVariants).get()).length, 1);
       expect((await db.select(db.wholesalePrices).get()).single.price, 9000);
-      expect(db.schemaVersion, 9);
+      expect(db.schemaVersion, 10);
     });
   });
 
@@ -281,7 +281,7 @@ void main() {
       expect((await db.select(db.customers).get()).isEmpty, isTrue);
       expect((await db.select(db.installments).get()).isEmpty, isTrue);
       expect((await db.select(db.creditPayments).get()).isEmpty, isTrue);
-      expect(db.schemaVersion, 9);
+      expect(db.schemaVersion, 10);
     });
   });
 
@@ -323,7 +323,49 @@ void main() {
       expect(cust.debtBalance, 0); // default
       expect((await db.select(db.installments).get()).isEmpty, isTrue);
       expect((await db.select(db.creditPayments).get()).isEmpty, isTrue);
-      expect(db.schemaVersion, 9);
+      expect(db.schemaVersion, 10);
+    });
+  });
+
+  group('Fase seed katalog (v10) — public_products & needs_price', () {
+    test('migrasi v2 → v10: kolom needs_price ditambah (default 0), data utuh',
+        () async {
+      final raw = sqlite3.openInMemory();
+      raw.execute(_createBusinesses);
+      raw.execute(_createCategories);
+      raw.execute(_createUnits);
+      raw.execute(_createProducts);
+      raw.execute(
+        "INSERT INTO products (id, name, selling_price, cost_price, stock, "
+        "created_at, updated_at) "
+        "VALUES ('p1', 'Indomie', 3500, 2800, 10, 0, 0);",
+      );
+      raw.execute('PRAGMA user_version = 2;');
+
+      final db = await openOver(raw);
+      addTearDown(db.close);
+
+      // Data lama utuh & kolom baru default false.
+      final product =
+          await (db.select(db.products)..where((t) => t.id.equals('p1')))
+              .getSingle();
+      expect(product.name, 'Indomie');
+      expect(product.needsPrice, isFalse);
+
+      // Tabel katalog publik terbuat & bisa dipakai.
+      expect((await db.select(db.publicProducts).get()).isEmpty, isTrue);
+      expect((await db.select(db.publicProductThumbs).get()).isEmpty, isTrue);
+      expect(db.schemaVersion, 10);
+    });
+
+    test('onCreate: tabel publik ada & needs_price default false', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await db.into(db.products).insert(ProductsCompanion.insert(
+            id: 'p1', name: 'Kopi', createdAt: 0, updatedAt: 0));
+      final p = await db.select(db.products).getSingle();
+      expect(p.needsPrice, isFalse);
+      expect((await db.select(db.publicProducts).get()).isEmpty, isTrue);
     });
   });
 }

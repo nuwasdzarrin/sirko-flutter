@@ -2113,6 +2113,21 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _needsPriceMeta = const VerificationMeta(
+    'needsPrice',
+  );
+  @override
+  late final GeneratedColumn<bool> needsPrice = GeneratedColumn<bool>(
+    'needs_price',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("needs_price" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2132,6 +2147,7 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     imagePath,
     hasVariants,
     isActive,
+    needsPrice,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2258,6 +2274,12 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
+    if (data.containsKey('needs_price')) {
+      context.handle(
+        _needsPriceMeta,
+        needsPrice.isAcceptableOrUnknown(data['needs_price']!, _needsPriceMeta),
+      );
+    }
     return context;
   }
 
@@ -2335,6 +2357,10 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
       )!,
+      needsPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}needs_price'],
+      )!,
     );
   }
 
@@ -2377,6 +2403,11 @@ class Product extends DataClass implements Insertable<Product> {
   final String? imagePath;
   final bool hasVariants;
   final bool isActive;
+
+  /// Penanda "perlu harga": produk dibuat otomatis dari Stok Masuk (scan) dengan
+  /// harga jual belum diisi. Selama `true`, produk **tidak** boleh masuk keranjang
+  /// kasir (cegah jual Rp0). Diturunkan jadi `false` saat harga jual > 0 disimpan.
+  final bool needsPrice;
   const Product({
     required this.id,
     required this.createdAt,
@@ -2395,6 +2426,7 @@ class Product extends DataClass implements Insertable<Product> {
     this.imagePath,
     required this.hasVariants,
     required this.isActive,
+    required this.needsPrice,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2430,6 +2462,7 @@ class Product extends DataClass implements Insertable<Product> {
     }
     map['has_variants'] = Variable<bool>(hasVariants);
     map['is_active'] = Variable<bool>(isActive);
+    map['needs_price'] = Variable<bool>(needsPrice);
     return map;
   }
 
@@ -2466,6 +2499,7 @@ class Product extends DataClass implements Insertable<Product> {
           : Value(imagePath),
       hasVariants: Value(hasVariants),
       isActive: Value(isActive),
+      needsPrice: Value(needsPrice),
     );
   }
 
@@ -2492,6 +2526,7 @@ class Product extends DataClass implements Insertable<Product> {
       imagePath: serializer.fromJson<String?>(json['imagePath']),
       hasVariants: serializer.fromJson<bool>(json['hasVariants']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      needsPrice: serializer.fromJson<bool>(json['needsPrice']),
     );
   }
   @override
@@ -2515,6 +2550,7 @@ class Product extends DataClass implements Insertable<Product> {
       'imagePath': serializer.toJson<String?>(imagePath),
       'hasVariants': serializer.toJson<bool>(hasVariants),
       'isActive': serializer.toJson<bool>(isActive),
+      'needsPrice': serializer.toJson<bool>(needsPrice),
     };
   }
 
@@ -2536,6 +2572,7 @@ class Product extends DataClass implements Insertable<Product> {
     Value<String?> imagePath = const Value.absent(),
     bool? hasVariants,
     bool? isActive,
+    bool? needsPrice,
   }) => Product(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -2554,6 +2591,7 @@ class Product extends DataClass implements Insertable<Product> {
     imagePath: imagePath.present ? imagePath.value : this.imagePath,
     hasVariants: hasVariants ?? this.hasVariants,
     isActive: isActive ?? this.isActive,
+    needsPrice: needsPrice ?? this.needsPrice,
   );
   Product copyWithCompanion(ProductsCompanion data) {
     return Product(
@@ -2582,6 +2620,9 @@ class Product extends DataClass implements Insertable<Product> {
           ? data.hasVariants.value
           : this.hasVariants,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      needsPrice: data.needsPrice.present
+          ? data.needsPrice.value
+          : this.needsPrice,
     );
   }
 
@@ -2604,7 +2645,8 @@ class Product extends DataClass implements Insertable<Product> {
           ..write('expiryDate: $expiryDate, ')
           ..write('imagePath: $imagePath, ')
           ..write('hasVariants: $hasVariants, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('needsPrice: $needsPrice')
           ..write(')'))
         .toString();
   }
@@ -2628,6 +2670,7 @@ class Product extends DataClass implements Insertable<Product> {
     imagePath,
     hasVariants,
     isActive,
+    needsPrice,
   );
   @override
   bool operator ==(Object other) =>
@@ -2649,7 +2692,8 @@ class Product extends DataClass implements Insertable<Product> {
           other.expiryDate == this.expiryDate &&
           other.imagePath == this.imagePath &&
           other.hasVariants == this.hasVariants &&
-          other.isActive == this.isActive);
+          other.isActive == this.isActive &&
+          other.needsPrice == this.needsPrice);
 }
 
 class ProductsCompanion extends UpdateCompanion<Product> {
@@ -2670,6 +2714,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
   final Value<String?> imagePath;
   final Value<bool> hasVariants;
   final Value<bool> isActive;
+  final Value<bool> needsPrice;
   final Value<int> rowid;
   const ProductsCompanion({
     this.id = const Value.absent(),
@@ -2689,6 +2734,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.imagePath = const Value.absent(),
     this.hasVariants = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.needsPrice = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ProductsCompanion.insert({
@@ -2709,6 +2755,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.imagePath = const Value.absent(),
     this.hasVariants = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.needsPrice = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -2732,6 +2779,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Expression<String>? imagePath,
     Expression<bool>? hasVariants,
     Expression<bool>? isActive,
+    Expression<bool>? needsPrice,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2752,6 +2800,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       if (imagePath != null) 'image_path': imagePath,
       if (hasVariants != null) 'has_variants': hasVariants,
       if (isActive != null) 'is_active': isActive,
+      if (needsPrice != null) 'needs_price': needsPrice,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2774,6 +2823,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Value<String?>? imagePath,
     Value<bool>? hasVariants,
     Value<bool>? isActive,
+    Value<bool>? needsPrice,
     Value<int>? rowid,
   }) {
     return ProductsCompanion(
@@ -2794,6 +2844,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       imagePath: imagePath ?? this.imagePath,
       hasVariants: hasVariants ?? this.hasVariants,
       isActive: isActive ?? this.isActive,
+      needsPrice: needsPrice ?? this.needsPrice,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2852,6 +2903,9 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (needsPrice.present) {
+      map['needs_price'] = Variable<bool>(needsPrice.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2878,6 +2932,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
           ..write('imagePath: $imagePath, ')
           ..write('hasVariants: $hasVariants, ')
           ..write('isActive: $isActive, ')
+          ..write('needsPrice: $needsPrice, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -17865,6 +17920,1367 @@ class HeldSaleItemsCompanion extends UpdateCompanion<HeldSaleItem> {
   }
 }
 
+class $PublicProductsTable extends PublicProducts
+    with TableInfo<$PublicProductsTable, PublicProduct> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PublicProductsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _barcodeMeta = const VerificationMeta(
+    'barcode',
+  );
+  @override
+  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
+    'barcode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _barcodeTypeMeta = const VerificationMeta(
+    'barcodeType',
+  );
+  @override
+  late final GeneratedColumn<String> barcodeType = GeneratedColumn<String>(
+    'barcode_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _shortDescriptionMeta = const VerificationMeta(
+    'shortDescription',
+  );
+  @override
+  late final GeneratedColumn<String> shortDescription = GeneratedColumn<String>(
+    'short_description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _photoUrlMeta = const VerificationMeta(
+    'photoUrl',
+  );
+  @override
+  late final GeneratedColumn<String> photoUrl = GeneratedColumn<String>(
+    'photo_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _brandMeta = const VerificationMeta('brand');
+  @override
+  late final GeneratedColumn<String> brand = GeneratedColumn<String>(
+    'brand',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _manufacturerMeta = const VerificationMeta(
+    'manufacturer',
+  );
+  @override
+  late final GeneratedColumn<String> manufacturer = GeneratedColumn<String>(
+    'manufacturer',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _defaultUnitMeta = const VerificationMeta(
+    'defaultUnit',
+  );
+  @override
+  late final GeneratedColumn<String> defaultUnit = GeneratedColumn<String>(
+    'default_unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _netSizeMeta = const VerificationMeta(
+    'netSize',
+  );
+  @override
+  late final GeneratedColumn<double> netSize = GeneratedColumn<double>(
+    'net_size',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _netUnitMeta = const VerificationMeta(
+    'netUnit',
+  );
+  @override
+  late final GeneratedColumn<String> netUnit = GeneratedColumn<String>(
+    'net_unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _packagingMeta = const VerificationMeta(
+    'packaging',
+  );
+  @override
+  late final GeneratedColumn<String> packaging = GeneratedColumn<String>(
+    'packaging',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _variantMeta = const VerificationMeta(
+    'variant',
+  );
+  @override
+  late final GeneratedColumn<String> variant = GeneratedColumn<String>(
+    'variant',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _countryOfOriginMeta = const VerificationMeta(
+    'countryOfOrigin',
+  );
+  @override
+  late final GeneratedColumn<String> countryOfOrigin = GeneratedColumn<String>(
+    'country_of_origin',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _keywordsMeta = const VerificationMeta(
+    'keywords',
+  );
+  @override
+  late final GeneratedColumn<String> keywords = GeneratedColumn<String>(
+    'keywords',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _verifiedMeta = const VerificationMeta(
+    'verified',
+  );
+  @override
+  late final GeneratedColumn<bool> verified = GeneratedColumn<bool>(
+    'verified',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("verified" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _thumbPresentMeta = const VerificationMeta(
+    'thumbPresent',
+  );
+  @override
+  late final GeneratedColumn<bool> thumbPresent = GeneratedColumn<bool>(
+    'thumb_present',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("thumb_present" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    barcode,
+    barcodeType,
+    name,
+    shortDescription,
+    photoUrl,
+    brand,
+    category,
+    manufacturer,
+    defaultUnit,
+    netSize,
+    netUnit,
+    packaging,
+    variant,
+    countryOfOrigin,
+    keywords,
+    verified,
+    source,
+    updatedAt,
+    thumbPresent,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'public_products';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PublicProduct> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('barcode')) {
+      context.handle(
+        _barcodeMeta,
+        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_barcodeMeta);
+    }
+    if (data.containsKey('barcode_type')) {
+      context.handle(
+        _barcodeTypeMeta,
+        barcodeType.isAcceptableOrUnknown(
+          data['barcode_type']!,
+          _barcodeTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('short_description')) {
+      context.handle(
+        _shortDescriptionMeta,
+        shortDescription.isAcceptableOrUnknown(
+          data['short_description']!,
+          _shortDescriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('photo_url')) {
+      context.handle(
+        _photoUrlMeta,
+        photoUrl.isAcceptableOrUnknown(data['photo_url']!, _photoUrlMeta),
+      );
+    }
+    if (data.containsKey('brand')) {
+      context.handle(
+        _brandMeta,
+        brand.isAcceptableOrUnknown(data['brand']!, _brandMeta),
+      );
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('manufacturer')) {
+      context.handle(
+        _manufacturerMeta,
+        manufacturer.isAcceptableOrUnknown(
+          data['manufacturer']!,
+          _manufacturerMeta,
+        ),
+      );
+    }
+    if (data.containsKey('default_unit')) {
+      context.handle(
+        _defaultUnitMeta,
+        defaultUnit.isAcceptableOrUnknown(
+          data['default_unit']!,
+          _defaultUnitMeta,
+        ),
+      );
+    }
+    if (data.containsKey('net_size')) {
+      context.handle(
+        _netSizeMeta,
+        netSize.isAcceptableOrUnknown(data['net_size']!, _netSizeMeta),
+      );
+    }
+    if (data.containsKey('net_unit')) {
+      context.handle(
+        _netUnitMeta,
+        netUnit.isAcceptableOrUnknown(data['net_unit']!, _netUnitMeta),
+      );
+    }
+    if (data.containsKey('packaging')) {
+      context.handle(
+        _packagingMeta,
+        packaging.isAcceptableOrUnknown(data['packaging']!, _packagingMeta),
+      );
+    }
+    if (data.containsKey('variant')) {
+      context.handle(
+        _variantMeta,
+        variant.isAcceptableOrUnknown(data['variant']!, _variantMeta),
+      );
+    }
+    if (data.containsKey('country_of_origin')) {
+      context.handle(
+        _countryOfOriginMeta,
+        countryOfOrigin.isAcceptableOrUnknown(
+          data['country_of_origin']!,
+          _countryOfOriginMeta,
+        ),
+      );
+    }
+    if (data.containsKey('keywords')) {
+      context.handle(
+        _keywordsMeta,
+        keywords.isAcceptableOrUnknown(data['keywords']!, _keywordsMeta),
+      );
+    }
+    if (data.containsKey('verified')) {
+      context.handle(
+        _verifiedMeta,
+        verified.isAcceptableOrUnknown(data['verified']!, _verifiedMeta),
+      );
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('thumb_present')) {
+      context.handle(
+        _thumbPresentMeta,
+        thumbPresent.isAcceptableOrUnknown(
+          data['thumb_present']!,
+          _thumbPresentMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PublicProduct map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PublicProduct(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      barcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode'],
+      )!,
+      barcodeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode_type'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      shortDescription: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}short_description'],
+      ),
+      photoUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_url'],
+      ),
+      brand: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}brand'],
+      ),
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      ),
+      manufacturer: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}manufacturer'],
+      ),
+      defaultUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_unit'],
+      ),
+      netSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}net_size'],
+      ),
+      netUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}net_unit'],
+      ),
+      packaging: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}packaging'],
+      ),
+      variant: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variant'],
+      ),
+      countryOfOrigin: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}country_of_origin'],
+      ),
+      keywords: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}keywords'],
+      ),
+      verified: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}verified'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      ),
+      thumbPresent: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}thumb_present'],
+      )!,
+    );
+  }
+
+  @override
+  $PublicProductsTable createAlias(String alias) {
+    return $PublicProductsTable(attachedDatabase, alias);
+  }
+}
+
+class PublicProduct extends DataClass implements Insertable<PublicProduct> {
+  /// PK uuid (dari katalog global).
+  final String id;
+
+  /// Barcode EAN/UPC. Index unik → lookup scan cepat.
+  final String barcode;
+  final String? barcodeType;
+  final String name;
+  final String? shortDescription;
+
+  /// URL foto full-res di cloud (tak pernah masuk APK). Thumbnail = blob lokal.
+  final String? photoUrl;
+  final String? brand;
+  final String? category;
+  final String? manufacturer;
+  final String? defaultUnit;
+  final double? netSize;
+  final String? netUnit;
+  final String? packaging;
+  final String? variant;
+  final String? countryOfOrigin;
+
+  /// Keywords JSON (dari pipeline seed) untuk pencarian.
+  final String? keywords;
+  final bool verified;
+  final String? source;
+
+  /// Epoch ms — basis delta katalog.
+  final int? updatedAt;
+
+  /// Ada thumbnail di [PublicProductThumbs]?
+  final bool thumbPresent;
+  const PublicProduct({
+    required this.id,
+    required this.barcode,
+    this.barcodeType,
+    required this.name,
+    this.shortDescription,
+    this.photoUrl,
+    this.brand,
+    this.category,
+    this.manufacturer,
+    this.defaultUnit,
+    this.netSize,
+    this.netUnit,
+    this.packaging,
+    this.variant,
+    this.countryOfOrigin,
+    this.keywords,
+    required this.verified,
+    this.source,
+    this.updatedAt,
+    required this.thumbPresent,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['barcode'] = Variable<String>(barcode);
+    if (!nullToAbsent || barcodeType != null) {
+      map['barcode_type'] = Variable<String>(barcodeType);
+    }
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || shortDescription != null) {
+      map['short_description'] = Variable<String>(shortDescription);
+    }
+    if (!nullToAbsent || photoUrl != null) {
+      map['photo_url'] = Variable<String>(photoUrl);
+    }
+    if (!nullToAbsent || brand != null) {
+      map['brand'] = Variable<String>(brand);
+    }
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
+    if (!nullToAbsent || manufacturer != null) {
+      map['manufacturer'] = Variable<String>(manufacturer);
+    }
+    if (!nullToAbsent || defaultUnit != null) {
+      map['default_unit'] = Variable<String>(defaultUnit);
+    }
+    if (!nullToAbsent || netSize != null) {
+      map['net_size'] = Variable<double>(netSize);
+    }
+    if (!nullToAbsent || netUnit != null) {
+      map['net_unit'] = Variable<String>(netUnit);
+    }
+    if (!nullToAbsent || packaging != null) {
+      map['packaging'] = Variable<String>(packaging);
+    }
+    if (!nullToAbsent || variant != null) {
+      map['variant'] = Variable<String>(variant);
+    }
+    if (!nullToAbsent || countryOfOrigin != null) {
+      map['country_of_origin'] = Variable<String>(countryOfOrigin);
+    }
+    if (!nullToAbsent || keywords != null) {
+      map['keywords'] = Variable<String>(keywords);
+    }
+    map['verified'] = Variable<bool>(verified);
+    if (!nullToAbsent || source != null) {
+      map['source'] = Variable<String>(source);
+    }
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<int>(updatedAt);
+    }
+    map['thumb_present'] = Variable<bool>(thumbPresent);
+    return map;
+  }
+
+  PublicProductsCompanion toCompanion(bool nullToAbsent) {
+    return PublicProductsCompanion(
+      id: Value(id),
+      barcode: Value(barcode),
+      barcodeType: barcodeType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(barcodeType),
+      name: Value(name),
+      shortDescription: shortDescription == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shortDescription),
+      photoUrl: photoUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoUrl),
+      brand: brand == null && nullToAbsent
+          ? const Value.absent()
+          : Value(brand),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
+      manufacturer: manufacturer == null && nullToAbsent
+          ? const Value.absent()
+          : Value(manufacturer),
+      defaultUnit: defaultUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultUnit),
+      netSize: netSize == null && nullToAbsent
+          ? const Value.absent()
+          : Value(netSize),
+      netUnit: netUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(netUnit),
+      packaging: packaging == null && nullToAbsent
+          ? const Value.absent()
+          : Value(packaging),
+      variant: variant == null && nullToAbsent
+          ? const Value.absent()
+          : Value(variant),
+      countryOfOrigin: countryOfOrigin == null && nullToAbsent
+          ? const Value.absent()
+          : Value(countryOfOrigin),
+      keywords: keywords == null && nullToAbsent
+          ? const Value.absent()
+          : Value(keywords),
+      verified: Value(verified),
+      source: source == null && nullToAbsent
+          ? const Value.absent()
+          : Value(source),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+      thumbPresent: Value(thumbPresent),
+    );
+  }
+
+  factory PublicProduct.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PublicProduct(
+      id: serializer.fromJson<String>(json['id']),
+      barcode: serializer.fromJson<String>(json['barcode']),
+      barcodeType: serializer.fromJson<String?>(json['barcodeType']),
+      name: serializer.fromJson<String>(json['name']),
+      shortDescription: serializer.fromJson<String?>(json['shortDescription']),
+      photoUrl: serializer.fromJson<String?>(json['photoUrl']),
+      brand: serializer.fromJson<String?>(json['brand']),
+      category: serializer.fromJson<String?>(json['category']),
+      manufacturer: serializer.fromJson<String?>(json['manufacturer']),
+      defaultUnit: serializer.fromJson<String?>(json['defaultUnit']),
+      netSize: serializer.fromJson<double?>(json['netSize']),
+      netUnit: serializer.fromJson<String?>(json['netUnit']),
+      packaging: serializer.fromJson<String?>(json['packaging']),
+      variant: serializer.fromJson<String?>(json['variant']),
+      countryOfOrigin: serializer.fromJson<String?>(json['countryOfOrigin']),
+      keywords: serializer.fromJson<String?>(json['keywords']),
+      verified: serializer.fromJson<bool>(json['verified']),
+      source: serializer.fromJson<String?>(json['source']),
+      updatedAt: serializer.fromJson<int?>(json['updatedAt']),
+      thumbPresent: serializer.fromJson<bool>(json['thumbPresent']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'barcode': serializer.toJson<String>(barcode),
+      'barcodeType': serializer.toJson<String?>(barcodeType),
+      'name': serializer.toJson<String>(name),
+      'shortDescription': serializer.toJson<String?>(shortDescription),
+      'photoUrl': serializer.toJson<String?>(photoUrl),
+      'brand': serializer.toJson<String?>(brand),
+      'category': serializer.toJson<String?>(category),
+      'manufacturer': serializer.toJson<String?>(manufacturer),
+      'defaultUnit': serializer.toJson<String?>(defaultUnit),
+      'netSize': serializer.toJson<double?>(netSize),
+      'netUnit': serializer.toJson<String?>(netUnit),
+      'packaging': serializer.toJson<String?>(packaging),
+      'variant': serializer.toJson<String?>(variant),
+      'countryOfOrigin': serializer.toJson<String?>(countryOfOrigin),
+      'keywords': serializer.toJson<String?>(keywords),
+      'verified': serializer.toJson<bool>(verified),
+      'source': serializer.toJson<String?>(source),
+      'updatedAt': serializer.toJson<int?>(updatedAt),
+      'thumbPresent': serializer.toJson<bool>(thumbPresent),
+    };
+  }
+
+  PublicProduct copyWith({
+    String? id,
+    String? barcode,
+    Value<String?> barcodeType = const Value.absent(),
+    String? name,
+    Value<String?> shortDescription = const Value.absent(),
+    Value<String?> photoUrl = const Value.absent(),
+    Value<String?> brand = const Value.absent(),
+    Value<String?> category = const Value.absent(),
+    Value<String?> manufacturer = const Value.absent(),
+    Value<String?> defaultUnit = const Value.absent(),
+    Value<double?> netSize = const Value.absent(),
+    Value<String?> netUnit = const Value.absent(),
+    Value<String?> packaging = const Value.absent(),
+    Value<String?> variant = const Value.absent(),
+    Value<String?> countryOfOrigin = const Value.absent(),
+    Value<String?> keywords = const Value.absent(),
+    bool? verified,
+    Value<String?> source = const Value.absent(),
+    Value<int?> updatedAt = const Value.absent(),
+    bool? thumbPresent,
+  }) => PublicProduct(
+    id: id ?? this.id,
+    barcode: barcode ?? this.barcode,
+    barcodeType: barcodeType.present ? barcodeType.value : this.barcodeType,
+    name: name ?? this.name,
+    shortDescription: shortDescription.present
+        ? shortDescription.value
+        : this.shortDescription,
+    photoUrl: photoUrl.present ? photoUrl.value : this.photoUrl,
+    brand: brand.present ? brand.value : this.brand,
+    category: category.present ? category.value : this.category,
+    manufacturer: manufacturer.present ? manufacturer.value : this.manufacturer,
+    defaultUnit: defaultUnit.present ? defaultUnit.value : this.defaultUnit,
+    netSize: netSize.present ? netSize.value : this.netSize,
+    netUnit: netUnit.present ? netUnit.value : this.netUnit,
+    packaging: packaging.present ? packaging.value : this.packaging,
+    variant: variant.present ? variant.value : this.variant,
+    countryOfOrigin: countryOfOrigin.present
+        ? countryOfOrigin.value
+        : this.countryOfOrigin,
+    keywords: keywords.present ? keywords.value : this.keywords,
+    verified: verified ?? this.verified,
+    source: source.present ? source.value : this.source,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    thumbPresent: thumbPresent ?? this.thumbPresent,
+  );
+  PublicProduct copyWithCompanion(PublicProductsCompanion data) {
+    return PublicProduct(
+      id: data.id.present ? data.id.value : this.id,
+      barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      barcodeType: data.barcodeType.present
+          ? data.barcodeType.value
+          : this.barcodeType,
+      name: data.name.present ? data.name.value : this.name,
+      shortDescription: data.shortDescription.present
+          ? data.shortDescription.value
+          : this.shortDescription,
+      photoUrl: data.photoUrl.present ? data.photoUrl.value : this.photoUrl,
+      brand: data.brand.present ? data.brand.value : this.brand,
+      category: data.category.present ? data.category.value : this.category,
+      manufacturer: data.manufacturer.present
+          ? data.manufacturer.value
+          : this.manufacturer,
+      defaultUnit: data.defaultUnit.present
+          ? data.defaultUnit.value
+          : this.defaultUnit,
+      netSize: data.netSize.present ? data.netSize.value : this.netSize,
+      netUnit: data.netUnit.present ? data.netUnit.value : this.netUnit,
+      packaging: data.packaging.present ? data.packaging.value : this.packaging,
+      variant: data.variant.present ? data.variant.value : this.variant,
+      countryOfOrigin: data.countryOfOrigin.present
+          ? data.countryOfOrigin.value
+          : this.countryOfOrigin,
+      keywords: data.keywords.present ? data.keywords.value : this.keywords,
+      verified: data.verified.present ? data.verified.value : this.verified,
+      source: data.source.present ? data.source.value : this.source,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      thumbPresent: data.thumbPresent.present
+          ? data.thumbPresent.value
+          : this.thumbPresent,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PublicProduct(')
+          ..write('id: $id, ')
+          ..write('barcode: $barcode, ')
+          ..write('barcodeType: $barcodeType, ')
+          ..write('name: $name, ')
+          ..write('shortDescription: $shortDescription, ')
+          ..write('photoUrl: $photoUrl, ')
+          ..write('brand: $brand, ')
+          ..write('category: $category, ')
+          ..write('manufacturer: $manufacturer, ')
+          ..write('defaultUnit: $defaultUnit, ')
+          ..write('netSize: $netSize, ')
+          ..write('netUnit: $netUnit, ')
+          ..write('packaging: $packaging, ')
+          ..write('variant: $variant, ')
+          ..write('countryOfOrigin: $countryOfOrigin, ')
+          ..write('keywords: $keywords, ')
+          ..write('verified: $verified, ')
+          ..write('source: $source, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('thumbPresent: $thumbPresent')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    barcode,
+    barcodeType,
+    name,
+    shortDescription,
+    photoUrl,
+    brand,
+    category,
+    manufacturer,
+    defaultUnit,
+    netSize,
+    netUnit,
+    packaging,
+    variant,
+    countryOfOrigin,
+    keywords,
+    verified,
+    source,
+    updatedAt,
+    thumbPresent,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PublicProduct &&
+          other.id == this.id &&
+          other.barcode == this.barcode &&
+          other.barcodeType == this.barcodeType &&
+          other.name == this.name &&
+          other.shortDescription == this.shortDescription &&
+          other.photoUrl == this.photoUrl &&
+          other.brand == this.brand &&
+          other.category == this.category &&
+          other.manufacturer == this.manufacturer &&
+          other.defaultUnit == this.defaultUnit &&
+          other.netSize == this.netSize &&
+          other.netUnit == this.netUnit &&
+          other.packaging == this.packaging &&
+          other.variant == this.variant &&
+          other.countryOfOrigin == this.countryOfOrigin &&
+          other.keywords == this.keywords &&
+          other.verified == this.verified &&
+          other.source == this.source &&
+          other.updatedAt == this.updatedAt &&
+          other.thumbPresent == this.thumbPresent);
+}
+
+class PublicProductsCompanion extends UpdateCompanion<PublicProduct> {
+  final Value<String> id;
+  final Value<String> barcode;
+  final Value<String?> barcodeType;
+  final Value<String> name;
+  final Value<String?> shortDescription;
+  final Value<String?> photoUrl;
+  final Value<String?> brand;
+  final Value<String?> category;
+  final Value<String?> manufacturer;
+  final Value<String?> defaultUnit;
+  final Value<double?> netSize;
+  final Value<String?> netUnit;
+  final Value<String?> packaging;
+  final Value<String?> variant;
+  final Value<String?> countryOfOrigin;
+  final Value<String?> keywords;
+  final Value<bool> verified;
+  final Value<String?> source;
+  final Value<int?> updatedAt;
+  final Value<bool> thumbPresent;
+  final Value<int> rowid;
+  const PublicProductsCompanion({
+    this.id = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.barcodeType = const Value.absent(),
+    this.name = const Value.absent(),
+    this.shortDescription = const Value.absent(),
+    this.photoUrl = const Value.absent(),
+    this.brand = const Value.absent(),
+    this.category = const Value.absent(),
+    this.manufacturer = const Value.absent(),
+    this.defaultUnit = const Value.absent(),
+    this.netSize = const Value.absent(),
+    this.netUnit = const Value.absent(),
+    this.packaging = const Value.absent(),
+    this.variant = const Value.absent(),
+    this.countryOfOrigin = const Value.absent(),
+    this.keywords = const Value.absent(),
+    this.verified = const Value.absent(),
+    this.source = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.thumbPresent = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PublicProductsCompanion.insert({
+    required String id,
+    required String barcode,
+    this.barcodeType = const Value.absent(),
+    required String name,
+    this.shortDescription = const Value.absent(),
+    this.photoUrl = const Value.absent(),
+    this.brand = const Value.absent(),
+    this.category = const Value.absent(),
+    this.manufacturer = const Value.absent(),
+    this.defaultUnit = const Value.absent(),
+    this.netSize = const Value.absent(),
+    this.netUnit = const Value.absent(),
+    this.packaging = const Value.absent(),
+    this.variant = const Value.absent(),
+    this.countryOfOrigin = const Value.absent(),
+    this.keywords = const Value.absent(),
+    this.verified = const Value.absent(),
+    this.source = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.thumbPresent = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       barcode = Value(barcode),
+       name = Value(name);
+  static Insertable<PublicProduct> custom({
+    Expression<String>? id,
+    Expression<String>? barcode,
+    Expression<String>? barcodeType,
+    Expression<String>? name,
+    Expression<String>? shortDescription,
+    Expression<String>? photoUrl,
+    Expression<String>? brand,
+    Expression<String>? category,
+    Expression<String>? manufacturer,
+    Expression<String>? defaultUnit,
+    Expression<double>? netSize,
+    Expression<String>? netUnit,
+    Expression<String>? packaging,
+    Expression<String>? variant,
+    Expression<String>? countryOfOrigin,
+    Expression<String>? keywords,
+    Expression<bool>? verified,
+    Expression<String>? source,
+    Expression<int>? updatedAt,
+    Expression<bool>? thumbPresent,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (barcode != null) 'barcode': barcode,
+      if (barcodeType != null) 'barcode_type': barcodeType,
+      if (name != null) 'name': name,
+      if (shortDescription != null) 'short_description': shortDescription,
+      if (photoUrl != null) 'photo_url': photoUrl,
+      if (brand != null) 'brand': brand,
+      if (category != null) 'category': category,
+      if (manufacturer != null) 'manufacturer': manufacturer,
+      if (defaultUnit != null) 'default_unit': defaultUnit,
+      if (netSize != null) 'net_size': netSize,
+      if (netUnit != null) 'net_unit': netUnit,
+      if (packaging != null) 'packaging': packaging,
+      if (variant != null) 'variant': variant,
+      if (countryOfOrigin != null) 'country_of_origin': countryOfOrigin,
+      if (keywords != null) 'keywords': keywords,
+      if (verified != null) 'verified': verified,
+      if (source != null) 'source': source,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (thumbPresent != null) 'thumb_present': thumbPresent,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PublicProductsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? barcode,
+    Value<String?>? barcodeType,
+    Value<String>? name,
+    Value<String?>? shortDescription,
+    Value<String?>? photoUrl,
+    Value<String?>? brand,
+    Value<String?>? category,
+    Value<String?>? manufacturer,
+    Value<String?>? defaultUnit,
+    Value<double?>? netSize,
+    Value<String?>? netUnit,
+    Value<String?>? packaging,
+    Value<String?>? variant,
+    Value<String?>? countryOfOrigin,
+    Value<String?>? keywords,
+    Value<bool>? verified,
+    Value<String?>? source,
+    Value<int?>? updatedAt,
+    Value<bool>? thumbPresent,
+    Value<int>? rowid,
+  }) {
+    return PublicProductsCompanion(
+      id: id ?? this.id,
+      barcode: barcode ?? this.barcode,
+      barcodeType: barcodeType ?? this.barcodeType,
+      name: name ?? this.name,
+      shortDescription: shortDescription ?? this.shortDescription,
+      photoUrl: photoUrl ?? this.photoUrl,
+      brand: brand ?? this.brand,
+      category: category ?? this.category,
+      manufacturer: manufacturer ?? this.manufacturer,
+      defaultUnit: defaultUnit ?? this.defaultUnit,
+      netSize: netSize ?? this.netSize,
+      netUnit: netUnit ?? this.netUnit,
+      packaging: packaging ?? this.packaging,
+      variant: variant ?? this.variant,
+      countryOfOrigin: countryOfOrigin ?? this.countryOfOrigin,
+      keywords: keywords ?? this.keywords,
+      verified: verified ?? this.verified,
+      source: source ?? this.source,
+      updatedAt: updatedAt ?? this.updatedAt,
+      thumbPresent: thumbPresent ?? this.thumbPresent,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (barcode.present) {
+      map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (barcodeType.present) {
+      map['barcode_type'] = Variable<String>(barcodeType.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (shortDescription.present) {
+      map['short_description'] = Variable<String>(shortDescription.value);
+    }
+    if (photoUrl.present) {
+      map['photo_url'] = Variable<String>(photoUrl.value);
+    }
+    if (brand.present) {
+      map['brand'] = Variable<String>(brand.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (manufacturer.present) {
+      map['manufacturer'] = Variable<String>(manufacturer.value);
+    }
+    if (defaultUnit.present) {
+      map['default_unit'] = Variable<String>(defaultUnit.value);
+    }
+    if (netSize.present) {
+      map['net_size'] = Variable<double>(netSize.value);
+    }
+    if (netUnit.present) {
+      map['net_unit'] = Variable<String>(netUnit.value);
+    }
+    if (packaging.present) {
+      map['packaging'] = Variable<String>(packaging.value);
+    }
+    if (variant.present) {
+      map['variant'] = Variable<String>(variant.value);
+    }
+    if (countryOfOrigin.present) {
+      map['country_of_origin'] = Variable<String>(countryOfOrigin.value);
+    }
+    if (keywords.present) {
+      map['keywords'] = Variable<String>(keywords.value);
+    }
+    if (verified.present) {
+      map['verified'] = Variable<bool>(verified.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (thumbPresent.present) {
+      map['thumb_present'] = Variable<bool>(thumbPresent.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PublicProductsCompanion(')
+          ..write('id: $id, ')
+          ..write('barcode: $barcode, ')
+          ..write('barcodeType: $barcodeType, ')
+          ..write('name: $name, ')
+          ..write('shortDescription: $shortDescription, ')
+          ..write('photoUrl: $photoUrl, ')
+          ..write('brand: $brand, ')
+          ..write('category: $category, ')
+          ..write('manufacturer: $manufacturer, ')
+          ..write('defaultUnit: $defaultUnit, ')
+          ..write('netSize: $netSize, ')
+          ..write('netUnit: $netUnit, ')
+          ..write('packaging: $packaging, ')
+          ..write('variant: $variant, ')
+          ..write('countryOfOrigin: $countryOfOrigin, ')
+          ..write('keywords: $keywords, ')
+          ..write('verified: $verified, ')
+          ..write('source: $source, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('thumbPresent: $thumbPresent, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PublicProductThumbsTable extends PublicProductThumbs
+    with TableInfo<$PublicProductThumbsTable, PublicProductThumb> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PublicProductThumbsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _barcodeMeta = const VerificationMeta(
+    'barcode',
+  );
+  @override
+  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
+    'barcode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _thumbMeta = const VerificationMeta('thumb');
+  @override
+  late final GeneratedColumn<Uint8List> thumb = GeneratedColumn<Uint8List>(
+    'thumb',
+    aliasedName,
+    false,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [barcode, thumb];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'public_product_thumbs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PublicProductThumb> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('barcode')) {
+      context.handle(
+        _barcodeMeta,
+        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_barcodeMeta);
+    }
+    if (data.containsKey('thumb')) {
+      context.handle(
+        _thumbMeta,
+        thumb.isAcceptableOrUnknown(data['thumb']!, _thumbMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_thumbMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {barcode};
+  @override
+  PublicProductThumb map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PublicProductThumb(
+      barcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode'],
+      )!,
+      thumb: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}thumb'],
+      )!,
+    );
+  }
+
+  @override
+  $PublicProductThumbsTable createAlias(String alias) {
+    return $PublicProductThumbsTable(attachedDatabase, alias);
+  }
+}
+
+class PublicProductThumb extends DataClass
+    implements Insertable<PublicProductThumb> {
+  final String barcode;
+  final Uint8List thumb;
+  const PublicProductThumb({required this.barcode, required this.thumb});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['barcode'] = Variable<String>(barcode);
+    map['thumb'] = Variable<Uint8List>(thumb);
+    return map;
+  }
+
+  PublicProductThumbsCompanion toCompanion(bool nullToAbsent) {
+    return PublicProductThumbsCompanion(
+      barcode: Value(barcode),
+      thumb: Value(thumb),
+    );
+  }
+
+  factory PublicProductThumb.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PublicProductThumb(
+      barcode: serializer.fromJson<String>(json['barcode']),
+      thumb: serializer.fromJson<Uint8List>(json['thumb']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'barcode': serializer.toJson<String>(barcode),
+      'thumb': serializer.toJson<Uint8List>(thumb),
+    };
+  }
+
+  PublicProductThumb copyWith({String? barcode, Uint8List? thumb}) =>
+      PublicProductThumb(
+        barcode: barcode ?? this.barcode,
+        thumb: thumb ?? this.thumb,
+      );
+  PublicProductThumb copyWithCompanion(PublicProductThumbsCompanion data) {
+    return PublicProductThumb(
+      barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      thumb: data.thumb.present ? data.thumb.value : this.thumb,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PublicProductThumb(')
+          ..write('barcode: $barcode, ')
+          ..write('thumb: $thumb')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(barcode, $driftBlobEquality.hash(thumb));
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PublicProductThumb &&
+          other.barcode == this.barcode &&
+          $driftBlobEquality.equals(other.thumb, this.thumb));
+}
+
+class PublicProductThumbsCompanion extends UpdateCompanion<PublicProductThumb> {
+  final Value<String> barcode;
+  final Value<Uint8List> thumb;
+  final Value<int> rowid;
+  const PublicProductThumbsCompanion({
+    this.barcode = const Value.absent(),
+    this.thumb = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PublicProductThumbsCompanion.insert({
+    required String barcode,
+    required Uint8List thumb,
+    this.rowid = const Value.absent(),
+  }) : barcode = Value(barcode),
+       thumb = Value(thumb);
+  static Insertable<PublicProductThumb> custom({
+    Expression<String>? barcode,
+    Expression<Uint8List>? thumb,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (barcode != null) 'barcode': barcode,
+      if (thumb != null) 'thumb': thumb,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PublicProductThumbsCompanion copyWith({
+    Value<String>? barcode,
+    Value<Uint8List>? thumb,
+    Value<int>? rowid,
+  }) {
+    return PublicProductThumbsCompanion(
+      barcode: barcode ?? this.barcode,
+      thumb: thumb ?? this.thumb,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (barcode.present) {
+      map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (thumb.present) {
+      map['thumb'] = Variable<Uint8List>(thumb.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PublicProductThumbsCompanion(')
+          ..write('barcode: $barcode, ')
+          ..write('thumb: $thumb, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -17902,6 +19318,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $HeldSalesTable heldSales = $HeldSalesTable(this);
   late final $HeldSaleItemsTable heldSaleItems = $HeldSaleItemsTable(this);
+  late final $PublicProductsTable publicProducts = $PublicProductsTable(this);
+  late final $PublicProductThumbsTable publicProductThumbs =
+      $PublicProductThumbsTable(this);
+  late final Index idxPublicProductsBarcode = Index(
+    'idx_public_products_barcode',
+    'CREATE UNIQUE INDEX idx_public_products_barcode ON public_products (barcode)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -17932,6 +19355,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     stockOpnameItems,
     heldSales,
     heldSaleItems,
+    publicProducts,
+    publicProductThumbs,
+    idxPublicProductsBarcode,
   ];
 }
 
@@ -19048,6 +20474,7 @@ typedef $$ProductsTableCreateCompanionBuilder =
       Value<String?> imagePath,
       Value<bool> hasVariants,
       Value<bool> isActive,
+      Value<bool> needsPrice,
       Value<int> rowid,
     });
 typedef $$ProductsTableUpdateCompanionBuilder =
@@ -19069,6 +20496,7 @@ typedef $$ProductsTableUpdateCompanionBuilder =
       Value<String?> imagePath,
       Value<bool> hasVariants,
       Value<bool> isActive,
+      Value<bool> needsPrice,
       Value<int> rowid,
     });
 
@@ -19241,6 +20669,11 @@ class $$ProductsTableFilterComposer
 
   ColumnFilters<bool> get isActive => $composableBuilder(
     column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get needsPrice => $composableBuilder(
+    column: $table.needsPrice,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19425,6 +20858,11 @@ class $$ProductsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get needsPrice => $composableBuilder(
+    column: $table.needsPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -19531,6 +20969,11 @@ class $$ProductsTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get needsPrice => $composableBuilder(
+    column: $table.needsPrice,
+    builder: (column) => column,
+  );
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -19679,6 +21122,7 @@ class $$ProductsTableTableManager
                 Value<String?> imagePath = const Value.absent(),
                 Value<bool> hasVariants = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<bool> needsPrice = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProductsCompanion(
                 id: id,
@@ -19698,6 +21142,7 @@ class $$ProductsTableTableManager
                 imagePath: imagePath,
                 hasVariants: hasVariants,
                 isActive: isActive,
+                needsPrice: needsPrice,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -19719,6 +21164,7 @@ class $$ProductsTableTableManager
                 Value<String?> imagePath = const Value.absent(),
                 Value<bool> hasVariants = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<bool> needsPrice = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProductsCompanion.insert(
                 id: id,
@@ -19738,6 +21184,7 @@ class $$ProductsTableTableManager
                 imagePath: imagePath,
                 hasVariants: hasVariants,
                 isActive: isActive,
+                needsPrice: needsPrice,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -28988,6 +30435,664 @@ typedef $$HeldSaleItemsTableProcessedTableManager =
       HeldSaleItem,
       PrefetchHooks Function()
     >;
+typedef $$PublicProductsTableCreateCompanionBuilder =
+    PublicProductsCompanion Function({
+      required String id,
+      required String barcode,
+      Value<String?> barcodeType,
+      required String name,
+      Value<String?> shortDescription,
+      Value<String?> photoUrl,
+      Value<String?> brand,
+      Value<String?> category,
+      Value<String?> manufacturer,
+      Value<String?> defaultUnit,
+      Value<double?> netSize,
+      Value<String?> netUnit,
+      Value<String?> packaging,
+      Value<String?> variant,
+      Value<String?> countryOfOrigin,
+      Value<String?> keywords,
+      Value<bool> verified,
+      Value<String?> source,
+      Value<int?> updatedAt,
+      Value<bool> thumbPresent,
+      Value<int> rowid,
+    });
+typedef $$PublicProductsTableUpdateCompanionBuilder =
+    PublicProductsCompanion Function({
+      Value<String> id,
+      Value<String> barcode,
+      Value<String?> barcodeType,
+      Value<String> name,
+      Value<String?> shortDescription,
+      Value<String?> photoUrl,
+      Value<String?> brand,
+      Value<String?> category,
+      Value<String?> manufacturer,
+      Value<String?> defaultUnit,
+      Value<double?> netSize,
+      Value<String?> netUnit,
+      Value<String?> packaging,
+      Value<String?> variant,
+      Value<String?> countryOfOrigin,
+      Value<String?> keywords,
+      Value<bool> verified,
+      Value<String?> source,
+      Value<int?> updatedAt,
+      Value<bool> thumbPresent,
+      Value<int> rowid,
+    });
+
+class $$PublicProductsTableFilterComposer
+    extends Composer<_$AppDatabase, $PublicProductsTable> {
+  $$PublicProductsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get barcodeType => $composableBuilder(
+    column: $table.barcodeType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shortDescription => $composableBuilder(
+    column: $table.shortDescription,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoUrl => $composableBuilder(
+    column: $table.photoUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get brand => $composableBuilder(
+    column: $table.brand,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get manufacturer => $composableBuilder(
+    column: $table.manufacturer,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultUnit => $composableBuilder(
+    column: $table.defaultUnit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get netSize => $composableBuilder(
+    column: $table.netSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get netUnit => $composableBuilder(
+    column: $table.netUnit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get packaging => $composableBuilder(
+    column: $table.packaging,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get variant => $composableBuilder(
+    column: $table.variant,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get countryOfOrigin => $composableBuilder(
+    column: $table.countryOfOrigin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get keywords => $composableBuilder(
+    column: $table.keywords,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get verified => $composableBuilder(
+    column: $table.verified,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get thumbPresent => $composableBuilder(
+    column: $table.thumbPresent,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PublicProductsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PublicProductsTable> {
+  $$PublicProductsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get barcodeType => $composableBuilder(
+    column: $table.barcodeType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shortDescription => $composableBuilder(
+    column: $table.shortDescription,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get photoUrl => $composableBuilder(
+    column: $table.photoUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get brand => $composableBuilder(
+    column: $table.brand,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get manufacturer => $composableBuilder(
+    column: $table.manufacturer,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get defaultUnit => $composableBuilder(
+    column: $table.defaultUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get netSize => $composableBuilder(
+    column: $table.netSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get netUnit => $composableBuilder(
+    column: $table.netUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get packaging => $composableBuilder(
+    column: $table.packaging,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get variant => $composableBuilder(
+    column: $table.variant,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get countryOfOrigin => $composableBuilder(
+    column: $table.countryOfOrigin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get keywords => $composableBuilder(
+    column: $table.keywords,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get verified => $composableBuilder(
+    column: $table.verified,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get thumbPresent => $composableBuilder(
+    column: $table.thumbPresent,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PublicProductsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PublicProductsTable> {
+  $$PublicProductsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get barcode =>
+      $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<String> get barcodeType => $composableBuilder(
+    column: $table.barcodeType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get shortDescription => $composableBuilder(
+    column: $table.shortDescription,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get photoUrl =>
+      $composableBuilder(column: $table.photoUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get brand =>
+      $composableBuilder(column: $table.brand, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get manufacturer => $composableBuilder(
+    column: $table.manufacturer,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get defaultUnit => $composableBuilder(
+    column: $table.defaultUnit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get netSize =>
+      $composableBuilder(column: $table.netSize, builder: (column) => column);
+
+  GeneratedColumn<String> get netUnit =>
+      $composableBuilder(column: $table.netUnit, builder: (column) => column);
+
+  GeneratedColumn<String> get packaging =>
+      $composableBuilder(column: $table.packaging, builder: (column) => column);
+
+  GeneratedColumn<String> get variant =>
+      $composableBuilder(column: $table.variant, builder: (column) => column);
+
+  GeneratedColumn<String> get countryOfOrigin => $composableBuilder(
+    column: $table.countryOfOrigin,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get keywords =>
+      $composableBuilder(column: $table.keywords, builder: (column) => column);
+
+  GeneratedColumn<bool> get verified =>
+      $composableBuilder(column: $table.verified, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get thumbPresent => $composableBuilder(
+    column: $table.thumbPresent,
+    builder: (column) => column,
+  );
+}
+
+class $$PublicProductsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PublicProductsTable,
+          PublicProduct,
+          $$PublicProductsTableFilterComposer,
+          $$PublicProductsTableOrderingComposer,
+          $$PublicProductsTableAnnotationComposer,
+          $$PublicProductsTableCreateCompanionBuilder,
+          $$PublicProductsTableUpdateCompanionBuilder,
+          (
+            PublicProduct,
+            BaseReferences<_$AppDatabase, $PublicProductsTable, PublicProduct>,
+          ),
+          PublicProduct,
+          PrefetchHooks Function()
+        > {
+  $$PublicProductsTableTableManager(
+    _$AppDatabase db,
+    $PublicProductsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PublicProductsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PublicProductsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PublicProductsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> barcode = const Value.absent(),
+                Value<String?> barcodeType = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> shortDescription = const Value.absent(),
+                Value<String?> photoUrl = const Value.absent(),
+                Value<String?> brand = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<String?> manufacturer = const Value.absent(),
+                Value<String?> defaultUnit = const Value.absent(),
+                Value<double?> netSize = const Value.absent(),
+                Value<String?> netUnit = const Value.absent(),
+                Value<String?> packaging = const Value.absent(),
+                Value<String?> variant = const Value.absent(),
+                Value<String?> countryOfOrigin = const Value.absent(),
+                Value<String?> keywords = const Value.absent(),
+                Value<bool> verified = const Value.absent(),
+                Value<String?> source = const Value.absent(),
+                Value<int?> updatedAt = const Value.absent(),
+                Value<bool> thumbPresent = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PublicProductsCompanion(
+                id: id,
+                barcode: barcode,
+                barcodeType: barcodeType,
+                name: name,
+                shortDescription: shortDescription,
+                photoUrl: photoUrl,
+                brand: brand,
+                category: category,
+                manufacturer: manufacturer,
+                defaultUnit: defaultUnit,
+                netSize: netSize,
+                netUnit: netUnit,
+                packaging: packaging,
+                variant: variant,
+                countryOfOrigin: countryOfOrigin,
+                keywords: keywords,
+                verified: verified,
+                source: source,
+                updatedAt: updatedAt,
+                thumbPresent: thumbPresent,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String barcode,
+                Value<String?> barcodeType = const Value.absent(),
+                required String name,
+                Value<String?> shortDescription = const Value.absent(),
+                Value<String?> photoUrl = const Value.absent(),
+                Value<String?> brand = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<String?> manufacturer = const Value.absent(),
+                Value<String?> defaultUnit = const Value.absent(),
+                Value<double?> netSize = const Value.absent(),
+                Value<String?> netUnit = const Value.absent(),
+                Value<String?> packaging = const Value.absent(),
+                Value<String?> variant = const Value.absent(),
+                Value<String?> countryOfOrigin = const Value.absent(),
+                Value<String?> keywords = const Value.absent(),
+                Value<bool> verified = const Value.absent(),
+                Value<String?> source = const Value.absent(),
+                Value<int?> updatedAt = const Value.absent(),
+                Value<bool> thumbPresent = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PublicProductsCompanion.insert(
+                id: id,
+                barcode: barcode,
+                barcodeType: barcodeType,
+                name: name,
+                shortDescription: shortDescription,
+                photoUrl: photoUrl,
+                brand: brand,
+                category: category,
+                manufacturer: manufacturer,
+                defaultUnit: defaultUnit,
+                netSize: netSize,
+                netUnit: netUnit,
+                packaging: packaging,
+                variant: variant,
+                countryOfOrigin: countryOfOrigin,
+                keywords: keywords,
+                verified: verified,
+                source: source,
+                updatedAt: updatedAt,
+                thumbPresent: thumbPresent,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PublicProductsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PublicProductsTable,
+      PublicProduct,
+      $$PublicProductsTableFilterComposer,
+      $$PublicProductsTableOrderingComposer,
+      $$PublicProductsTableAnnotationComposer,
+      $$PublicProductsTableCreateCompanionBuilder,
+      $$PublicProductsTableUpdateCompanionBuilder,
+      (
+        PublicProduct,
+        BaseReferences<_$AppDatabase, $PublicProductsTable, PublicProduct>,
+      ),
+      PublicProduct,
+      PrefetchHooks Function()
+    >;
+typedef $$PublicProductThumbsTableCreateCompanionBuilder =
+    PublicProductThumbsCompanion Function({
+      required String barcode,
+      required Uint8List thumb,
+      Value<int> rowid,
+    });
+typedef $$PublicProductThumbsTableUpdateCompanionBuilder =
+    PublicProductThumbsCompanion Function({
+      Value<String> barcode,
+      Value<Uint8List> thumb,
+      Value<int> rowid,
+    });
+
+class $$PublicProductThumbsTableFilterComposer
+    extends Composer<_$AppDatabase, $PublicProductThumbsTable> {
+  $$PublicProductThumbsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get thumb => $composableBuilder(
+    column: $table.thumb,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PublicProductThumbsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PublicProductThumbsTable> {
+  $$PublicProductThumbsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get thumb => $composableBuilder(
+    column: $table.thumb,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PublicProductThumbsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PublicProductThumbsTable> {
+  $$PublicProductThumbsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get barcode =>
+      $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get thumb =>
+      $composableBuilder(column: $table.thumb, builder: (column) => column);
+}
+
+class $$PublicProductThumbsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PublicProductThumbsTable,
+          PublicProductThumb,
+          $$PublicProductThumbsTableFilterComposer,
+          $$PublicProductThumbsTableOrderingComposer,
+          $$PublicProductThumbsTableAnnotationComposer,
+          $$PublicProductThumbsTableCreateCompanionBuilder,
+          $$PublicProductThumbsTableUpdateCompanionBuilder,
+          (
+            PublicProductThumb,
+            BaseReferences<
+              _$AppDatabase,
+              $PublicProductThumbsTable,
+              PublicProductThumb
+            >,
+          ),
+          PublicProductThumb,
+          PrefetchHooks Function()
+        > {
+  $$PublicProductThumbsTableTableManager(
+    _$AppDatabase db,
+    $PublicProductThumbsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PublicProductThumbsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PublicProductThumbsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PublicProductThumbsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> barcode = const Value.absent(),
+                Value<Uint8List> thumb = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PublicProductThumbsCompanion(
+                barcode: barcode,
+                thumb: thumb,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String barcode,
+                required Uint8List thumb,
+                Value<int> rowid = const Value.absent(),
+              }) => PublicProductThumbsCompanion.insert(
+                barcode: barcode,
+                thumb: thumb,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PublicProductThumbsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PublicProductThumbsTable,
+      PublicProductThumb,
+      $$PublicProductThumbsTableFilterComposer,
+      $$PublicProductThumbsTableOrderingComposer,
+      $$PublicProductThumbsTableAnnotationComposer,
+      $$PublicProductThumbsTableCreateCompanionBuilder,
+      $$PublicProductThumbsTableUpdateCompanionBuilder,
+      (
+        PublicProductThumb,
+        BaseReferences<
+          _$AppDatabase,
+          $PublicProductThumbsTable,
+          PublicProductThumb
+        >,
+      ),
+      PublicProductThumb,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -29042,4 +31147,8 @@ class $AppDatabaseManager {
       $$HeldSalesTableTableManager(_db, _db.heldSales);
   $$HeldSaleItemsTableTableManager get heldSaleItems =>
       $$HeldSaleItemsTableTableManager(_db, _db.heldSaleItems);
+  $$PublicProductsTableTableManager get publicProducts =>
+      $$PublicProductsTableTableManager(_db, _db.publicProducts);
+  $$PublicProductThumbsTableTableManager get publicProductThumbs =>
+      $$PublicProductThumbsTableTableManager(_db, _db.publicProductThumbs);
 }

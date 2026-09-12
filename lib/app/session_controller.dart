@@ -3,6 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../core/database/database_provider.dart';
 import '../features/auth/application/auth_providers.dart';
 import '../features/onboarding/application/onboarding_providers.dart';
+import '../features/products/application/catalog_providers.dart';
+import '../features/products/data/catalog_seed_bootstrap.dart';
 import '../features/users/data/user_repository.dart';
 import '../features/users/domain/current_user.dart';
 import '../features/wallets/application/wallet_providers.dart';
@@ -21,6 +23,9 @@ class SessionState {
   /// Sudah ada minimal satu user aktif (owner/karyawan) di DB.
   final bool hasUsers;
 
+  /// Sedang meng-import seed katalog (first-run) → splash tampilkan pesan khusus.
+  final bool seedingCatalog;
+
   /// User yang login pada sesi ini (null = belum login).
   final CurrentUser? currentUser;
 
@@ -28,6 +33,7 @@ class SessionState {
     this.ready = false,
     this.hasBusiness = false,
     this.hasUsers = false,
+    this.seedingCatalog = false,
     this.currentUser,
   });
 
@@ -37,6 +43,7 @@ class SessionState {
     bool? ready,
     bool? hasBusiness,
     bool? hasUsers,
+    bool? seedingCatalog,
     CurrentUser? currentUser,
     bool clearCurrentUser = false,
   }) {
@@ -44,6 +51,7 @@ class SessionState {
       ready: ready ?? this.ready,
       hasBusiness: hasBusiness ?? this.hasBusiness,
       hasUsers: hasUsers ?? this.hasUsers,
+      seedingCatalog: seedingCatalog ?? this.seedingCatalog,
       currentUser: clearCurrentUser ? null : (currentUser ?? this.currentUser),
     );
   }
@@ -79,10 +87,24 @@ class SessionController extends _$SessionController {
       await ref.read(walletRepositoryProvider).ensureDefaultCashWallet();
     }
 
+    // Seed katalog publik (spec 13) — sekali & idempoten, di boot pertama.
+    // Tampilkan splash "Menyiapkan katalog…" selama import berjalan. Kegagalan
+    // seed tidak memblokir boot (katalog bisa disusul via delta /v1/catalog).
+    final importer = ref.read(catalogSeedImporterProvider);
+    if (!await importer.isImported()) {
+      state = state.copyWith(seedingCatalog: true);
+      try {
+        await runCatalogSeedImport(importer);
+      } catch (_) {
+        // Diabaikan: lanjut boot walau seed gagal.
+      }
+    }
+
     state = state.copyWith(
       ready: true,
       hasBusiness: business != null,
       hasUsers: hasUsers,
+      seedingCatalog: false,
     );
   }
 

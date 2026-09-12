@@ -232,7 +232,7 @@ final class CartControllerProvider
   }
 }
 
-String _$cartControllerHash() => r'c1f9e5d5dafb9a685dcce02aff46bafd7c61c7cb';
+String _$cartControllerHash() => r'81a3eb9b6aa6cc35beec97ddb7097f2763fceef0';
 
 /// Keranjang kasir aktif. Sumber kebenaran item + diskon transaksi + pelanggan.
 

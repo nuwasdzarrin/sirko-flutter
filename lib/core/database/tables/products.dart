@@ -30,4 +30,9 @@ class Products extends Table with StandardColumns {
 
   BoolColumn get hasVariants => boolean().withDefault(const Constant(false))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+
+  /// Penanda "perlu harga": produk dibuat otomatis dari Stok Masuk (scan) dengan
+  /// harga jual belum diisi. Selama `true`, produk **tidak** boleh masuk keranjang
+  /// kasir (cegah jual Rp0). Diturunkan jadi `false` saat harga jual > 0 disimpan.
+  BoolColumn get needsPrice => boolean().withDefault(const Constant(false))();
 }

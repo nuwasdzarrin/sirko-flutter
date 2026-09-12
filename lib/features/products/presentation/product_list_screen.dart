@@ -9,6 +9,7 @@ import 'inventory_alerts_screen.dart';
 import 'product_form_screen.dart';
 import 'product_recycle_bin_screen.dart';
 import 'stock_flow_screen.dart';
+import 'stock_in_screen.dart';
 import 'variant_management_screen.dart';
 import 'widgets/product_tile.dart';
 import 'widgets/stock_adjustment_dialog.dart';
@@ -72,6 +73,10 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         MaterialPageRoute(builder: (_) => const StockFlowScreen()),
       );
 
+  void _openStockIn() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const StockInScreen()),
+      );
+
   Future<void> _delete(ProductListItem item) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -129,6 +134,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             ),
             onOpenAlerts: _openAlerts,
             onOpenStockFlow: _openStockFlow,
+            onOpenStockIn: _openStockIn,
           ),
           _CategoryFilterBar(
             selectedId: query.categoryId,
@@ -179,6 +185,7 @@ class _Toolbar extends StatelessWidget {
   final VoidCallback onOpenBin;
   final VoidCallback onOpenAlerts;
   final VoidCallback onOpenStockFlow;
+  final VoidCallback onOpenStockIn;
 
   const _Toolbar({
     required this.searchController,
@@ -186,6 +193,7 @@ class _Toolbar extends StatelessWidget {
     required this.onOpenBin,
     required this.onOpenAlerts,
     required this.onOpenStockFlow,
+    required this.onOpenStockIn,
   });
 
   @override
@@ -218,15 +226,25 @@ class _Toolbar extends StatelessWidget {
             ),
           ),
           IconButton(
+            key: const ValueKey('stock_in_button'),
+            tooltip: 'Stok Masuk (scan)',
+            icon: const Icon(Icons.move_to_inbox_outlined),
+            onPressed: onOpenStockIn,
+          ),
+          IconButton(
             tooltip: 'Peringatan stok',
             icon: const Icon(Icons.warning_amber_outlined),
             onPressed: onOpenAlerts,
           ),
           PopupMenuButton<String>(
             tooltip: 'Menu inventory',
-            onSelected: (v) =>
-                v == 'flow' ? onOpenStockFlow() : onOpenBin(),
+            onSelected: (v) => switch (v) {
+              'flow' => onOpenStockFlow(),
+              'stockin' => onOpenStockIn(),
+              _ => onOpenBin(),
+            },
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'stockin', child: Text('Stok Masuk (scan)')),
               PopupMenuItem(value: 'flow', child: Text('Arus stok')),
               PopupMenuItem(value: 'bin', child: Text('Recycle Bin')),
             ],

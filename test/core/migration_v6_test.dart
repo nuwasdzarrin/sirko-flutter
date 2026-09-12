@@ -36,6 +36,30 @@ CREATE TABLE transactions (
 );
 ''';
 
+/// Skema `products` pra-v10 (tanpa `needs_price`). DB nyata v5+ selalu punya
+/// tabel ini — migrasi v10 meng-`addColumn` `needs_price` ke sini.
+const _createProductsPreV10 = '''
+CREATE TABLE products (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  barcode TEXT,
+  category_id TEXT,
+  unit_id TEXT,
+  cost_price INTEGER NOT NULL DEFAULT 0,
+  selling_price INTEGER NOT NULL DEFAULT 0,
+  stock INTEGER NOT NULL DEFAULT 0,
+  min_stock INTEGER,
+  expiry_date INTEGER,
+  image_path TEXT,
+  has_variants INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER,
+  is_dirty INTEGER NOT NULL DEFAULT 1
+);
+''';
+
 void main() {
   Future<AppDatabase> openOver(Database raw) async {
     final db = AppDatabase(NativeDatabase.opened(raw));
@@ -47,6 +71,7 @@ void main() {
       () async {
     final raw = sqlite3.openInMemory();
     raw.execute(_createTransactionsV5);
+    raw.execute(_createProductsPreV10); // DB v5 nyata punya products.
     // Transaksi v5 yang sudah ada (belum punya bill_id).
     raw.execute(
       "INSERT INTO transactions (id, invoice_no, datetime, grand_total, "
@@ -100,7 +125,7 @@ void main() {
     expect(newTx.billId, 'b1');
     expect((await db.select(db.users).get()).single.role, AppRole.owner);
     expect((await db.select(db.bills).get()).single.status, BillStatus.open);
-    expect(db.schemaVersion, 9);
+    expect(db.schemaVersion, 10);
   });
 
   test('instalasi baru (onCreate) langsung v6 — semua tabel ada', () async {
@@ -108,6 +133,6 @@ void main() {
     addTearDown(db.close);
     expect((await db.select(db.users).get()).isEmpty, isTrue);
     expect((await db.select(db.bills).get()).isEmpty, isTrue);
-    expect(db.schemaVersion, 9);
+    expect(db.schemaVersion, 10);
   });
 }

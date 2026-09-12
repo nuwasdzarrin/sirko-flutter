@@ -48,6 +48,10 @@ class ProductTile extends StatelessWidget {
                       color: theme.colorScheme.primary)),
               const SizedBox(width: 8),
               _StockBadge(item: item),
+              if (item.needsPrice) ...[
+                const SizedBox(width: 8),
+                _NeedsPriceBadge(),
+              ],
             ],
           ),
         ],
@@ -85,6 +89,25 @@ class _Thumbnail extends StatelessWidget {
           ? null
           : Icon(Icons.inventory_2_outlined,
               color: theme.colorScheme.onSurfaceVariant),
+    );
+  }
+}
+
+class _NeedsPriceBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.error.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        'Perlu harga',
+        style: theme.textTheme.labelSmall
+            ?.copyWith(color: theme.colorScheme.error),
+      ),
     );
   }
 }
