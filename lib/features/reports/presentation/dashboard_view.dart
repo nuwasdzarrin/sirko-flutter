@@ -73,7 +73,7 @@ class _DashboardBody extends StatelessWidget {
                 subtitle: '${b.sales.transactionCount} transaksi',
               ),
               MetricCard(
-                label: 'Laba (§9)',
+                label: 'Laba',
                 value: Money(b.profit.grossProfit).format(),
                 icon: Icons.trending_up_outlined,
                 accent: Colors.green.shade700,
@@ -100,14 +100,14 @@ class _DashboardBody extends StatelessWidget {
 
         _sectionHeader(context, 'Omzet Harian'),
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 8, 12, 0),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: RevenueLineChart(points: b.dailyRevenue),
         ),
         const SizedBox(height: 16),
 
         _sectionHeader(context, 'Produk Terlaris'),
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: TopProductsBarChart(products: topProducts),
         ),
         const SizedBox(height: 16),

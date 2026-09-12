@@ -69,7 +69,7 @@ class ReportExportService {
     _kvMoney(s, 'Rata-rata per transaksi', b.sales.averageTicket);
     s.appendRow([]);
 
-    s.appendRow([TextCellValue('LABA (§9)')]);
+    s.appendRow([TextCellValue('LABA')]);
     _kvMoney(s, 'Pendapatan (Σ line total)', b.profit.revenue);
     _kvMoney(s, 'HPP (Σ modal·qty)', b.profit.cost);
     _kvMoney(s, 'Laba kotor', b.profit.grossProfit);
@@ -255,7 +255,7 @@ class ReportExportService {
   pw.Widget _pdfSalesProfit(ReportBundle b) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Penjualan & Laba (§9)'),
+          _sectionTitle('Penjualan & Laba'),
           _kvTable([
             ['Jumlah transaksi', '${b.sales.transactionCount}'],
             ['Unit terjual', '${b.sales.itemCount}'],

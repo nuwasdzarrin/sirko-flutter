@@ -97,9 +97,9 @@ void main() {
 
         // Kurang bayar -> tombol "Selesaikan" HILANG (tak boleh lunas).
         expect(find.text('Selesaikan & Cetak Struk'), findsNothing);
-        // Muncul info kurang + jalur hutang (butuh pilih pelanggan dulu).
+        // Muncul info kurang + tombol Kas Bon (utang atas nama pelanggan).
         expect(find.textContaining('Kurang'), findsWidgets);
-        expect(find.text('Pilih Pelanggan'), findsOneWidget);
+        expect(find.textContaining('Kas Bon'), findsOneWidget);
 
         await disposeTree(tester);
       });

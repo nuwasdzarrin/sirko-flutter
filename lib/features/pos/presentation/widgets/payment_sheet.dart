@@ -78,13 +78,17 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     });
   }
 
-  Future<void> _submit({bool allowCredit = false}) async {
+  Future<void> _submit({bool allowCredit = false}) =>
+      _submitWith(_entries.where((e) => e.amount > 0).toList(),
+          allowCredit: allowCredit);
+
+  Future<void> _submitWith(List<PaymentEntry> payments,
+      {bool allowCredit = false}) async {
     setState(() => _submitting = true);
     try {
       final result = await ref
           .read(checkoutControllerProvider.notifier)
-          .submit(_entries.where((e) => e.amount > 0).toList(),
-              allowCredit: allowCredit);
+          .submit(payments, allowCredit: allowCredit);
       if (mounted) Navigator.of(context).pop(result);
     } catch (e) {
       if (mounted) {
@@ -96,6 +100,25 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
         ));
       }
     }
+  }
+
+  /// **Kas Bon**: sisa (atau seluruh) total jadi utang **atas nama pelanggan**.
+  /// Pastikan pelanggan terpilih (pilih / tambah cepat), lalu commit kredit.
+  /// Pembayaran yang sudah diisi dianggap DP; bila belum diubah (masih "uang
+  /// pas" penuh), seluruh total jadi bon.
+  Future<void> _kasBon() async {
+    var customerId = ref.read(cartControllerProvider).customerId;
+    if (customerId == null) {
+      final picked = await showCustomerPicker(context);
+      if (picked == null || picked.cleared || picked.customerId == null) return;
+      customerId = picked.customerId;
+      ref.read(cartControllerProvider.notifier).setCustomer(customerId);
+    }
+    final entered = _entries.where((e) => e.amount > 0).toList();
+    final paidSum = entered.fold<int>(0, (s, e) => s + e.amount);
+    final payments =
+        paidSum >= widget.grandTotal ? <PaymentEntry>[] : entered;
+    await _submitWith(payments, allowCredit: true);
   }
 
   @override
@@ -179,7 +202,8 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     );
   }
 
-  /// Tombol aksi: lunas → selesaikan; kurang → simpan hutang (butuh pelanggan).
+  /// Tombol aksi: lunas → Selesaikan & Cetak. Kas Bon (utang atas nama
+  /// pelanggan) selalu tersedia — jadi tombol utama saat pembayaran kurang.
   Widget _actionArea(PaymentResult result) {
     final theme = Theme.of(context);
     if (_submitting) {
@@ -191,59 +215,53 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
             child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
-    if (result.isPaid) {
-      return FilledButton(
-        onPressed: _submit,
-        style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14)),
-        child: const Text('Selesaikan & Cetak Struk'),
-      );
-    }
-    // Kurang bayar → jalur kredit/partial (§7). Wajib pelanggan.
+
     final customerId = ref.watch(cartControllerProvider).customerId;
     final customer = customerId == null
         ? null
         : ref.watch(customerByIdProvider(customerId)).asData?.value;
-    if (customerId == null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Sisa ${Money(result.remaining).format()} akan jadi hutang. '
-            'Pilih pelanggan dulu.',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.error),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final picked = await showCustomerPicker(context);
-              if (picked != null && !picked.cleared) {
-                ref
-                    .read(cartControllerProvider.notifier)
-                    .setCustomer(picked.customerId);
-              }
-            },
-            icon: const Icon(Icons.person_add_alt_1),
-            label: const Text('Pilih Pelanggan'),
-          ),
-        ],
-      );
-    }
+
+    // Nominal yang akan jadi bon: sisa kurang bayar, atau seluruh total bila
+    // pembayaran belum diubah (masih "uang pas" penuh).
+    final bonAmount = result.remaining > 0 ? result.remaining : widget.grandTotal;
+    final kasBonLabel = result.isPaid
+        ? 'Kas Bon (utang pelanggan)'
+        : 'Kas Bon — ${Money(bonAmount).format()}';
+    final kasBonBtn = result.isPaid
+        ? OutlinedButton.icon(
+            onPressed: _kasBon,
+            icon: const Icon(Icons.receipt_long_outlined),
+            label: Text(kasBonLabel),
+            style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14)),
+          )
+        : FilledButton.icon(
+            onPressed: _kasBon,
+            icon: const Icon(Icons.receipt_long_outlined),
+            label: Text(kasBonLabel),
+            style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14)),
+          );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Pelanggan: ${customer?.name ?? '—'}',
-            style: theme.textTheme.bodySmall),
-        const SizedBox(height: 8),
-        FilledButton.tonal(
-          onPressed: () => _submit(allowCredit: true),
-          style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14)),
-          child: Text(result.paidTotal > 0
-              ? 'Simpan Sebagian — Hutang ${Money(result.remaining).format()}'
-              : 'Simpan sebagai Hutang ${Money(result.remaining).format()}'),
-        ),
+        if (result.isPaid) ...[
+          FilledButton(
+            onPressed: _submit,
+            style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14)),
+            child: const Text('Selesaikan & Cetak Struk'),
+          ),
+          const SizedBox(height: 8),
+        ],
+        kasBonBtn,
+        if (customer != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text('Kas Bon atas nama: ${customer.name}',
+                textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
+          ),
       ],
     );
   }

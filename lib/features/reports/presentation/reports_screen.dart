@@ -174,7 +174,7 @@ class _ProfitTab extends StatelessWidget {
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Text('Laba dihitung dari costPriceSnapshot per item (§9).',
+          child: Text('Laba dihitung dari harga modal tersimpan per item.',
               style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
         ),
         _kvTile('Pendapatan (Σ line total)', Money(p.revenue).format()),

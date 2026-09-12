@@ -197,21 +197,33 @@ final class PosConfigProvider
 String _$posConfigHash() => r'f0d03f94757c97fe217de019f67a52fb95597732';
 
 /// Keranjang kasir aktif. Sumber kebenaran item + diskon transaksi + pelanggan.
+///
+/// `keepAlive: true` → keranjang **tidak** hilang saat pindah halaman lalu balik
+/// (cegah kehilangan barang karena tak sengaja navigasi). Hanya dikosongkan saat
+/// checkout sukses, Tunda (hold), atau tombol Kosongkan.
 
 @ProviderFor(CartController)
 const cartControllerProvider = CartControllerProvider._();
 
 /// Keranjang kasir aktif. Sumber kebenaran item + diskon transaksi + pelanggan.
+///
+/// `keepAlive: true` → keranjang **tidak** hilang saat pindah halaman lalu balik
+/// (cegah kehilangan barang karena tak sengaja navigasi). Hanya dikosongkan saat
+/// checkout sukses, Tunda (hold), atau tombol Kosongkan.
 final class CartControllerProvider
     extends $NotifierProvider<CartController, CartState> {
   /// Keranjang kasir aktif. Sumber kebenaran item + diskon transaksi + pelanggan.
+  ///
+  /// `keepAlive: true` → keranjang **tidak** hilang saat pindah halaman lalu balik
+  /// (cegah kehilangan barang karena tak sengaja navigasi). Hanya dikosongkan saat
+  /// checkout sukses, Tunda (hold), atau tombol Kosongkan.
   const CartControllerProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
         name: r'cartControllerProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -232,9 +244,13 @@ final class CartControllerProvider
   }
 }
 
-String _$cartControllerHash() => r'81a3eb9b6aa6cc35beec97ddb7097f2763fceef0';
+String _$cartControllerHash() => r'91bdcdba1fe526e770a7963c853ffd27973e220f';
 
 /// Keranjang kasir aktif. Sumber kebenaran item + diskon transaksi + pelanggan.
+///
+/// `keepAlive: true` → keranjang **tidak** hilang saat pindah halaman lalu balik
+/// (cegah kehilangan barang karena tak sengaja navigasi). Hanya dikosongkan saat
+/// checkout sukses, Tunda (hold), atau tombol Kosongkan.
 
 abstract class _$CartController extends $Notifier<CartState> {
   CartState build();

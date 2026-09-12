@@ -44,7 +44,11 @@ Future<PosConfig> posConfig(Ref ref) async {
 }
 
 /// Keranjang kasir aktif. Sumber kebenaran item + diskon transaksi + pelanggan.
-@riverpod
+///
+/// `keepAlive: true` → keranjang **tidak** hilang saat pindah halaman lalu balik
+/// (cegah kehilangan barang karena tak sengaja navigasi). Hanya dikosongkan saat
+/// checkout sukses, Tunda (hold), atau tombol Kosongkan.
+@Riverpod(keepAlive: true)
 class CartController extends _$CartController {
   @override
   CartState build() => const CartState();

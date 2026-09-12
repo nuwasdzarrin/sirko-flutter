@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/money/money.dart';
 import '../../application/customer_providers.dart';
-import '../customer_form_screen.dart';
 
 /// Hasil pemilihan pelanggan dari [showCustomerPicker].
 class CustomerPickResult {
@@ -44,6 +43,62 @@ class _CustomerPickerSheetState extends ConsumerState<_CustomerPickerSheet> {
     super.dispose();
   }
 
+  /// Tambah pelanggan **cepat** (cukup nama, telepon opsional) tanpa buka form
+  /// penuh — cocok untuk Kas Bon di kasir. Setelah dibuat, langsung dipilih.
+  Future<void> _quickAdd() async {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Pelanggan baru'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Nama',
+                hintText: 'mis. Bu Sri',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (v) => Navigator.of(dialogCtx).pop(v.trim()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'No. HP (opsional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('Batal')),
+          FilledButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(nameCtrl.text.trim()),
+              child: const Text('Simpan')),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty) return;
+    final phone = phoneCtrl.text.trim();
+    final id = await ref.read(customerRepositoryProvider).create(
+          name: name,
+          phone: phone.isEmpty ? null : phone,
+        );
+    if (mounted) {
+      Navigator.of(context)
+          .pop(CustomerPickResult(cleared: false, customerId: id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -67,14 +122,7 @@ class _CustomerPickerSheetState extends ConsumerState<_CustomerPickerSheet> {
                   Text('Pilih Pelanggan', style: theme.textTheme.titleLarge),
                   const Spacer(),
                   TextButton.icon(
-                    onPressed: () async {
-                      final ok = await Navigator.of(context).push<Object?>(
-                        MaterialPageRoute(
-                            builder: (_) => const CustomerFormScreen()),
-                      );
-                      // Setelah tambah, daftar akan reaktif; biarkan pengguna pilih.
-                      if (ok == true) {}
-                    },
+                    onPressed: _quickAdd,
                     icon: const Icon(Icons.person_add_alt_1),
                     label: const Text('Baru'),
                   ),

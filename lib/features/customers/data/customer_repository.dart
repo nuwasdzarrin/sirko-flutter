@@ -26,6 +26,15 @@ class CustomerRepository {
     return statement.watch();
   }
 
+  /// Pelanggan **berpiutang** (kas bon aktif): `debtBalance > 0`, non-terhapus,
+  /// urut nominal terbesar dulu. Untuk layar "Daftar Kas Bon".
+  Stream<List<Customer>> watchDebtors() {
+    return (_db.select(_db.customers)
+          ..where((t) => t.deletedAt.isNull() & t.debtBalance.isBiggerThanValue(0))
+          ..orderBy([(t) => OrderingTerm.desc(t.debtBalance)]))
+        .watch();
+  }
+
   /// Satu pelanggan **reaktif** (untuk halaman detail; ikut update `debtBalance`).
   Stream<Customer?> watchById(String id) {
     return (_db.select(_db.customers)..where((t) => t.id.equals(id)))

@@ -42,6 +42,12 @@ final customerListProvider = StreamProvider.autoDispose<List<Customer>>((ref) {
   return ref.watch(customerRepositoryProvider).watchCustomers(search: search);
 });
 
+/// Pelanggan berpiutang (kas bon aktif) — untuk layar "Daftar Kas Bon".
+/// Manual (tipe baris Drift [Customer]).
+final debtorListProvider = StreamProvider.autoDispose<List<Customer>>((ref) {
+  return ref.watch(customerRepositoryProvider).watchDebtors();
+});
+
 /// Satu pelanggan reaktif (halaman detail — ikut update saldo hutang).
 final customerByIdProvider =
     StreamProvider.autoDispose.family<Customer?, String>((ref, id) {
