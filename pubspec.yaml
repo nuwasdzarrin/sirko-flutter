@@ -2,7 +2,7 @@ name: sirko
 description: "Sirko — POS/kasir digital untuk ritel (kelontong, grosir, supermarket). Local-first."
 publish_to: 'none'
 
-version: 1.1.0+7
+version: 1.2.0+9
 
 environment:
   sdk: ^3.8.1
@@ -42,6 +42,9 @@ dependencies:
 
   # Info versi app (tampil di Beranda/Lainnya untuk verifikasi build)
   package_info_plus: ^8.1.1
+
+  # HTTP client untuk integrasi cloud (Katalog Umum online, auth, sync)
+  http: ^1.2.2
 
   # Preferensi ringan
   shared_preferences: ^2.3.0

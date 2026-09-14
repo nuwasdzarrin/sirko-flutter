@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_version.dart';
 import '../../../../app/constants.dart';
 import '../../../../app/session_controller.dart';
+import '../../../catalog/presentation/katalog_umum_screen.dart';
 import '../../../users/application/user_providers.dart';
 
 /// Halaman "Lainnya" (tab terakhir): hub fitur sekunder berupa grid tombol
@@ -53,7 +54,16 @@ class MorePage extends ConsumerWidget {
               _MoreTile(
                 icon: d.icon,
                 label: d.label,
-                onTap: () => context.go(d.path),
+                onTap: () {
+                  // Katalog Umum punya AppBar/Tab sendiri → dibuka via push.
+                  if (d.path == Routes.catalog) {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const KatalogUmumScreen(),
+                    ));
+                  } else {
+                    context.go(d.path);
+                  }
+                },
               ),
           ],
         ),

@@ -33,6 +33,7 @@ class Routes {
   static const String users = '/users';
   static const String settings = '/settings';
   static const String more = '/more'; // tab "Lainnya" (hub fitur sekunder)
+  static const String catalog = '/catalog'; // Katalog Umum (dibuka via push)
 
   /// Tab utama **bottom navbar** (urutan = urutan tab). Tab "Lainnya" (→[more])
   /// ditambahkan terpisah sebagai tab terakhir yang selalu tampil.
@@ -73,7 +74,14 @@ class Routes {
   );
 
   /// Fitur sekunder → grid di halaman "Lainnya". Difilter izin (§13).
+  /// Catatan: [catalog] dibuka via push (punya AppBar/Tab sendiri), bukan
+  /// `context.go` — ditangani khusus di MorePage.
   static const List<NavDestinationItem> secondaryDestinations = [
+    NavDestinationItem(
+        label: 'Katalog Umum',
+        icon: Icons.menu_book_outlined,
+        path: catalog,
+        permission: Permission.productManagement),
     NavDestinationItem(
         label: 'Pelanggan',
         icon: Icons.people_alt_outlined,
