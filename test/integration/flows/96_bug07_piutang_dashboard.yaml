@@ -6,8 +6,11 @@ tags: [bug]
 ---
 - startRecording: 96_bug07_piutang_dashboard
 - runFlow: ../subflows/login_pemilik.yaml
+# Periode 7 hari (bukan Hari ini) agar tahan run yang melewati tengah malam.
+- tapOn: "7 hari"
 - takeScreenshot: 96_beranda_piutang
 - assertVisible: "Piutang \\(kredit\\) Rp10.000.*"
 - tapOn: "Laporan.*Tab 4.*"
+- tapOn: "7 hari"
 - assertVisible: "Belum tertagih \\(piutang\\) Rp10.000"
 - stopRecording

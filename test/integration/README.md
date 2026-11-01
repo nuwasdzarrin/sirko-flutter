@@ -94,6 +94,10 @@ test/integration/
   `produk_scan_barcode`, `produk_kelola_kategori`, `produk_kelola_satuan`, `karyawan_simpan`.
   Field nominal split payment berlabel `Nominal <metode>`; tombol qty keranjang `Tambah qty`/`Kurangi qty`.
   Tombol baru tanpa teks → bungkus `TestId` agar tetap bisa diotomasi.
+- **Laporan** di-assert dengan periode **"7 hari"** (bukan "Hari ini") agar run yang melewati tengah malam tetap valid.
+- **Runner** melakukan preflight: reset sisa driver Maestro + warm-up (≤4×), timeout start driver 120 s
+  (`MAESTRO_DRIVER_STARTUP_TIMEOUT`), dan mengulang flow yang gagal **hanya** karena driver belum siap.
+- **APK uji harus segar:** hapus `C:\fbuild\sirko` sebelum build (Gradle bisa memaketkan `app.so` lama).
 - **Keyboard layar** wajib aktif (runner set `show_ime_with_hard_keyboard=1`); tanpa itu
   `hideKeyboard` = Back. `isi_field` memverifikasi hasil ketikan (Gboard kadang menyisipkan spasi ganda).
 - **Menu ⋮ pada tile daftar**: `tapOn: { childOf: "<teks tile>", index: 1 }` (`subflows/menu_tile.yaml`).

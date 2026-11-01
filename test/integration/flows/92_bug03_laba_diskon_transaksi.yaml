@@ -7,6 +7,8 @@ tags: [bug]
 - startRecording: 92_bug03_laba_diskon_transaksi
 - runFlow: ../subflows/login_pemilik.yaml
 - tapOn: "Laporan.*Tab 4.*"
+# Periode 7 hari (bukan Hari ini) agar tahan run yang melewati tengah malam.
+- tapOn: "7 hari"
 - tapOn: "Laba.*Tab 2.*"
 - takeScreenshot: 92_laporan_laba
 - assertVisible: "Laba kotor Rp8.000"

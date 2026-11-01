@@ -168,6 +168,8 @@ tags: [rbac, shift]
 - runFlow:
     file: ../subflows/buka_menu_lainnya.yaml
     env: { MENU: "Ringkasan Karyawan" }
+# Periode 7 hari (bukan Hari ini) agar tahan run yang melewati tengah malam.
+- tapOn: "7 hari"
 - extendedWaitUntil:
     visible: "R Rina Kasir 1 transaksi . Laba Rp2.000 Rp7.000"
     timeout: 10000

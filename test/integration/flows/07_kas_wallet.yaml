@@ -118,6 +118,8 @@ tags: [wallet]
 - extendedWaitUntil:
     visible: "Arus Kas per Wallet"
     timeout: 10000
+# Periode 7 hari (bukan Hari ini) agar tahan run yang melewati tengah malam.
+- tapOn: "7 hari"
 - assertVisible: "Total saldo Rp157.000 Arus bersih \\(periode\\) \\+Rp157.000"
 # Kas Utama: masuk 10.500+5.000+10.000+7.333+4.667+50.000; keluar void 10.500 + listrik 20.000
 - assertVisible: "Kas Utama Saldo Rp32.000 Pemasukan \\+Rp87.500 Pengeluaran .Rp30.500 Transfer masuk \\+Rp0 Transfer keluar .Rp25.000 Arus bersih \\+Rp32.000"

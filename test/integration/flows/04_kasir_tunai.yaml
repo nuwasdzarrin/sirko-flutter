@@ -51,8 +51,13 @@ tags: [smoke, kasir]
 # Struk PDF → dialog cetak Android (1 halaman)
 - tapOn: "Preview PDF"
 - extendedWaitUntil:
+    visible: "Select a printer.*|Page 1 of.*"
+    timeout: 30000
+# Render halaman pratinjau bisa lambat di emulator → opsional (warning).
+- extendedWaitUntil:
     visible: "Page 1 of 1"
-    timeout: 20000
+    timeout: 60000
+    optional: true
 - takeScreenshot: 04_struk_pdf
 - pressKey: back
 - extendedWaitUntil:

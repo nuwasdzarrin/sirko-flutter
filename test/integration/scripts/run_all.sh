@@ -23,6 +23,17 @@ fi
 # Maestro jadi tombol Back (menutup dialog / keluar app).
 adb -s "$DEVICE" shell settings put secure show_ime_with_hard_keyboard 1
 
+# Warm-up driver Maestro (setelah cold boot / run yang dihentikan paksa, driver
+# bisa telat start atau "Device server died"). Bersihkan sisa driver, coba ≤4×.
+adb -s "$DEVICE" forward --remove-all
+adb -s "$DEVICE" shell am force-stop dev.mobile.maestro
+adb -s "$DEVICE" shell am force-stop dev.mobile.maestro.test
+for i in 1 2 3 4; do
+  maestro --device "$DEVICE" hierarchy > /dev/null 2>&1 && break
+  echo "Warm-up driver Maestro gagal (percobaan $i), ulangi..." >&2
+  sleep 15
+done
+
 APP_VER=$(adb -s "$DEVICE" shell dumpsys package com.sirko.app | grep -m1 versionName | tr -d ' \r')
 {
   echo "Sirko — Maestro integration run"
@@ -37,13 +48,19 @@ PASS=0; FAIL=0; BUGS=0; FIXED=0
 for f in $FLOWS; do
   base="${f%.yaml}"
   start=$(date +%s)
-  if maestro --device "$DEVICE" test "$f" \
-       --format junit --output "$RUN/junit/$base.xml" \
-       --test-output-dir "$RUN/artifacts/$base" > "$RUN/artifacts/$base.log" 2>&1; then
-    ok=1
-  else
-    ok=0
-  fi
+  ok=0
+  # Ulangi (maks 2×) HANYA bila driver Maestro gagal start — flow belum
+  # menyentuh app, jadi state data aman untuk diulang.
+  for attempt in 1 2 3; do
+    if maestro --device "$DEVICE" test "$f" \
+         --format junit --output "$RUN/junit/$base.xml" \
+         --test-output-dir "$RUN/artifacts/$base" > "$RUN/artifacts/$base.log" 2>&1; then
+      ok=1; break
+    fi
+    grep -q "did not start up in time\|Device server died" "$RUN/artifacts/$base.log" || break
+    echo "  [$base] driver Maestro belum siap, ulangi ($attempt)..." >&2
+    sleep 15
+  done
   # Flow 9x = regresi bug: meng-assert perilaku SEHARUSNYA. Gagal = bug masih ada.
   case "$base" in
     # BUG-01 = race intermiten: lulus belum tentu sudah diperbaiki.

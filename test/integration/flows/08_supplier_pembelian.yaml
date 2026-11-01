@@ -4,8 +4,8 @@
 # Prasyarat: TC-07 (Bank BCA Rp125.000); Gula stok 3 modal 14.000; Aqua stok 50.
 # Hitungan: Gula 20×15.000 + Aqua 24×2.000 = 348.000 − 8.000 = 340.000;
 # dibayar 15.000 → hutang 325.000 → bayar 25.000 → 300.000.
-# Catatan BUG-05: dropdown "Ambil dari kas" di dialog Bayar Hutang supplier
-# kosong, jadi pembayaran hutang di sini memakai "Tanpa kas".
+# Bayar hutang supplier Rp25.000 diambil dari Bank BCA (BUG-05 fixed build 12)
+# → saldo BCA 110.000 → 85.000.
 appId: com.sirko.app
 name: "08 Supplier, kulakan & hutang supplier"
 tags: [pembelian]
@@ -44,34 +44,27 @@ tags: [pembelian]
     timeout: 5000
 - tapOn: "Supplier .opsional.*"
 - tapOn: "CV Sumber Rejeki"
+# Tambah KEDUA barang dulu sebelum mengisi field apa pun: setelah sheet
+# pemilih barang ditutup, Flutter mengembalikan fokus ke field terakhir →
+# ketikan berikutnya bisa masuk ke field yang salah ("Harga beli Rp 24").
 - tapOn: "Tambah"
 - tapOn: "Gula Pasir 1kg Modal Rp14.000 . stok 3"
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Qty", TEXT: "20" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Harga beli", TEXT: "15000" }
-- assertVisible: "Gula Pasir 1kg Subtotal: Rp300.000"
-- runFlow: ../subflows/tutup_keyboard_shell.yaml
-# Keyboard angka kadang tetap terbuka → ketukan pertama "Tambah" hanya
-# melepas fokus. Ulangi bila pemilih barang belum muncul.
 - tapOn: "Tambah"
-- runFlow:
-    when:
-      notVisible: "Aqua 600ml Modal.*"
-    commands:
-      - tapOn: "Tambah"
 - tapOn: "Aqua 600ml Modal.*"
-- runFlow: ../subflows/tutup_keyboard_shell.yaml
-- scrollUntilVisible:
-    element: "Aqua 600ml Subtotal.*"
-    direction: DOWN
+- extendedWaitUntil:
+    visible: "Aqua 600ml Subtotal.*"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field_ke.yaml
+    env: { FIELD: "Qty", INDEX: "0", TEXT: "20" }
+- runFlow:
+    file: ../subflows/isi_field_ke.yaml
+    env: { FIELD: "Harga beli", INDEX: "0", TEXT: "15000" }
+- assertVisible: "Gula Pasir 1kg Subtotal: Rp300.000"
 - runFlow:
     file: ../subflows/isi_field_ke.yaml
     env: { FIELD: "Qty", INDEX: "1", TEXT: "24" }
 - assertVisible: "Aqua 600ml Subtotal: Rp48.000"
-- runFlow: ../subflows/tutup_keyboard_shell.yaml
 - scrollUntilVisible:
     element: "Dibayar sekarang.*"
     direction: DOWN
@@ -134,11 +127,17 @@ tags: [pembelian]
     file: ../subflows/isi_field.yaml
     env: { FIELD: "Nominal .maks.*", TEXT: "25000" }
 - tapOn: "Ambil dari kas.*"
-- takeScreenshot: 08_BUG05_dropdown_kas_kosong
-- tapOn: ". Tanpa kas ."
+- takeScreenshot: 08_dropdown_kas_supplier
+- tapOn: 'Bank BCA \(Rp110.000\)'
 - tapOn: "Bayar"
 - extendedWaitUntil:
     visible: "Hutang usaha kita ke supplier Rp300.000"
     timeout: 10000
 - tapOn: "Kembali"
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Kas / Wallet" }
+- extendedWaitUntil:
+    visible: "Bank BCA Bank Rp85.000"
+    timeout: 10000
 - stopRecording

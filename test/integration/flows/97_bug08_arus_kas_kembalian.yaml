@@ -8,6 +8,8 @@ tags: [bug]
 - startRecording: 97_bug08_arus_kas_kembalian
 - runFlow: ../subflows/login_pemilik.yaml
 - tapOn: "Laporan.*Tab 4.*"
+# Periode 7 hari (bukan Hari ini) agar tahan run yang melewati tengah malam.
+- tapOn: "7 hari"
 - tapOn: "Arus Kas.*Tab 3.*"
 - takeScreenshot: 97_arus_kas
 - assertVisible: "Penjualan . Tunai Rp22.000"
