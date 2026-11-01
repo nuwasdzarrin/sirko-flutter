@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/test_id.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/tables/users.dart';
 import '../../../core/errors/failures.dart';
@@ -119,9 +120,13 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
       appBar: AppBar(
         title: Text(widget.isEdit ? 'Edit Karyawan' : 'Tambah Karyawan'),
         actions: [
-          IconButton(
-            onPressed: _submitting ? null : _submit,
-            icon: const Icon(Icons.check),
+          TestId(
+            'karyawan_simpan',
+            child: IconButton(
+              tooltip: 'Simpan',
+              onPressed: _submitting ? null : _submit,
+              icon: const Icon(Icons.check),
+            ),
           ),
         ],
       ),

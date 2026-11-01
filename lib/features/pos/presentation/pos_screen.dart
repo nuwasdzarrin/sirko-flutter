@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/test_id.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/money/money.dart';
 import '../../products/application/catalog_providers.dart';
@@ -389,16 +390,25 @@ class _ProductArea extends ConsumerWidget {
                   ),
                 ),
               ),
-              IconButton(
-                tooltip: 'Scan barcode',
-                icon: const Icon(Icons.qr_code_scanner),
-                onPressed: onOpenScanner,
+              TestId(
+                'kasir_scan',
+                child: IconButton(
+                  tooltip: 'Scan barcode',
+                  icon: const Icon(Icons.qr_code_scanner),
+                  onPressed: onOpenScanner,
+                ),
               ),
-              _HeldSalesButton(onPressed: onOpenHeldSales),
-              IconButton(
-                tooltip: 'Riwayat transaksi',
-                icon: const Icon(Icons.receipt_long_outlined),
-                onPressed: onOpenHistory,
+              TestId(
+                'kasir_daftar_tunda',
+                child: _HeldSalesButton(onPressed: onOpenHeldSales),
+              ),
+              TestId(
+                'kasir_riwayat',
+                child: IconButton(
+                  tooltip: 'Riwayat transaksi',
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  onPressed: onOpenHistory,
+                ),
               ),
             ],
           ),

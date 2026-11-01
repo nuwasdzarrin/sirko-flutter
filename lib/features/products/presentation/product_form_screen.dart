@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/widgets/test_id.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/date_time_utils.dart';
 import '../application/catalog_providers.dart';
@@ -248,10 +249,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 labelText: 'Barcode (opsional)',
                 prefixIcon: const Icon(Icons.qr_code_2_outlined),
                 border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  tooltip: 'Scan barcode',
-                  icon: const Icon(Icons.qr_code_scanner),
-                  onPressed: _scanBarcode,
+                suffixIcon: TestId(
+                  'produk_scan_barcode',
+                  child: IconButton(
+                    tooltip: 'Scan barcode',
+                    icon: const Icon(Icons.qr_code_scanner),
+                    onPressed: _scanBarcode,
+                  ),
                 ),
               ),
             ),
@@ -458,12 +462,15 @@ class _CategoryDropdown extends StatelessWidget {
             onChanged: onChanged,
           ),
         ),
-        IconButton(
-          tooltip: 'Kelola kategori',
-          icon: const Icon(Icons.settings_outlined),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(
-                builder: (_) => const CategoryManagementScreen()),
+        TestId(
+          'produk_kelola_kategori',
+          child: IconButton(
+            tooltip: 'Kelola kategori',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const CategoryManagementScreen()),
+            ),
           ),
         ),
       ],
@@ -503,11 +510,14 @@ class _UnitDropdown extends StatelessWidget {
             onChanged: onChanged,
           ),
         ),
-        IconButton(
-          tooltip: 'Kelola satuan',
-          icon: const Icon(Icons.settings_outlined),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const UnitManagementScreen()),
+        TestId(
+          'produk_kelola_satuan',
+          child: IconButton(
+            tooltip: 'Kelola satuan',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const UnitManagementScreen()),
+            ),
           ),
         ),
       ],

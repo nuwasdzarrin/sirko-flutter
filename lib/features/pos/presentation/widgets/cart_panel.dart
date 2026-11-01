@@ -352,7 +352,7 @@ class _QtyStepper extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _RoundBtn(icon: Icons.remove, onPressed: onDec),
+        _RoundBtn(icon: Icons.remove, label: 'Kurangi qty', onPressed: onDec),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text('$qty',
@@ -361,7 +361,7 @@ class _QtyStepper extends StatelessWidget {
                   .titleMedium
                   ?.copyWith(fontWeight: FontWeight.bold)),
         ),
-        _RoundBtn(icon: Icons.add, onPressed: onInc),
+        _RoundBtn(icon: Icons.add, label: 'Tambah qty', onPressed: onInc),
       ],
     );
   }
@@ -369,22 +369,29 @@ class _QtyStepper extends StatelessWidget {
 
 class _RoundBtn extends StatelessWidget {
   final IconData icon;
+  final String label;
   final VoidCallback onPressed;
-  const _RoundBtn({required this.icon, required this.onPressed});
+  const _RoundBtn(
+      {required this.icon, required this.label, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkResponse(
-      onTap: onPressed,
-      radius: 22,
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: theme.colorScheme.outlineVariant),
+    // Label aksesibilitas: InkResponse polos tak punya semantics tombol.
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkResponse(
+        onTap: onPressed,
+        radius: 22,
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Icon(icon, size: 18, color: theme.colorScheme.primary),
         ),
-        child: Icon(icon, size: 18, color: theme.colorScheme.primary),
       ),
     );
   }

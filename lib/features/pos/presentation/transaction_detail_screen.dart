@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/test_id.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/tables/payments.dart';
 import '../../../core/database/tables/transactions.dart';
@@ -79,10 +80,13 @@ class TransactionDetailScreen extends ConsumerWidget {
                   detail.transaction.status == TxStatus.voided) {
                 return const SizedBox.shrink();
               }
-              return IconButton(
-                tooltip: 'Batalkan transaksi',
-                icon: const Icon(Icons.block),
-                onPressed: () => _void(context, ref),
+              return TestId(
+                'transaksi_batalkan',
+                child: IconButton(
+                  tooltip: 'Batalkan transaksi',
+                  icon: const Icon(Icons.block),
+                  onPressed: () => _void(context, ref),
+                ),
               );
             },
             orElse: () => const SizedBox.shrink(),
@@ -116,7 +120,7 @@ class _DetailBody extends ConsumerWidget {
     String two(int n) => n.toString().padLeft(2, '0');
     final when =
         '${two(dt.day)}/${two(dt.month)}/${dt.year} ${two(dt.hour)}:${two(dt.minute)}';
-    final remaining = tx.grandTotal - tx.paidTotal;
+    final remaining = detail.remaining;
     final isCredit =
         tx.status == TxStatus.credit || tx.status == TxStatus.partial;
 

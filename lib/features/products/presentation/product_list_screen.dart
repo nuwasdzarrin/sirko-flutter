@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/test_id.dart';
 import '../../../core/database/app_database.dart';
 import '../application/catalog_providers.dart';
 import '../application/product_providers.dart';
@@ -225,24 +226,34 @@ class _Toolbar extends StatelessWidget {
               ),
             ),
           ),
-          IconButton(
-            key: const ValueKey('stock_in_button'),
-            tooltip: 'Stok Masuk (scan)',
-            icon: const Icon(Icons.move_to_inbox_outlined),
-            onPressed: onOpenStockIn,
+          TestId(
+            'produk_stok_masuk',
+            child: IconButton(
+              key: const ValueKey('stock_in_button'),
+              tooltip: 'Stok Masuk (scan)',
+              icon: const Icon(Icons.move_to_inbox_outlined),
+              onPressed: onOpenStockIn,
+            ),
           ),
-          IconButton(
-            tooltip: 'Peringatan stok',
-            icon: const Icon(Icons.warning_amber_outlined),
-            onPressed: onOpenAlerts,
+          TestId(
+            'produk_peringatan_stok',
+            child: IconButton(
+              tooltip: 'Peringatan stok',
+              icon: const Icon(Icons.warning_amber_outlined),
+              onPressed: onOpenAlerts,
+            ),
           ),
-          PopupMenuButton<String>(
-            tooltip: 'Menu inventory',
-            onSelected: (v) => v == 'flow' ? onOpenStockFlow() : onOpenBin(),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'flow', child: Text('Arus stok')),
-              PopupMenuItem(value: 'bin', child: Text('Recycle Bin')),
-            ],
+          TestId(
+            'produk_menu_inventory',
+            child: PopupMenuButton<String>(
+              tooltip: 'Menu inventory',
+              onSelected: (v) =>
+                  v == 'flow' ? onOpenStockFlow() : onOpenBin(),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'flow', child: Text('Arus stok')),
+                PopupMenuItem(value: 'bin', child: Text('Recycle Bin')),
+              ],
+            ),
           ),
         ],
       ),

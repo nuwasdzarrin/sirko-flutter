@@ -85,22 +85,41 @@ class CreditRepository {
       }
       final effectiveTxId = transactionId ?? inst?.transactionId;
 
-      // 2. Catat pembayaran hutang.
-      final payId = _uuid.v4();
-      await _db.into(_db.creditPayments).insert(
-            CreditPaymentsCompanion.insert(
-              id: payId,
-              customerId: customerId,
-              transactionId: Value(effectiveTxId),
-              installmentId: Value(installmentId),
-              amount: amount,
-              datetime: now,
-              method: method,
-              note: Value(note),
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
+      // 2. Catat pembayaran hutang. Tanpa nota/cicilan tertentu → alokasikan
+      //    FIFO ke nota kredit terbuka (tertua dulu) agar "sisa" per nota,
+      //    jadwal cicilan & void tetap konsisten; kelebihan tak ditautkan.
+      final allocations = effectiveTxId != null
+          ? [(effectiveTxId, amount)]
+          : await _allocateFifo(customerId, amount);
+      String? payId;
+      for (final (txId, part) in allocations) {
+        final id = _uuid.v4();
+        payId ??= id;
+        await _db.into(_db.creditPayments).insert(
+              CreditPaymentsCompanion.insert(
+                id: id,
+                customerId: customerId,
+                transactionId: Value(txId),
+                installmentId: Value(installmentId),
+                amount: part,
+                datetime: now,
+                method: method,
+                note: Value(note),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+      }
+
+      // 2b. Pelunasan tunai = uang masuk laci → pemasukan wallet kas default.
+      if (method == PaymentMethod.cash) {
+        await _wallets.recordDebtPayment(
+          cashAmount: amount,
+          creditPaymentId: payId!,
+          customerName: customer.name,
+          now: now,
+        );
+      }
 
       // 3. Update cicilan terkait (bila ada).
       if (inst != null) {
@@ -131,7 +150,7 @@ class CreditRepository {
         ),
       );
 
-      return PayDebtResult(creditPaymentId: payId, newDebtBalance: newBalance);
+      return PayDebtResult(creditPaymentId: payId!, newDebtBalance: newBalance);
     });
   }
 
@@ -335,6 +354,43 @@ class CreditRepository {
       createdAt: now,
       updatedAt: now,
     );
+  }
+
+  /// Bagi [amount] ke nota kredit/sebagian [customerId] yang masih bersisa,
+  /// tertua dulu. Sisa uang yang tak terserap → satu bagian tanpa nota (null).
+  Future<List<(String?, int)>> _allocateFifo(
+      String customerId, int amount) async {
+    final open = await (_db.select(_db.transactions)
+          ..where((t) =>
+              t.customerId.equals(customerId) &
+              t.deletedAt.isNull() &
+              t.status.isIn(const ['credit', 'partial']))
+          ..orderBy([(t) => OrderingTerm(expression: t.datetime)]))
+        .get();
+    final parts = <(String?, int)>[];
+    var left = amount;
+    for (final tx in open) {
+      if (left <= 0) break;
+      final outstanding = await outstandingFor(tx.id);
+      if (outstanding <= 0) continue;
+      final part = left < outstanding ? left : outstanding;
+      parts.add((tx.id, part));
+      left -= part;
+    }
+    if (left > 0) parts.add((null, left));
+    return parts;
+  }
+
+  /// Sisa hutang satu nota = total − dibayar saat checkout − pelunasan
+  /// tertaut (≥ 0).
+  Future<int> outstandingFor(String transactionId) async {
+    final tx = await (_db.select(_db.transactions)
+          ..where((t) => t.id.equals(transactionId)))
+        .getSingleOrNull();
+    if (tx == null) return 0;
+    final r = tx.grandTotal - tx.paidTotal -
+        await _sumCreditPaymentsFor(transactionId);
+    return r < 0 ? 0 : r;
   }
 
   Future<int> _sumCreditPaymentsFor(String transactionId) async {

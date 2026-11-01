@@ -307,6 +307,35 @@ class WalletRepository {
     );
   }
 
+  /// Catat pelunasan hutang pelanggan secara **tunai** sebagai pemasukan wallet
+  /// default. Dipanggil **di dalam** transaksi `payDebt` agar saldo kas sama
+  /// dengan uang di laci. No-op bila `cashAmount <= 0` atau wallet default
+  /// belum diset/terhapus.
+  Future<void> recordDebtPayment({
+    required int cashAmount,
+    required String creditPaymentId,
+    required String customerName,
+    required int now,
+  }) async {
+    if (cashAmount <= 0) return;
+    final walletId = await _settings.getValue(keyDefaultCashWallet);
+    if (walletId == null) return;
+    final wallet = await getById(walletId);
+    if (wallet == null || wallet.deletedAt != null) return;
+    await _writeBalance(
+        walletId, WalletMutation.applyIncome(wallet.balance, cashAmount), now);
+    await _insertMutation(
+      walletId: walletId,
+      type: WalletTxType.income,
+      amount: cashAmount,
+      category: 'pelunasan',
+      refType: 'credit_payment',
+      refId: creditPaymentId,
+      note: 'Pelunasan hutang $customerName',
+      now: now,
+    );
+  }
+
   /// Balik pemasukan wallet dari transaksi [transactionId] saat di-void (§6).
   /// Untuk tiap mutasi `in` ber-refId transaksi itu (belum dibalik), catat `out`
   /// pembalik + turunkan saldo. Dipanggil **di dalam** transaksi void.

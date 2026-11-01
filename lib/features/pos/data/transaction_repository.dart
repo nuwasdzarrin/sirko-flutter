@@ -318,6 +318,15 @@ class TransactionRepository {
     final pays = await (_db.select(_db.payments)
           ..where((t) => t.transactionId.equals(transactionId)))
         .get();
-    return TransactionDetail(transaction: tx, items: items, payments: pays);
+    final credits = await (_db.select(_db.creditPayments)
+          ..where((t) =>
+              t.transactionId.equals(transactionId) & t.deletedAt.isNull()))
+        .get();
+    return TransactionDetail(
+      transaction: tx,
+      items: items,
+      payments: pays,
+      creditPaid: credits.fold<int>(0, (s, c) => s + c.amount),
+    );
   }
 }

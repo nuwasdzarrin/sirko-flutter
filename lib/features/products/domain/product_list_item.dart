@@ -8,18 +8,28 @@ class ProductListItem {
   final String? categoryName;
   final String? unitName;
 
+  /// Agregat varian aktif (hanya untuk produk bervarian): total stok & harga
+  /// jual termurah. Stok/harga induk produk bervarian selalu 0.
+  final int? variantStock;
+  final int? variantMinPrice;
+
   const ProductListItem({
     required this.product,
     this.categoryName,
     this.unitName,
+    this.variantStock,
+    this.variantMinPrice,
   });
+
+  bool get _useVariants => product.hasVariants && variantStock != null;
 
   String get id => product.id;
   String get name => product.name;
   String? get barcode => product.barcode;
-  int get stock => product.stock;
+  int get stock => _useVariants ? variantStock! : product.stock;
 
-  Money get sellingPrice => Money(product.sellingPrice);
+  Money get sellingPrice => Money(
+      _useVariants ? (variantMinPrice ?? 0) : product.sellingPrice);
   Money get costPrice => Money(product.costPrice);
 
   /// Stok di bawah/serupa minimum (peringatan ringan; blokir menyusul Fase 3).

@@ -165,6 +165,16 @@ class _TransactionsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(customerTransactionsProvider(customerId));
+    // Pelunasan per nota (credit_payments tertaut) → sisa = total − DP − pelunasan.
+    final paidByTx = <String, int>{};
+    for (final p in ref.watch(customerCreditPaymentsProvider(customerId))
+            .asData
+            ?.value ??
+        const <CreditPayment>[]) {
+      if (p.transactionId != null) {
+        paidByTx[p.transactionId!] = (paidByTx[p.transactionId!] ?? 0) + p.amount;
+      }
+    }
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Gagal memuat: $e')),
@@ -175,7 +185,8 @@ class _TransactionsTab extends ConsumerWidget {
         return ListView.separated(
           itemCount: list.length,
           separatorBuilder: (_, __) => const Divider(height: 1),
-          itemBuilder: (_, i) => _TransactionTile(tx: list[i]),
+          itemBuilder: (_, i) => _TransactionTile(
+              tx: list[i], creditPaid: paidByTx[list[i].id] ?? 0),
         );
       },
     );
@@ -184,7 +195,8 @@ class _TransactionsTab extends ConsumerWidget {
 
 class _TransactionTile extends StatelessWidget {
   final Transaction tx;
-  const _TransactionTile({required this.tx});
+  final int creditPaid;
+  const _TransactionTile({required this.tx, this.creditPaid = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +204,7 @@ class _TransactionTile extends StatelessWidget {
     final dt = DateTimeUtils.toLocal(tx.datetime);
     String two(int n) => n.toString().padLeft(2, '0');
     final when = '${two(dt.day)}/${two(dt.month)}/${dt.year}';
-    final remaining = tx.grandTotal - tx.paidTotal;
+    final remaining = tx.grandTotal - tx.paidTotal - creditPaid;
     return ListTile(
       title: Text(tx.invoiceNo),
       subtitle: Text('$when · ${_statusLabel(tx.status)}'),

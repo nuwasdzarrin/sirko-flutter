@@ -39,12 +39,36 @@ class ProductRepository {
     }
     statement.orderBy([OrderingTerm(expression: products.name)]);
 
-    return statement.watch().map((rows) {
+    // Agregat varian aktif per produk (stok induk produk bervarian = 0).
+    const variantStock = CustomExpression<int>(
+      '(SELECT COALESCE(SUM(v.stock), 0) FROM product_variants v '
+      'WHERE v.product_id = products.id AND v.deleted_at IS NULL)',
+    );
+    const variantMinPrice = CustomExpression<int>(
+      '(SELECT MIN(v.selling_price) FROM product_variants v '
+      'WHERE v.product_id = products.id AND v.deleted_at IS NULL)',
+    );
+    statement.addColumns([variantStock, variantMinPrice]);
+
+    // Subquery varian tak terlacak `watch()` → picu ulang juga saat tabel
+    // product_variants berubah (tambah/edit varian, stok varian terjual).
+    final updates = _db.tableUpdates(TableUpdateQuery.onAllTables(
+        [products, categories, units, _db.productVariants]));
+    Stream<List<TypedResult>> rowsStream() async* {
+      yield await statement.get();
+      await for (final _ in updates) {
+        yield await statement.get();
+      }
+    }
+
+    return rowsStream().map((rows) {
       return rows.map((row) {
         return ProductListItem(
           product: row.readTable(products),
           categoryName: row.readTableOrNull(categories)?.name,
           unitName: row.readTableOrNull(units)?.name,
+          variantStock: row.read(variantStock),
+          variantMinPrice: row.read(variantMinPrice),
         );
       }).toList();
     });

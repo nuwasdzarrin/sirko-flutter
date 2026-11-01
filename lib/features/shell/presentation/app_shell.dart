@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/widgets/test_id.dart';
 import '../../../app/constants.dart';
 import '../../users/application/user_providers.dart';
 
@@ -47,10 +48,13 @@ class AppShell extends ConsumerWidget {
       appBar: AppBar(
         title: Text(current.label),
         leading: isKasir
-            ? IconButton(
-                icon: const Icon(Icons.home_outlined),
-                tooltip: 'Beranda',
-                onPressed: () => context.go(homePath),
+            ? TestId(
+                'kasir_ke_beranda',
+                child: IconButton(
+                  icon: const Icon(Icons.home_outlined),
+                  tooltip: 'Beranda',
+                  onPressed: () => context.go(homePath),
+                ),
               )
             : null,
       ),

@@ -288,21 +288,27 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
           const SizedBox(width: 8),
           Expanded(
             flex: 5,
-            child: TextField(
-              controller: row.controller,
-              keyboardType: TextInputType.number,
-              inputFormatters: const [RupiahInputFormatter()],
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                prefixText: 'Rp ',
-                isDense: true,
-                border: OutlineInputBorder(),
+            // Label aksesibilitas per baris (mis. "Nominal QRIS") — field ini
+            // tak punya label visual.
+            child: Semantics(
+              label: 'Nominal ${_methodLabel(row.method)}',
+              child: TextField(
+                controller: row.controller,
+                keyboardType: TextInputType.number,
+                inputFormatters: const [RupiahInputFormatter()],
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  prefixText: 'Rp ',
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
               ),
             ),
           ),
           if (canRemove)
             IconButton(
               icon: const Icon(Icons.close),
+              tooltip: 'Hapus metode',
               onPressed: () => setState(() => _rows.removeAt(index)),
             ),
         ],
