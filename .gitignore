@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Maestro integration test — rekaman video/screenshot/log hasil run (lokal saja)
+/test/integration/record/

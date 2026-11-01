@@ -1,0 +1,17 @@
+# Seperti isi_field.yaml, untuk label yang muncul berulang (mis. baris ke-2).
+# Param env: FIELD (label), INDEX (0-based), TEXT.
+appId: com.sirko.app
+---
+- tapOn:
+    text: ${FIELD}
+    index: ${INDEX}
+- waitForAnimationToEnd
+- eraseText
+- inputText: ${TEXT}
+- runFlow:
+    when:
+      notVisible: ${TEXT}
+    commands:
+      - eraseText: 60
+      - inputText: ${TEXT}
+- hideKeyboard

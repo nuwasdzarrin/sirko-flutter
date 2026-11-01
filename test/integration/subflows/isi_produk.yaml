@@ -1,0 +1,33 @@
+# Isi form "Produk Baru" lalu simpan. Form harus sudah terbuka (belum scroll).
+# Param env: NAMA, BARCODE, KATEGORI, SATUAN, MODAL, JUAL, STOK, MIN.
+appId: com.sirko.app
+---
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: "Nama produk", TEXT: "${NAMA}" }
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: 'Barcode (opsional)', TEXT: "${BARCODE}" }
+- tapOn: "Kategori.*"
+- tapOn: ${KATEGORI}
+- tapOn: "Satuan.*"
+- tapOn: ${SATUAN}
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: "Harga modal", TEXT: "${MODAL}" }
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: "Harga jual", TEXT: "${JUAL}" }
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: "Stok awal", TEXT: "${STOK}" }
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: 'Stok min.', TEXT: "${MIN}" }
+- scrollUntilVisible:
+    element: "Simpan Produk"
+    direction: DOWN
+- tapOn: "Simpan Produk"
+- extendedWaitUntil:
+    notVisible: "Produk Baru"
+    timeout: 10000

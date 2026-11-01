@@ -1,0 +1,9 @@
+# Buka satu fitur dari tab "Lainnya". Param env: MENU (label kartu).
+appId: com.sirko.app
+---
+- tapOn: "Lainnya.*"
+- extendedWaitUntil:
+    visible: ${MENU}
+    timeout: 10000
+- tapOn: ${MENU}
+- waitForAnimationToEnd

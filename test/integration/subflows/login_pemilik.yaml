@@ -1,0 +1,22 @@
+# Buka ulang app (data tetap) dan login sebagai pemilik (PIN 123456).
+# Sesi login tidak dipersist, jadi setiap launch selalu ke layar PIN.
+# Pengguna dipilih eksplisit karena sejak TC-10 ada lebih dari satu user.
+appId: com.sirko.app
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "Pengguna.*"
+    timeout: 60000
+- runFlow:
+    file: pilih_pengguna.yaml
+    env: { USER: "Budi Pemilik \\(owner\\)" }
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "123456" }
+- tapOn:
+    text: "Masuk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Beranda.*"
+    timeout: 20000

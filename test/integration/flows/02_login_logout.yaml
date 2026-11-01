@@ -1,0 +1,60 @@
+# TC-02 Keluar, login PIN salah & benar, sesi tidak bertahan setelah restart.
+# Prasyarat: TC-01 (toko + pemilik PIN 123456).
+appId: com.sirko.app
+name: "02 Login, PIN salah & logout"
+tags: [smoke, auth]
+---
+- startRecording: 02_login_logout
+- launchApp:
+    stopApp: true
+# Sesi login tidak dipersist: buka ulang app → wajib PIN.
+- extendedWaitUntil:
+    visible: "Pengguna.*"
+    timeout: 60000
+- assertVisible: "Pengguna.*Budi Pemilik.*"
+
+# Negatif: PIN salah
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "000000" }
+- tapOn:
+    text: "Masuk"
+    index: 1
+- extendedWaitUntil:
+    visible: "PIN salah, coba lagi."
+    timeout: 10000
+- takeScreenshot: 02_pin_salah
+
+# Positif: PIN benar
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "123456" }
+- tapOn:
+    text: "Masuk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Beranda.*"
+    timeout: 20000
+
+# Keluar dari tab Lainnya → kembali ke layar login
+- tapOn: "Lainnya.*"
+- scrollUntilVisible:
+    element: "Keluar"
+    direction: DOWN
+- tapOn: "Keluar"
+- extendedWaitUntil:
+    visible: "Pengguna.*"
+    timeout: 15000
+- assertNotVisible: "Beranda.*"
+
+# Login lagi untuk flow berikutnya
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "123456" }
+- tapOn:
+    text: "Masuk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Beranda.*"
+    timeout: 20000
+- stopRecording

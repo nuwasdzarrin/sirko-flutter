@@ -1,0 +1,18 @@
+# BUG-05: dialog Bayar Hutang supplier — dropdown "Ambil dari kas" kosong
+# (ref.read pada stream provider yang belum dimuat). Harapan: wallet tampil.
+appId: com.sirko.app
+name: "94 BUG-05 Pilihan kas di bayar hutang supplier"
+tags: [bug]
+---
+- startRecording: 94_bug05_dropdown_kas_supplier
+- runFlow: ../subflows/login_pemilik.yaml
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Supplier" }
+- tapOn: "C CV Sumber Rejeki.*"
+- tapOn: "Bayar Hutang"
+- tapOn: "Ambil dari kas.*"
+- takeScreenshot: 94_dropdown_kas
+- assertVisible: "Kas Utama \\(Rp.*\\)"
+- assertVisible: "Bank BCA \\(Rp.*\\)"
+- stopRecording

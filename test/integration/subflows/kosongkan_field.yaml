@@ -1,0 +1,15 @@
+# Kosongkan field yang sudah berisi teks.
+# Long-press memunculkan toolbar seleksi → "Pilih semua" → backspace.
+# Dipakai karena eraseText menghapus mundur dari posisi kursor (tap di tengah
+# teks menyisakan karakter di belakang kursor).
+# Param env: TEXT (isi field saat ini).
+appId: com.sirko.app
+---
+- longPressOn: ${TEXT}
+- runFlow:
+    when:
+      visible: "Pilih semua"
+    commands:
+      - tapOn: "Pilih semua"
+- eraseText: 1
+- hideKeyboard

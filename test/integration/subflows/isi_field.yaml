@@ -1,0 +1,19 @@
+# Isi satu field teks Flutter secara stabil.
+# Param env: FIELD (label/hint field), TEXT (nilai).
+# Pola tap → tunggu → hapus → ketik mencegah teks ganda ("TokToko") akibat
+# inputText jalan sebelum field fokus. Gboard kadang menyisipkan spasi ganda
+# ("Aqua  600ml") → bila teks persis tak terlihat, hapus & ketik ulang sekali.
+# (Field Rupiah/PIN tampil terformat/tersamar → retry tak berbahaya.)
+appId: com.sirko.app
+---
+- tapOn: ${FIELD}
+- waitForAnimationToEnd
+- eraseText
+- inputText: ${TEXT}
+- runFlow:
+    when:
+      notVisible: ${TEXT}
+    commands:
+      - eraseText: 60
+      - inputText: ${TEXT}
+- hideKeyboard

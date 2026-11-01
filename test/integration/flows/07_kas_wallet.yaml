@@ -1,0 +1,127 @@
+# TC-07 Kas / Wallet: saldo kas default dari penjualan tunai, wallet baru,
+# kas masuk/keluar, tolak overdraw, transfer atomik, laporan arus kas.
+# Prasyarat: TC-04..06 → Kas Utama Rp27.000 = tunai 5.000 + DP 10.000 +
+# pelunasan tunai Bu Sri 7.333 + 4.667 (BUG-04 sudah diperbaiki di build 10;
+# void INV-0001 sudah dibalik).
+appId: com.sirko.app
+name: "07 Kas wallet, mutasi & transfer"
+tags: [wallet]
+---
+- startRecording: 07_kas_wallet
+- runFlow: ../subflows/login_pemilik.yaml
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Kas / Wallet" }
+- extendedWaitUntil:
+    visible: "Total Saldo Semua Kas Rp27.000"
+    timeout: 10000
+- assertVisible: "Kas Utama Kas Tunai Rp27.000"
+- assertVisible: "Kas default"
+
+# --- Wallet baru: Bank BCA saldo awal Rp100.000 ---
+- tapOn: "Wallet"
+- extendedWaitUntil:
+    visible: "Wallet Baru"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama .mis.*", TEXT: "Bank BCA" }
+- tapOn: "Jenis.*"
+- tapOn: "Bank"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Saldo awal", TEXT: "100000" }
+- tapOn: "Simpan"
+- extendedWaitUntil:
+    visible: "Bank BCA Bank Rp100.000"
+    timeout: 10000
+- assertVisible: "Total Saldo Semua Kas Rp127.000"
+
+# --- Mutasi Kas Utama ---
+- tapOn: "Kas Utama.*"
+- extendedWaitUntil:
+    visible: "Kas Tunai Rp27.000"
+    timeout: 10000
+- assertVisible: "Masuk . penjualan .* Penjualan tunai INV-\\d{8}-\\d{4} \\+Rp10.000"
+- assertVisible: "Keluar . penjualan .* Void INV-\\d{8}-0001 .Rp10.500"
+- assertVisible: "Masuk . pelunasan .* Pelunasan hutang Bu Sri \\+Rp4.667"
+
+# Kas masuk Rp50.000 (Modal)
+- tapOn: "Masuk"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nominal", TEXT: "50000" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Kategori", TEXT: "Modal" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Catatan.*", TEXT: "Setoran modal" }
+- tapOn: "Simpan"
+- extendedWaitUntil:
+    visible: "Kas Tunai Rp77.000"
+    timeout: 10000
+
+# Kas keluar Rp20.000 (Listrik)
+- tapOn: "Keluar"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nominal", TEXT: "20000" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Kategori", TEXT: "Listrik" }
+- tapOn: "Simpan"
+- extendedWaitUntil:
+    visible: "Kas Tunai Rp57.000"
+    timeout: 10000
+
+# Negatif: keluar melebihi saldo ditolak, saldo tetap
+- tapOn: "Keluar"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nominal", TEXT: "999999" }
+- tapOn: "Simpan"
+- extendedWaitUntil:
+    visible: "Saldo tak cukup.*"
+    timeout: 5000
+- takeScreenshot: 07_overdraw_ditolak
+- runFlow:
+    when:
+      visible: "Batal"
+    commands:
+      - tapOn: "Batal"
+- assertVisible: "Kas Tunai Rp57.000"
+
+# Transfer Rp25.000 Kas Utama → Bank BCA
+- tapOn: "Transfer"
+- extendedWaitUntil:
+    visible: "Transfer dari Kas Utama"
+    timeout: 5000
+- tapOn: "Ke wallet.*"
+- tapOn: "Bank BCA"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nominal .saldo.*", TEXT: "25000" }
+- tapOn: "Transfer"
+- extendedWaitUntil:
+    visible: "Kas Tunai Rp32.000"
+    timeout: 10000
+- takeScreenshot: 07_mutasi_kas_utama
+- tapOn: "Kembali"
+- extendedWaitUntil:
+    visible: "Bank BCA Bank Rp125.000"
+    timeout: 10000
+- assertVisible: "Total Saldo Semua Kas Rp157.000"
+
+# Laporan Arus Kas per Wallet
+- tapOn: "Laporan Arus Kas"
+- extendedWaitUntil:
+    visible: "Arus Kas per Wallet"
+    timeout: 10000
+- assertVisible: "Total saldo Rp157.000 Arus bersih \\(periode\\) \\+Rp157.000"
+# Kas Utama: masuk 10.500+5.000+10.000+7.333+4.667+50.000; keluar void 10.500 + listrik 20.000
+- assertVisible: "Kas Utama Saldo Rp32.000 Pemasukan \\+Rp87.500 Pengeluaran .Rp30.500 Transfer masuk \\+Rp0 Transfer keluar .Rp25.000 Arus bersih \\+Rp32.000"
+- assertVisible: "Bank BCA Saldo Rp125.000 Pemasukan \\+Rp100.000 .* Transfer masuk \\+Rp25.000 .*"
+- takeScreenshot: 07_arus_kas
+- tapOn: "Kembali"
+- stopRecording

@@ -1,0 +1,15 @@
+# BUG-09: Export XLSX memakai OpenFilex tanpa cek hasil → di perangkat tanpa
+# app spreadsheet tak terjadi apa-apa. Harapan: share sheet / pesan muncul.
+appId: com.sirko.app
+name: "98 BUG-09 Export XLSX memberi respon"
+tags: [bug]
+---
+- startRecording: 98_bug09_export_xlsx
+- runFlow: ../subflows/login_pemilik.yaml
+- tapOn: "Laporan.*Tab 4.*"
+- tapOn: "Export XLSX"
+- extendedWaitUntil:
+    visible: ".*\\.xlsx.*|.*[Gg]agal.*|.*[Tt]idak ada aplikasi.*"
+    timeout: 15000
+- takeScreenshot: 98_export_xlsx
+- stopRecording

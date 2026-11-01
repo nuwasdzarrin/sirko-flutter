@@ -1,0 +1,153 @@
+# TC-06 Pelanggan, Kas Bon (DP + sisa hutang), jadwal cicilan, bayar cicilan,
+# bayar hutang, Daftar Kas Bon.
+# Prasyarat: TC-03 (Gula Pasir 1kg @16.000 stok 5).
+# Alur: Gula ×2 = Rp32.000, DP tunai Rp10.000 → hutang Rp22.000 → 3 cicilan
+# (7.333/7.333/7.334) → bayar cicilan-1 Rp7.333 → hutang Rp14.667 →
+# bayar hutang Rp4.667 → hutang Rp10.000.
+appId: com.sirko.app
+name: "06 Pelanggan, Kas Bon & cicilan"
+tags: [pelanggan, hutang]
+---
+- startRecording: 06_pelanggan_kasbon_cicilan
+- runFlow: ../subflows/login_pemilik.yaml
+
+# --- Tambah pelanggan (validasi nama wajib) ---
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Pelanggan" }
+- extendedWaitUntil:
+    visible: "Cari nama atau telepon.*"
+    timeout: 10000
+- tapOn:
+    text: "Pelanggan"
+    index: 1
+- extendedWaitUntil:
+    visible: "Nama \\*"
+    timeout: 5000
+- tapOn:
+    text: "Tambah Pelanggan"
+    index: 1
+- assertVisible: ".*wajib.*"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama \\*", TEXT: "Bu Sri" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Telepon", TEXT: "081234567890" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Alamat", TEXT: "Jl. Melati 1" }
+- tapOn:
+    text: "Tambah Pelanggan"
+    index: 1
+- extendedWaitUntil:
+    visible: "B Bu Sri 081234567890"
+    timeout: 10000
+
+# --- Kas Bon di kasir: DP Rp10.000, sisa jadi hutang ---
+- tapOn: "Kasir.*Tab 2.*"
+- tapOn: "Gula Pasir 1kg.*"
+- tapOn: "Gula Pasir 1kg.*"
+- assertVisible: "Rp32.000"
+- tapOn: "Bayar"
+- extendedWaitUntil:
+    visible: "Pembayaran"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "32.000", TEXT: "10000" }
+- assertVisible: "Kas Bon . Rp22.000"
+- takeScreenshot: 06_kasbon_dp
+- tapOn: "Kas Bon.*"
+- extendedWaitUntil:
+    visible: "Pilih Pelanggan"
+    timeout: 5000
+- tapOn: "B Bu Sri 081234567890"
+- extendedWaitUntil:
+    visible: "Transaksi berhasil"
+    timeout: 15000
+- tapOn: "Transaksi Baru"
+- assertVisible: "Gula Pasir 1kg Rp16.000 Stok 3"
+
+# --- Detail pelanggan: hutang Rp22.000 ---
+- tapOn:
+    id: "kasir_ke_beranda"
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Pelanggan" }
+- tapOn: "B Bu Sri.*"
+- extendedWaitUntil:
+    visible: "Total hutang Rp22.000 081234567890"
+    timeout: 10000
+- assertVisible: "INV-\\d{8}-\\d{4} .* Sebagian Rp32.000 Sisa Rp22.000"
+
+# --- Jadwalkan 3 cicilan dari detail transaksi ---
+- tapOn: "INV-.*"
+- extendedWaitUntil:
+    visible: "Detail Transaksi"
+    timeout: 10000
+- scrollUntilVisible:
+    element: "Jadwalkan Cicilan"
+    direction: DOWN
+- tapOn: "Jadwalkan Cicilan"
+- extendedWaitUntil:
+    visible: "Total: Rp22.000"
+    timeout: 5000
+- assertVisible: "Cicilan 1 . \\d\\d/\\d\\d/\\d{4}"
+- assertVisible: "Rp7.334"
+- takeScreenshot: 06_jadwal_cicilan
+- tapOn: "Simpan Jadwal Cicilan"
+- extendedWaitUntil:
+    notVisible: "Simpan Jadwal Cicilan"
+    timeout: 5000
+- tapOn: "Kembali"
+- tapOn: "Cicilan.*Tab.*"
+- extendedWaitUntil:
+    visible: "Jatuh tempo \\d\\d/\\d\\d/\\d{4} Rp0 / Rp7.333 Belum"
+    timeout: 5000
+- assertVisible: "Jatuh tempo \\d\\d/\\d\\d/\\d{4} Rp0 / Rp7.334 Belum"
+
+# --- Bayar cicilan pertama ---
+- tapOn:
+    text: "Jatuh tempo .*"
+    index: 0
+- extendedWaitUntil:
+    visible: "Bayar Hutang Sisa cicilan: Rp7.333"
+    timeout: 5000
+- tapOn: "Simpan Pembayaran"
+- extendedWaitUntil:
+    visible: "Total hutang Rp14.667 081234567890"
+    timeout: 10000
+- assertVisible: "Jatuh tempo \\d\\d/\\d\\d/\\d{4} Rp7.333 / Rp7.333.*"
+- takeScreenshot: 06_cicilan_terbayar
+
+# --- Bayar hutang bebas Rp4.667 ---
+- tapOn: "Bayar"
+- extendedWaitUntil:
+    visible: "Bayar Hutang Total hutang: Rp14.667"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "14.667", TEXT: "4667" }
+- tapOn: "Simpan Pembayaran"
+- extendedWaitUntil:
+    visible: "Total hutang Rp10.000 081234567890"
+    timeout: 10000
+- tapOn: "Pembayaran.*Tab.*"
+- assertVisible: "Rp7.333 \\d\\d/\\d\\d/\\d{4} . Tunai"
+- assertVisible: "Rp4.667 \\d\\d/\\d\\d/\\d{4} . Tunai"
+- takeScreenshot: 06_riwayat_pembayaran
+
+# --- Daftar Kas Bon (pintasan Beranda) ---
+- tapOn: "Kembali"
+- tapOn: "Beranda.*Tab 1.*"
+- tapOn: "Kas Bon"
+- extendedWaitUntil:
+    visible: "Daftar Kas Bon"
+    timeout: 5000
+- assertVisible: "Rp10.000"
+- assertVisible: "1 pelanggan"
+- assertVisible: "B Bu Sri 081234567890 Rp10.000 Tagih"
+- takeScreenshot: 06_daftar_kasbon
+- tapOn: "Kembali"
+- stopRecording

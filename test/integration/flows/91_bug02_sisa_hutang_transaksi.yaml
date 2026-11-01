@@ -1,0 +1,27 @@
+# BUG-02: pembayaran hutang (payDebt) tak memperbarui transactions.paidTotal.
+# Bu Sri: INV kas bon Rp32.000, DP 10.000, sudah bayar 7.333 + 4.667.
+# Harapan: sisa hutang transaksi = Rp10.000 (= total hutang pelanggan).
+appId: com.sirko.app
+name: "91 BUG-02 Sisa hutang transaksi ikut pembayaran"
+tags: [bug]
+---
+- startRecording: 91_bug02_sisa_hutang_transaksi
+- runFlow: ../subflows/login_pemilik.yaml
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Pelanggan" }
+- tapOn: "B Bu Sri.*"
+- extendedWaitUntil:
+    visible: "Total hutang Rp10.000.*"
+    timeout: 10000
+- takeScreenshot: 91_daftar_transaksi_pelanggan
+- tapOn: "INV-.*"
+- extendedWaitUntil:
+    visible: "Detail Transaksi"
+    timeout: 10000
+- scrollUntilVisible:
+    element: "Sisa hutang transaksi.*"
+    direction: DOWN
+- takeScreenshot: 91_detail_sisa_hutang
+- assertVisible: "Sisa hutang transaksi Rp10.000"
+- stopRecording

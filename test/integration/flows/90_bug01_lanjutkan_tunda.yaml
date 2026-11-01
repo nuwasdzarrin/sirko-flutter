@@ -1,0 +1,33 @@
+# BUG-01 (race): "Lanjutkan" transaksi tunda kadang tak kembali ke Kasir
+# (context tile sudah unmount → pop dilewati). Diulang 3× agar race terpicu.
+# Harapan: setelah Lanjutkan, layar Kasir tampil dengan keranjang terisi.
+appId: com.sirko.app
+name: "90 BUG-01 Lanjutkan tunda kembali ke kasir"
+tags: [bug]
+---
+- startRecording: 90_bug01_lanjutkan_tunda
+- runFlow: ../subflows/login_pemilik.yaml
+- tapOn: "Kasir.*Tab 2.*"
+- tapOn: "Aqua 600ml.*"
+- extendedWaitUntil:
+    visible: "1 item"
+    timeout: 5000
+- repeat:
+    times: 3
+    commands:
+      # buka keranjang (badge 1) → Tunda → konfirmasi Tunda
+      - tapOn: "1"
+      - tapOn: "Tunda"
+      - tapOn: "Tunda"
+      - extendedWaitUntil:
+          notVisible: "1 item"
+          timeout: 5000
+      # badge Daftar Tunda (1) → Lanjutkan → harus kembali ke Kasir
+      - tapOn: "1"
+      - tapOn: "Lanjutkan"
+      - extendedWaitUntil:
+          visible: "1 item"
+          timeout: 5000
+- tapOn: "1"
+- tapOn: "Kosongkan"
+- stopRecording

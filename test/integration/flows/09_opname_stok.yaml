@@ -1,0 +1,115 @@
+# TC-09 Stok Opname (cek fisik) + finalisasi, sesi FINAL tak bisa diubah,
+# penyesuaian stok manual, peringatan stok menipis, arus stok (audit trail).
+# Prasyarat: TC-08 → Aqua 74, Gula 23, Indomie 96.
+# Opname: Aqua fisik 70 (−4), Indomie fisik 97 (+1) → rugi 4 × Rp2.000 = Rp8.000.
+# Penyesuaian: Gula 23 → 8 (< min 10) → muncul di "Stok Menipis".
+appId: com.sirko.app
+name: "09 Stok opname, penyesuaian & arus stok"
+tags: [stok]
+---
+- startRecording: 09_opname_stok
+- runFlow: ../subflows/login_pemilik.yaml
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Stok Opname" }
+- extendedWaitUntil:
+    visible: "Belum ada sesi opname."
+    timeout: 10000
+- tapOn: "Opname Baru"
+- extendedWaitUntil:
+    visible: "Sesi Opname"
+    timeout: 10000
+- assertVisible: "Aqua 600ml Sistem 74 . Fisik 74 0"
+- assertVisible: "Gula Pasir 1kg Sistem 23 . Fisik 23 0"
+- assertVisible: "Indomie Goreng Sistem 96 . Fisik 96 0"
+
+# Input hitung fisik
+- tapOn: "Aqua 600ml Sistem.*"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Qty fisik", TEXT: "70" }
+- tapOn: "Simpan"
+- tapOn: "Indomie Goreng Sistem.*"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Qty fisik", TEXT: "97" }
+- tapOn: "Simpan"
+- extendedWaitUntil:
+    visible: "2 Berubah \\+1 Lebih -4 Kurang Rp8.000 Rugi"
+    timeout: 5000
+- assertVisible: "Aqua 600ml Sistem 74 . Fisik 70 -4"
+- assertVisible: "Indomie Goreng Sistem 96 . Fisik 97 \\+1"
+- takeScreenshot: 09_opname_draft
+
+# Finalisasi
+- tapOn: "Finalisasi .samakan.*"
+- extendedWaitUntil:
+    visible: "Finalisasi Opname"
+    timeout: 5000
+- tapOn: "Finalisasi"
+- extendedWaitUntil:
+    visible: "Opname final: 2 penyesuaian stok."
+    timeout: 10000
+- assertVisible: "FINAL"
+- assertNotVisible: "Finalisasi .samakan.*"
+# Sesi final tak bisa diedit: tap item tak membuka dialog
+- tapOn: "Aqua 600ml Sistem.*"
+- assertNotVisible: "Qty fisik"
+- takeScreenshot: 09_opname_final
+- tapOn: "Kembali"
+- assertVisible: ".*FINAL.*|.*Final.*"
+
+# Stok produk = fisik
+- tapOn: "Produk.*Tab 3.*"
+- extendedWaitUntil:
+    visible: "Aqua 600ml .* Stok 70 pcs"
+    timeout: 10000
+- assertVisible: "Indomie Goreng .* Stok 97 pcs"
+
+# Penyesuaian manual: Gula 23 → 8
+- runFlow:
+    file: ../subflows/menu_tile.yaml
+    env: { ITEM: "Gula Pasir 1kg.*", AKSI: "Sesuaikan stok" }
+- extendedWaitUntil:
+    visible: "Stok saat ini: 23"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Stok fisik / baru", TEXT: "8" }
+- assertVisible: "Perubahan: -15"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Catatan.*", TEXT: "Rusak basah" }
+- tapOn: "Simpan"
+- extendedWaitUntil:
+    visible: "Gula Pasir 1kg .* Stok 8 kg"
+    timeout: 10000
+
+# Peringatan stok (ikon toolbar, id semantics)
+- tapOn:
+    id: "produk_peringatan_stok"
+- extendedWaitUntil:
+    visible: "Peringatan Stok"
+    timeout: 5000
+- assertVisible: "Gula Pasir 1kg Min 10 Stok 8"
+- assertNotVisible: "Aqua 600ml Min.*"
+- takeScreenshot: 09_peringatan_stok
+- tapOn: "Kembali"
+
+# Arus stok: audit trail lengkap
+- tapOn:
+    id: "produk_menu_inventory"
+- tapOn: "Arus stok"
+- extendedWaitUntil:
+    visible: "Arus Stok"
+    timeout: 5000
+- assertVisible: "Gula Pasir 1kg Penyesuaian .* Rusak basah -15 . 8"
+- assertVisible: "Aqua 600ml Penyesuaian .* Opname -4 . 70"
+- assertVisible: "Indomie Goreng Penyesuaian .* Opname \\+1 . 97"
+- assertVisible: "Gula Pasir 1kg Masuk .* Pembelian \\+20 . 23"
+- takeScreenshot: 09_arus_stok
+- scrollUntilVisible:
+    element: "Aqua 600ml Batal .* Void INV-\\d{8}-0001 \\+1 . 50"
+    direction: DOWN
+- tapOn: "Kembali"
+- stopRecording

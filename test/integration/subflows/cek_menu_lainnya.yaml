@@ -1,0 +1,17 @@
+# Buka tab Lainnya → ketuk menu → pastikan layar tujuan tampil.
+# Param env: MENU, EXPECT.
+appId: com.sirko.app
+---
+- tapOn: "Lainnya.*Tab 5.*"
+- extendedWaitUntil:
+    visible: ${MENU}
+    timeout: 10000
+- tapOn: ${MENU}
+- extendedWaitUntil:
+    visible: ${EXPECT}
+    timeout: 10000
+- runFlow:
+    when:
+      visible: "Kembali"
+    commands:
+      - tapOn: "Kembali"

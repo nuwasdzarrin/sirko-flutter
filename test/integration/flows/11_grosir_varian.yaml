@@ -1,0 +1,113 @@
+# TC-11 Harga grosir bertingkat & produk bervarian (Fase 3).
+#  - Tier Indomie: mulai 10 pcs @Rp3.000 → qty 9 tetap 3.500, qty 10 jadi grosir.
+#  - Produk bervarian "Kopi Kapal Api": varian Mix (2.000, stok 20) & Hitam
+#    (1.500, stok 30).
+# Pemilihan varian di Kasir diuji ketat di 90_regresi_bug (BUG-06: kartu
+# produk bervarian tampil "Rp0 · Stok habis" & tak bisa diketuk).
+appId: com.sirko.app
+name: "11 Harga grosir & produk varian"
+tags: [produk, kasir]
+---
+- startRecording: 11_grosir_varian
+- runFlow: ../subflows/login_pemilik.yaml
+
+# --- Tier grosir Indomie ---
+- tapOn: "Produk.*Tab 3.*"
+- tapOn: "Indomie Goreng.*"
+- extendedWaitUntil:
+    visible: "Edit Produk"
+    timeout: 10000
+- scrollUntilVisible:
+    element: "Harga Grosir"
+    direction: DOWN
+- tapOn: "Harga Grosir"
+- extendedWaitUntil:
+    visible: "Harga Grosir . Indomie Goreng"
+    timeout: 5000
+- tapOn: "Tier"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Qty minimum", TEXT: "10" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Harga satuan grosir", TEXT: "3000" }
+- tapOn: "Simpan"
+- extendedWaitUntil:
+    visible: "Mulai 10 pcs Rp3.000"
+    timeout: 5000
+- takeScreenshot: 11_tier_grosir
+- tapOn: "Kembali"
+- tapOn: "Kembali"
+
+# Kasir: qty 9 = harga normal, qty 10 = grosir
+- tapOn: "Kasir.*Tab 2.*"
+- repeat:
+    times: 9
+    commands:
+      - tapOn: "Indomie Goreng.*"
+- assertVisible: "9 item"
+- assertVisible: "Rp31.500"
+- tapOn: "Indomie Goreng.*"
+- tapOn: "10"
+- extendedWaitUntil:
+    visible: "Indomie Goreng Rp3.000 Rp3.500 Grosir 10 Rp30.000"
+    timeout: 5000
+- assertVisible: "Bayar  Rp30.000"
+- takeScreenshot: 11_harga_grosir_kasir
+- tapOn: "Kosongkan"
+- tapOn: "Scrim"
+
+# --- Produk bervarian ---
+- tapOn:
+    id: "kasir_ke_beranda"
+- tapOn: "Produk.*Tab 3.*"
+- tapOn:
+    text: "Produk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Produk Baru"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama produk", TEXT: "Kopi Kapal Api" }
+- tapOn: "Kategori.*"
+- tapOn: "Minuman"
+- scrollUntilVisible:
+    element: "Produk bervarian.*"
+    direction: DOWN
+- tapOn: "Produk bervarian.*"
+- assertVisible:
+    text: "Produk bervarian.*"
+    checked: true
+- assertVisible: "Simpan dulu untuk mengelola varian.*"
+- tapOn: "Simpan Produk"
+- extendedWaitUntil:
+    visible: "Kopi Kapal Api.*"
+    timeout: 10000
+- tapOn: "Kopi Kapal Api.*"
+- scrollUntilVisible:
+    element: "Kelola Varian"
+    direction: DOWN
+- tapOn: "Kelola Varian"
+- extendedWaitUntil:
+    visible: "Varian . Kopi Kapal Api"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/tambah_varian.yaml
+    env: { NAMA: "Mix", JUAL: "2000", MODAL: "1500", STOK: "20" }
+- runFlow:
+    file: ../subflows/tambah_varian.yaml
+    env: { NAMA: "Hitam", JUAL: "1500", MODAL: "1000", STOK: "30" }
+- assertVisible: "Mix Rp2.000 . Stok 20"
+- assertVisible: "Hitam Rp1.500 . Stok 30"
+- takeScreenshot: 11_daftar_varian
+- tapOn: "Kembali"
+- tapOn: "Kembali"
+
+# Tampilan produk bervarian di Kasir (bukti visual BUG-06)
+- tapOn: "Kasir.*Tab 2.*"
+- scrollUntilVisible:
+    element: "Kopi Kapal Api.*"
+    direction: DOWN
+- takeScreenshot: 11_BUG06_varian_di_kasir
+- stopRecording

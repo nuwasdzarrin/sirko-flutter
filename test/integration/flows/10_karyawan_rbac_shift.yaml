@@ -1,0 +1,183 @@
+# TC-10 Multi-user & RBAC + Shift/Bill:
+#  - Pemilik mengaktifkan "Wajib buka shift", menambah karyawan peran Kasir.
+#  - Kasir hanya melihat menu yang diizinkan (Beranda/Kasir/Lainnya →
+#    Pelanggan & Shift), transaksi diblokir sebelum buka shift.
+#  - Buka shift kas awal 100.000 → jual Indomie ×2 bayar 10.000 (kembali 3.000)
+#    → kas seharusnya 107.000 → tutup dengan fisik 106.000 → KURANG Rp1.000.
+#  - Pemilik melihat Ringkasan Karyawan, lalu menonaktifkan setting lagi.
+# Tombol simpan form karyawan = ikon AppBar, id semantics "karyawan_simpan".
+appId: com.sirko.app
+name: "10 Karyawan, RBAC & shift kasir"
+tags: [rbac, shift]
+---
+- startRecording: 10_karyawan_rbac_shift
+- runFlow: ../subflows/login_pemilik.yaml
+
+# --- Pengaturan: wajib buka shift ---
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Pengaturan" }
+- extendedWaitUntil:
+    visible: "Toko Maestro Minimarket"
+    timeout: 10000
+- tapOn: "Wajib buka shift sebelum transaksi.*"
+- assertVisible:
+    text: "Wajib buka shift sebelum transaksi.*"
+    checked: true
+
+# --- Tambah karyawan Kasir ---
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Karyawan" }
+- assertVisible: "B Budi Pemilik @owner . Pemilik"
+- tapOn: "Tambah"
+- extendedWaitUntil:
+    visible: "Tambah Karyawan"
+    timeout: 5000
+- assertVisible: "Peran Kasir"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama", TEXT: "Rina Kasir" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Username.*", TEXT: "rina" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "111111" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Ulangi PIN", TEXT: "111111" }
+- tapOn:
+    id: "karyawan_simpan"
+- extendedWaitUntil:
+    visible: "R Rina Kasir @rina . Kasir"
+    timeout: 10000
+- takeScreenshot: 10_daftar_karyawan
+
+# --- Login sebagai Kasir ---
+- tapOn: "Lainnya.*"
+- scrollUntilVisible:
+    element: "Keluar"
+    direction: DOWN
+- tapOn: "Keluar"
+- extendedWaitUntil:
+    visible: "Pengguna.*"
+    timeout: 10000
+- runFlow:
+    file: ../subflows/pilih_pengguna.yaml
+    env: { USER: "Rina Kasir \\(cashier\\)" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "111111" }
+- tapOn:
+    text: "Masuk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Beranda Tab 1 dari 3"
+    timeout: 15000
+
+# RBAC: menu terbatas
+- assertVisible: "Kasir Tab 2 dari 3"
+- assertNotVisible: "Produk.*Tab.*"
+- assertNotVisible: "Laporan.*Tab.*"
+- tapOn: "Lainnya.*"
+- assertVisible: "R Rina Kasir Masuk sebagai .*"
+- assertVisible: "Pelanggan"
+- assertVisible: "Shift / Bill"
+- assertNotVisible: "Kas / Wallet"
+- assertNotVisible: "Supplier"
+- assertNotVisible: "Karyawan"
+- assertNotVisible: "Pengaturan"
+- takeScreenshot: 10_menu_kasir
+
+# Transaksi diblokir sebelum buka shift
+- tapOn: "Kasir.*Tab 2.*"
+- tapOn: "Indomie Goreng.*"
+- tapOn: "Indomie Goreng.*"
+- tapOn: "Bayar"
+- extendedWaitUntil:
+    visible: "Pembayaran"
+    timeout: 5000
+- tapOn: "Selesaikan & Cetak Struk"
+- extendedWaitUntil:
+    visible: "Buka bill/shift dulu sebelum bertransaksi."
+    timeout: 5000
+- takeScreenshot: 10_wajib_shift
+- pressKey: back
+
+# Buka shift
+- tapOn:
+    id: "kasir_ke_beranda"
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Shift / Bill" }
+- extendedWaitUntil:
+    visible: "Tidak ada shift terbuka."
+    timeout: 5000
+- tapOn: "Buka Shift"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Kas awal.*", TEXT: "100000" }
+- tapOn: "Buka"
+- extendedWaitUntil:
+    visible: "Shift Terbuka .* Kas awal Rp100.000 Tunai masuk Rp0 Kembalian Rp0 Kas seharusnya Rp100.000"
+    timeout: 10000
+
+# Jual (keranjang masih ada) bayar 10.000
+- tapOn: "Kasir.*Tab 2.*"
+- assertVisible: "2 item"
+- tapOn: "Bayar"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "7.000", TEXT: "10000" }
+- assertVisible: "Rp3.000"
+- tapOn: "Selesaikan & Cetak Struk"
+- extendedWaitUntil:
+    visible: "Transaksi berhasil"
+    timeout: 15000
+- tapOn: "Transaksi Baru"
+
+# Tutup shift dengan kas kurang Rp1.000
+- tapOn:
+    id: "kasir_ke_beranda"
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Shift / Bill" }
+- extendedWaitUntil:
+    visible: "Shift Terbuka .* Tunai masuk Rp10.000 Kembalian -Rp3.000 Kas seharusnya Rp107.000"
+    timeout: 10000
+- tapOn: "Tutup Shift"
+- extendedWaitUntil:
+    visible: "Kas seharusnya: Rp107.000"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Kas fisik.*", TEXT: "106000" }
+- assertVisible: "Selisih: .*Rp1.000.*"
+- takeScreenshot: 10_tutup_shift
+- tapOn:
+    text: "Tutup Shift"
+    index: 1
+- extendedWaitUntil:
+    visible: "Ditutup: .* Awal Rp100.000 . Seharusnya Rp107.000 . Fisik Rp106.000 Selisih: KURANG Rp1.000"
+    timeout: 10000
+- takeScreenshot: 10_riwayat_shift
+
+# --- Pemilik: Ringkasan Karyawan & kembalikan setting ---
+- runFlow: ../subflows/login_pemilik.yaml
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Ringkasan Karyawan" }
+- extendedWaitUntil:
+    visible: "R Rina Kasir 1 transaksi . Laba Rp2.000 Rp7.000"
+    timeout: 10000
+- assertVisible: "B Budi Pemilik 2 transaksi .*Rp44.000"
+- takeScreenshot: 10_ringkasan_karyawan
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Pengaturan" }
+- tapOn: "Wajib buka shift sebelum transaksi.*"
+- assertVisible:
+    text: "Wajib buka shift sebelum transaksi.*"
+    checked: false
+- stopRecording

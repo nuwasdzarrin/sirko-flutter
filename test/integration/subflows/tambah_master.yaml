@@ -1,0 +1,15 @@
+# Tambah satu data master (kategori/satuan) lewat FAB + dialog.
+# Param env: FAB (label FAB), FIELD (label field dialog), TEXT (nama).
+appId: com.sirko.app
+---
+- tapOn: ${FAB}
+- extendedWaitUntil:
+    visible: ${FIELD}
+    timeout: 5000
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: "${FIELD}", TEXT: "${TEXT}" }
+- tapOn: "Simpan"
+- extendedWaitUntil:
+    visible: ${TEXT}
+    timeout: 5000

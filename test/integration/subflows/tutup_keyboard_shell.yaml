@@ -1,0 +1,12 @@
+# Tutup keyboard HANYA bila sedang terbuka, di halaman dalam shell (bottom navbar).
+# Penanda: saat keyboard terbuka, bottom navbar (tab Beranda) tersembunyi.
+# Flutter mengembalikan fokus ke field terakhir setelah sheet/dialog ditutup,
+# sehingga keyboard bisa muncul lagi; hideKeyboard tanpa keyboard = Back (berbahaya).
+appId: com.sirko.app
+---
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: "Beranda.*Tab 1.*"
+    commands:
+      - hideKeyboard

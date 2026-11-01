@@ -1,0 +1,14 @@
+# Pilih pengguna di layar login PIN.
+# Field PIN autofocus (keyboard terbuka) → ketukan pertama ke dropdown kadang
+# hanya melepas fokus. Ulangi bila menu belum terbuka.
+# Param env: USER (regex item menu, mis. "Budi Pemilik \\(owner\\)").
+appId: com.sirko.app
+---
+- tapOn: "Pengguna.*"
+- runFlow:
+    when:
+      notVisible: ${USER}
+    commands:
+      - waitForAnimationToEnd
+      - tapOn: "Pengguna.*"
+- tapOn: ${USER}

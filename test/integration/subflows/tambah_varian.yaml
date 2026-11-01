@@ -1,0 +1,24 @@
+# Tambah satu varian di layar "Varian — <produk>".
+# Param env: NAMA, JUAL, MODAL, STOK.
+appId: com.sirko.app
+---
+- tapOn: "Varian"
+- extendedWaitUntil:
+    visible: "Varian Baru"
+    timeout: 5000
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: "Nama varian", TEXT: "${NAMA}" }
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: "Harga jual", TEXT: "${JUAL}" }
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: "Harga modal", TEXT: "${MODAL}" }
+- runFlow:
+    file: isi_field.yaml
+    env: { FIELD: "Stok", TEXT: "${STOK}" }
+- tapOn: "Simpan"
+- extendedWaitUntil:
+    notVisible: "Varian Baru"
+    timeout: 5000

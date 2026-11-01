@@ -1,0 +1,144 @@
+# TC-08 Supplier & Pembelian (kulakan): supplier baru, pembelian 2 barang +
+# diskon nota, bayar sebagian dari Bank BCA (sisa = hutang supplier), stok
+# bertambah, harga modal ikut harga beli terbaru (last-cost §15), bayar hutang.
+# Prasyarat: TC-07 (Bank BCA Rp125.000); Gula stok 3 modal 14.000; Aqua stok 50.
+# Hitungan: Gula 20×15.000 + Aqua 24×2.000 = 348.000 − 8.000 = 340.000;
+# dibayar 15.000 → hutang 325.000 → bayar 25.000 → 300.000.
+# Catatan BUG-05: dropdown "Ambil dari kas" di dialog Bayar Hutang supplier
+# kosong, jadi pembayaran hutang di sini memakai "Tanpa kas".
+appId: com.sirko.app
+name: "08 Supplier, kulakan & hutang supplier"
+tags: [pembelian]
+---
+- startRecording: 08_supplier_pembelian
+- runFlow: ../subflows/login_pemilik.yaml
+
+# --- Supplier baru ---
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Supplier" }
+- tapOn:
+    text: "Supplier"
+    index: 1
+- extendedWaitUntil:
+    visible: "Supplier Baru"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama.*", TEXT: "CV Sumber Rejeki" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Telepon", TEXT: "0274123456" }
+- tapOn: "Simpan"
+- extendedWaitUntil:
+    visible: "C CV Sumber Rejeki 0274123456.*"
+    timeout: 10000
+
+# --- Kulakan ---
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Pembelian" }
+- tapOn: "Kulakan"
+- extendedWaitUntil:
+    visible: "Kulakan / Pembelian"
+    timeout: 5000
+- tapOn: "Supplier .opsional.*"
+- tapOn: "CV Sumber Rejeki"
+- tapOn: "Tambah"
+- tapOn: "Gula Pasir 1kg Modal Rp14.000 . stok 3"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Qty", TEXT: "20" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Harga beli", TEXT: "15000" }
+- assertVisible: "Gula Pasir 1kg Subtotal: Rp300.000"
+- runFlow: ../subflows/tutup_keyboard_shell.yaml
+# Keyboard angka kadang tetap terbuka → ketukan pertama "Tambah" hanya
+# melepas fokus. Ulangi bila pemilih barang belum muncul.
+- tapOn: "Tambah"
+- runFlow:
+    when:
+      notVisible: "Aqua 600ml Modal.*"
+    commands:
+      - tapOn: "Tambah"
+- tapOn: "Aqua 600ml Modal.*"
+- runFlow: ../subflows/tutup_keyboard_shell.yaml
+- scrollUntilVisible:
+    element: "Aqua 600ml Subtotal.*"
+    direction: DOWN
+- runFlow:
+    file: ../subflows/isi_field_ke.yaml
+    env: { FIELD: "Qty", INDEX: "1", TEXT: "24" }
+- assertVisible: "Aqua 600ml Subtotal: Rp48.000"
+- runFlow: ../subflows/tutup_keyboard_shell.yaml
+- scrollUntilVisible:
+    element: "Dibayar sekarang.*"
+    direction: DOWN
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Diskon nota", TEXT: "8000" }
+- assertVisible: "Subtotal Rp348.000"
+- assertVisible: "Diskon -Rp8.000"
+- assertVisible: "Total Rp340.000"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Dibayar sekarang.*", TEXT: "15000" }
+- runFlow: ../subflows/tutup_keyboard_shell.yaml
+- tapOn: "Ambil dari kas.*"
+- tapOn: "Bank BCA \\(Rp125.000\\)"
+- takeScreenshot: 08_form_kulakan
+- tapOn: "Terima Pembelian"
+- extendedWaitUntil:
+    visible: "Pembelian .*Sebagian.*sisa Rp325.000 Rp340.000"
+    timeout: 10000
+- takeScreenshot: 08_daftar_pembelian
+
+# --- Efek ke stok & harga modal (last-cost) ---
+- tapOn: "Kulakan"
+- runFlow:
+    when:
+      notVisible: "Kulakan / Pembelian"
+    commands:
+      - waitForAnimationToEnd
+      - tapOn: "Kulakan"
+- extendedWaitUntil:
+    visible: "Kulakan / Pembelian"
+    timeout: 10000
+- tapOn: "Tambah"
+- assertVisible: "Gula Pasir 1kg Modal Rp15.000 . stok 23"
+- assertVisible: "Aqua 600ml Modal Rp2.000 . stok 74"
+- takeScreenshot: 08_stok_modal_baru
+- tapOn: "Scrim"
+- tapOn: "Kembali"
+
+# --- Saldo Bank BCA berkurang Rp15.000 ---
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Kas / Wallet" }
+- extendedWaitUntil:
+    visible: "Bank BCA Bank Rp110.000"
+    timeout: 10000
+
+# --- Hutang supplier & pembayaran ---
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Supplier" }
+- assertVisible: "C CV Sumber Rejeki 0274123456 Hutang kita Rp325.000"
+- tapOn: "C CV Sumber Rejeki.*"
+- extendedWaitUntil:
+    visible: "Hutang usaha kita ke supplier Rp325.000"
+    timeout: 10000
+- tapOn: "Bayar Hutang"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nominal .maks.*", TEXT: "25000" }
+- tapOn: "Ambil dari kas.*"
+- takeScreenshot: 08_BUG05_dropdown_kas_kosong
+- tapOn: ". Tanpa kas ."
+- tapOn: "Bayar"
+- extendedWaitUntil:
+    visible: "Hutang usaha kita ke supplier Rp300.000"
+    timeout: 10000
+- tapOn: "Kembali"
+- stopRecording

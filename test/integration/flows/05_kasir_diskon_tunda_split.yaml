@@ -1,0 +1,155 @@
+# TC-05 Kasir lanjutan: diskon item (%), diskon transaksi (Rp), Tunda &
+# Lanjutkan (diskon ikut tersimpan), split payment Tunai + QRIS, dan keranjang
+# tetap ada saat pindah halaman (keepAlive).
+# Prasyarat: TC-03/04 (Indomie @3.500 stok 100, Aqua @3.500 stok 50).
+# Field nominal baris split berlabel aksesibilitas "Nominal <metode>" (build 11).
+appId: com.sirko.app
+name: "05 Kasir diskon, tunda & split payment"
+tags: [kasir]
+---
+- startRecording: 05_kasir_diskon_tunda_split
+- runFlow: ../subflows/login_pemilik.yaml
+- tapOn: "Kasir.*Tab 2.*"
+- extendedWaitUntil:
+    visible: "Cari nama atau barcode.*"
+    timeout: 10000
+
+# Indomie ×4 = Rp14.000
+- repeat:
+    times: 4
+    commands:
+      - tapOn: "Indomie Goreng.*"
+- assertVisible: "4 item"
+- assertVisible: "Rp14.000"
+- tapOn: "4"
+- extendedWaitUntil:
+    visible: "Keranjang.*"
+    timeout: 5000
+
+# Diskon item 10% → Rp12.600
+- tapOn:
+    text: "Diskon"
+    index: 0
+- extendedWaitUntil:
+    visible: 'Diskon "Indomie Goreng"'
+    timeout: 5000
+- tapOn: "%"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Persen.*", TEXT: "10" }
+- tapOn: "Terapkan"
+- assertVisible: "Indomie Goreng Rp3.500 4 Rp12.600"
+- assertVisible: "Diskon -Rp1.400"
+
+# Diskon transaksi Rp600 → total Rp12.000
+- tapOn: "Diskon transaksi"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nominal.*", TEXT: "600" }
+- tapOn: "Terapkan"
+- assertVisible: "Diskon \\(Rp600\\)"
+- assertVisible: "Bayar  Rp12.000"
+- takeScreenshot: 05_keranjang_diskon
+
+# Tunda dengan label
+- tapOn: "Tunda"
+- extendedWaitUntil:
+    visible: "Tunda Transaksi"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Label.*", TEXT: "Pak Andi" }
+- tapOn: "Tunda"
+- extendedWaitUntil:
+    notVisible: "4 item"
+    timeout: 5000
+
+# Daftar Tunda (badge "1") → Lanjutkan
+- tapOn: "1"
+- extendedWaitUntil:
+    visible: "Daftar Tunda"
+    timeout: 5000
+- assertVisible: "Pak Andi 1 jenis . 4 unit . .*"
+- takeScreenshot: 05_daftar_tunda
+- tapOn: "Lanjutkan"
+- waitForAnimationToEnd
+# BUG-01: seharusnya otomatis kembali ke Kasir; kadang tertinggal di
+# "Daftar Tunda" kosong (context tile sudah unmount saat pop) → kembali manual.
+- runFlow:
+    when:
+      visible: "Tidak ada transaksi tertunda"
+    commands:
+      - takeScreenshot: 05_BUG01_tertinggal_di_daftar_tunda
+      - tapOn: "Kembali"
+- extendedWaitUntil:
+    visible: "4 item"
+    timeout: 5000
+- tapOn: "4"
+- extendedWaitUntil:
+    visible: "Bayar  Rp12.000"
+    timeout: 5000
+- assertVisible: "Diskon -Rp1.400"
+- assertVisible: "Diskon \\(Rp600\\)"
+
+# Split: Tunai 5.000 + QRIS 7.000
+- tapOn: "Bayar  Rp12.000"
+- extendedWaitUntil:
+    visible: "Pembayaran"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "12.000", TEXT: "5000" }
+- assertVisible: "Kurang"
+- assertVisible: "Rp7.000"
+- tapOn: "Tambah metode.*"
+- extendedWaitUntil:
+    visible: "QRIS"
+    timeout: 5000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nominal QRIS", TEXT: "7000" }
+- assertVisible: "Total bayar"
+- assertNotVisible: "Kurang"
+- takeScreenshot: 05_split_payment
+- tapOn: "Selesaikan & Cetak Struk"
+- extendedWaitUntil:
+    visible: "Transaksi berhasil"
+    timeout: 15000
+- tapOn: "Transaksi Baru"
+
+# Detail transaksi split
+- tapOn:
+    id: "kasir_riwayat"
+- extendedWaitUntil:
+    visible: "Riwayat Transaksi"
+    timeout: 10000
+- tapOn:
+    text: ".*INV-.*"
+    index: 0
+- extendedWaitUntil:
+    visible: "Detail Transaksi"
+    timeout: 10000
+- assertVisible: "Total Rp12.000"
+- assertVisible: "Tunai Rp5.000"
+- assertVisible: "QRIS Rp7.000"
+- takeScreenshot: 05_detail_split
+- tapOn: "Kembali"
+- tapOn: "Kembali"
+
+# Keranjang keepAlive: tambah Aqua → ke Beranda → kembali ke Kasir
+- tapOn: "Aqua 600ml.*"
+- assertVisible: "1 item"
+- tapOn:
+    id: "kasir_ke_beranda"
+- extendedWaitUntil:
+    visible: "Beranda.*Tab 1.*"
+    timeout: 5000
+- tapOn: "Kasir.*Tab 2.*"
+- extendedWaitUntil:
+    visible: "1 item"
+    timeout: 5000
+- tapOn:
+    text: "1"
+    index: 0
+- tapOn: "Kosongkan"
+- stopRecording

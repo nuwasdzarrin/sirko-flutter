@@ -1,0 +1,203 @@
+# TC-03 Master produk: kategori, satuan, tambah produk, validasi, cari,
+# edit harga, hapus → Recycle Bin → restore.
+# Prasyarat: TC-01/02 (sudah login). Data produk dipakai flow berikutnya:
+#   Indomie Goreng  modal 2.500  jual 3.500  stok 100 min 10  (Mie Instan, pcs)
+#   Aqua 600ml      modal 2.000  jual 3.000  stok 50  min 5   (Minuman, pcs)
+#   Gula Pasir 1kg  modal 14.000 jual 16.000 stok 5   min 10  (Sembako, kg) → stok menipis
+# Ikon tanpa teks diketuk via id semantics (build 11): produk_kelola_kategori,
+# produk_kelola_satuan, produk_menu_inventory.
+appId: com.sirko.app
+name: "03 Produk - kategori, satuan, CRUD & recycle bin"
+tags: [produk]
+---
+- startRecording: 03_produk_master
+- runFlow: ../subflows/login_pemilik.yaml
+- tapOn: "Produk.*Tab 3.*"
+- extendedWaitUntil:
+    visible: "Belum ada produk"
+    timeout: 10000
+- tapOn:
+    text: "Produk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Produk Baru"
+    timeout: 10000
+
+# Negatif: nama wajib
+- scrollUntilVisible:
+    element: "Simpan Produk"
+    direction: DOWN
+- tapOn: "Simpan Produk"
+- scrollUntilVisible:
+    element: "Nama produk wajib diisi"
+    direction: UP
+- assertVisible: "Nama produk wajib diisi"
+
+# --- Kelola kategori (ikon di kanan dropdown Kategori) ---
+- tapOn:
+    id: "produk_kelola_kategori"
+- extendedWaitUntil:
+    visible: "Kelola Kategori"
+    timeout: 10000
+- runFlow:
+    file: ../subflows/tambah_master.yaml
+    env: { FAB: "Kategori", FIELD: "Nama kategori", TEXT: "Mie Instan" }
+- runFlow:
+    file: ../subflows/tambah_master.yaml
+    env: { FAB: "Kategori", FIELD: "Nama kategori", TEXT: "Minuman" }
+- runFlow:
+    file: ../subflows/tambah_master.yaml
+    env: { FAB: "Kategori", FIELD: "Nama kategori", TEXT: "Sembako" }
+- assertVisible: "Mie Instan"
+- assertVisible: "Minuman"
+- assertVisible: "Sembako"
+- tapOn: "Kembali"
+
+# --- Kelola satuan ---
+- tapOn:
+    id: "produk_kelola_satuan"
+- extendedWaitUntil:
+    visible: "Kelola Satuan"
+    timeout: 10000
+- runFlow:
+    file: ../subflows/tambah_master.yaml
+    env: { FAB: "Satuan", FIELD: "Nama satuan.*", TEXT: "pcs" }
+- runFlow:
+    file: ../subflows/tambah_master.yaml
+    env: { FAB: "Satuan", FIELD: "Nama satuan.*", TEXT: "kg" }
+- assertVisible: "pcs"
+- assertVisible: "kg"
+- tapOn: "Kembali"
+- takeScreenshot: 03_form_kosong
+
+# --- Produk 1: Indomie Goreng ---
+- runFlow:
+    file: ../subflows/isi_produk.yaml
+    env:
+      NAMA: "Indomie Goreng"
+      BARCODE: "8998866200301"
+      KATEGORI: "Mie Instan"
+      SATUAN: "pcs"
+      MODAL: "2500"
+      JUAL: "3500"
+      STOK: "100"
+      MIN: "10"
+- extendedWaitUntil:
+    visible: "Indomie Goreng.*"
+    timeout: 10000
+
+# --- Produk 2: Aqua 600ml ---
+- tapOn:
+    text: "Produk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Produk Baru"
+    timeout: 10000
+- runFlow:
+    file: ../subflows/isi_produk.yaml
+    env:
+      NAMA: "Aqua 600ml"
+      BARCODE: "8886008101053"
+      KATEGORI: "Minuman"
+      SATUAN: "pcs"
+      MODAL: "2000"
+      JUAL: "3000"
+      STOK: "50"
+      MIN: "5"
+
+# --- Produk 3: Gula Pasir 1kg (stok di bawah minimum) ---
+- tapOn:
+    text: "Produk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Produk Baru"
+    timeout: 10000
+- runFlow:
+    file: ../subflows/isi_produk.yaml
+    env:
+      NAMA: "Gula Pasir 1kg"
+      BARCODE: "8992000000017"
+      KATEGORI: "Sembako"
+      SATUAN: "kg"
+      MODAL: "14000"
+      JUAL: "16000"
+      STOK: "5"
+      MIN: "10"
+- extendedWaitUntil:
+    visible: "Gula Pasir 1kg.*"
+    timeout: 10000
+- assertVisible: "Indomie Goreng.*"
+- assertVisible: "Aqua 600ml.*"
+- takeScreenshot: 03_daftar_produk
+
+# --- Cari via nama & barcode ---
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Cari nama atau barcode.*", TEXT: "aqua" }
+- assertVisible: "Aqua 600ml.*"
+- assertNotVisible: "Indomie Goreng.*"
+# Setelah terisi, hint hilang → ketuk teks yang sedang terisi.
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "aqua", TEXT: "8998866200301" }
+- assertVisible: "Indomie Goreng.*"
+- assertNotVisible: "Aqua 600ml.*"
+- runFlow:
+    file: ../subflows/kosongkan_field.yaml
+    env: { TEXT: "8998866200301" }
+- extendedWaitUntil:
+    visible: "Aqua 600ml.*"
+    timeout: 5000
+
+# --- Edit harga jual Aqua 3.000 → 3.500 ---
+- tapOn: "Aqua 600ml.*"
+- extendedWaitUntil:
+    visible: "Edit Produk"
+    timeout: 10000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Harga jual", TEXT: "3500" }
+- scrollUntilVisible:
+    element: "Simpan Perubahan"
+    direction: DOWN
+- tapOn: "Simpan Perubahan"
+- extendedWaitUntil:
+    visible: "Aqua 600ml.*Rp3\\.500.*"
+    timeout: 10000
+
+# --- Filter kategori (chip) ---
+- tapOn: "Sembako"
+- assertVisible: "Gula Pasir 1kg.*"
+- assertNotVisible: "Aqua 600ml.*"
+- tapOn: "Semua"
+
+# --- Hapus (soft delete) → Recycle Bin → Restore ---
+- runFlow:
+    file: ../subflows/menu_tile.yaml
+    env: { ITEM: "Gula Pasir 1kg.*", AKSI: "Hapus" }
+- extendedWaitUntil:
+    visible: "Hapus produk?"
+    timeout: 5000
+- tapOn: "Hapus"
+- extendedWaitUntil:
+    notVisible: "Gula Pasir 1kg.*"
+    timeout: 10000
+- takeScreenshot: 03_setelah_hapus
+# Menu inventory (ikon ⋮ toolbar, tak berlabel) → Recycle Bin
+- tapOn:
+    id: "produk_menu_inventory"
+- tapOn: "Recycle Bin"
+- extendedWaitUntil:
+    visible: "Recycle Bin.*Produk"
+    timeout: 10000
+- assertVisible: "Gula Pasir 1kg.*"
+- takeScreenshot: 03_recycle_bin
+- tapOn: "Restore"
+- extendedWaitUntil:
+    notVisible: "Gula Pasir 1kg.*"
+    timeout: 10000
+- tapOn: "Kembali"
+- extendedWaitUntil:
+    visible: "Gula Pasir 1kg.*"
+    timeout: 10000
+- stopRecording

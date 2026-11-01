@@ -1,0 +1,24 @@
+# BUG-06: produk bervarian tampil "Rp0 · Stok habis" di Kasir & tak bisa
+# diketuk (stok dibaca dari product.stock = 0, bukan total varian).
+# Harapan: ketuk → pemilih varian (Mix / Hitam) → masuk keranjang.
+appId: com.sirko.app
+name: "95 BUG-06 Produk varian bisa dijual di kasir"
+tags: [bug]
+---
+- startRecording: 95_bug06_varian_di_kasir
+- runFlow: ../subflows/login_pemilik.yaml
+- tapOn: "Kasir.*Tab 2.*"
+- scrollUntilVisible:
+    element: "Kopi Kapal Api.*"
+    direction: DOWN
+- takeScreenshot: 95_kartu_varian
+- assertNotVisible: "Kopi Kapal Api Rp0 Stok habis"
+- tapOn: "Kopi Kapal Api.*"
+- extendedWaitUntil:
+    visible: "Pilih varian . Kopi Kapal Api"
+    timeout: 5000
+- tapOn: "Mix.*"
+- assertVisible: "1 item"
+- tapOn: "1"
+- tapOn: "Kosongkan"
+- stopRecording

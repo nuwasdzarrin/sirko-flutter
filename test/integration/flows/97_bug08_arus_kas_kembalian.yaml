@@ -1,0 +1,14 @@
+# BUG-08: laporan Arus Kas "Penjualan — Tunai" menjumlah uang diterima,
+# tanpa dikurangi kembalian. Tunai bersih = 5.000 + 10.000 + (10.000 − 3.000)
+# = Rp22.000 (wallet & shift sudah benar memakai nilai bersih).
+appId: com.sirko.app
+name: "97 BUG-08 Arus kas tunai bersih kembalian"
+tags: [bug]
+---
+- startRecording: 97_bug08_arus_kas_kembalian
+- runFlow: ../subflows/login_pemilik.yaml
+- tapOn: "Laporan.*Tab 4.*"
+- tapOn: "Arus Kas.*Tab 3.*"
+- takeScreenshot: 97_arus_kas
+- assertVisible: "Penjualan . Tunai Rp22.000"
+- stopRecording

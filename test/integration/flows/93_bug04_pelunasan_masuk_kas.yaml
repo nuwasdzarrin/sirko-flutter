@@ -1,0 +1,23 @@
+# BUG-04: pelunasan hutang pelanggan secara tunai tak tercatat di wallet,
+# sehingga saldo Kas ≠ uang fisik. Harapan: mutasi Kas Utama memuat
+# pemasukan Rp7.333 & Rp4.667 (pembayaran Bu Sri di TC-06).
+appId: com.sirko.app
+name: "93 BUG-04 Pelunasan hutang masuk kas"
+tags: [bug]
+---
+- startRecording: 93_bug04_pelunasan_masuk_kas
+- runFlow: ../subflows/login_pemilik.yaml
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Kas / Wallet" }
+- tapOn: "Kas Utama.*"
+- extendedWaitUntil:
+    visible: "Masuk"
+    timeout: 10000
+- takeScreenshot: 93_mutasi_kas_utama
+- scrollUntilVisible:
+    element: ".*\\+Rp7.333"
+    direction: DOWN
+    timeout: 10000
+- assertVisible: ".*\\+Rp4.667"
+- stopRecording

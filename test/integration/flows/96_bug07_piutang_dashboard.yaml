@@ -1,0 +1,13 @@
+# BUG-07: kartu "Piutang (kredit)" & "Belum tertagih" = grand total transaksi
+# kredit/sebagian (Rp32.000), bukan sisa tagihan. Harapan: Rp10.000.
+appId: com.sirko.app
+name: "96 BUG-07 Piutang = sisa tagihan"
+tags: [bug]
+---
+- startRecording: 96_bug07_piutang_dashboard
+- runFlow: ../subflows/login_pemilik.yaml
+- takeScreenshot: 96_beranda_piutang
+- assertVisible: "Piutang \\(kredit\\) Rp10.000.*"
+- tapOn: "Laporan.*Tab 4.*"
+- assertVisible: "Belum tertagih \\(piutang\\) Rp10.000"
+- stopRecording

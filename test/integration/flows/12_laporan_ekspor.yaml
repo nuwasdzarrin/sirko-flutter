@@ -1,0 +1,89 @@
+# TC-12 Dashboard & Laporan (Penjualan, Laba, Arus Kas, Arus Stok, Produk) +
+# ekspor PDF/XLSX. Data hasil TC-04..11 (hari ini):
+#   INV-0001 void · INV-0002 Rp12.000 (Tunai 5.000 + QRIS 7.000, diskon)
+#   INV-0003 Rp32.000 kas bon (DP 10.000) · INV-0004 Rp7.000 (Rina, tunai 10.000)
+# Hanya angka yang BENAR yang di-assert di sini. Angka yang terdampak bug
+# (laba ⟵ BUG-03, piutang ⟵ BUG-07, kas tunai ⟵ BUG-08) diuji dengan nilai
+# seharusnya di 90_regresi_bug.yaml.
+appId: com.sirko.app
+name: "12 Laporan & ekspor"
+tags: [laporan]
+---
+- startRecording: 12_laporan_ekspor
+- runFlow: ../subflows/login_pemilik.yaml
+
+# --- Beranda ---
+- assertVisible: "Omzet Rp51.000 3 transaksi"
+- assertVisible: "Item terjual 8 Rata-rata Rp17.000/nota"
+- tapOn: "7 hari"
+- assertVisible: "Omzet Rp51.000 3 transaksi"
+- tapOn: "Hari ini"
+- takeScreenshot: 12_beranda
+
+# --- Laporan: Penjualan ---
+- tapOn: "Laporan.*Tab 4.*"
+- extendedWaitUntil:
+    visible: "Export PDF"
+    timeout: 10000
+- assertVisible: "Jumlah transaksi 3"
+- assertVisible: "Unit terjual 8"
+- assertVisible: "Omzet Rp51.000"
+- assertVisible: "Rata-rata / transaksi Rp17.000"
+- assertVisible: "Lunas \\(2\\) Rp19.000"
+- assertVisible: "Sebagian \\(1\\) Rp32.000"
+- takeScreenshot: 12_laporan_penjualan
+
+# --- Laba ---
+- tapOn: "Laba.*Tab.*"
+- assertVisible: "HPP .* Rp43.000"
+- takeScreenshot: 12_laporan_laba
+
+# --- Arus Kas ---
+- tapOn: "Arus Kas.*Tab.*"
+- assertVisible: "Penjualan . QRIS Rp7.000"
+- assertVisible: "Pelunasan hutang Rp12.000"
+- takeScreenshot: 12_laporan_arus_kas
+
+# --- Arus Stok ---
+- tapOn: "Arus Stok.*Tab.*"
+- assertVisible: "Masuk 44"
+- assertVisible: "Penyesuaian -18"
+- assertVisible: "Penjualan -11"
+- assertVisible: "Batal 3"
+- assertVisible: "Unit terjual \\(dari stok\\) 11"
+- takeScreenshot: 12_laporan_arus_stok
+
+# --- Produk terlaris ---
+- tapOn: "Produk.*Tab 5 dari 5"
+- assertVisible: "1 Indomie Goreng 6 terjual .* Rp19.600"
+- assertVisible: "2 Gula Pasir 1kg 2 terjual . Laba Rp4.000 Rp32.000"
+- takeScreenshot: 12_laporan_produk
+
+# --- Ekspor PDF → share sheet → Print (render PDF) ---
+- tapOn: "Export PDF"
+- extendedWaitUntil:
+    visible: "laporan-toko-maestro-\\d{8}-\\d{8}\\.pdf"
+    timeout: 20000
+- takeScreenshot: 12_share_pdf
+- tapOn: "Print"
+- extendedWaitUntil:
+    visible: "Page 1 of \\d+"
+    timeout: 30000
+- takeScreenshot: 12_preview_pdf
+- pressKey: back
+- extendedWaitUntil:
+    visible: "Export XLSX"
+    timeout: 10000
+
+# --- Ekspor XLSX ---
+# BUG-09: memakai OpenFilex tanpa cek hasil → tanpa app spreadsheet tak
+# terjadi apa-apa (tanpa share/pesan). Ekspektasi ketat ada di 90_regresi_bug.
+- tapOn: "Export XLSX"
+- waitForAnimationToEnd
+- takeScreenshot: 12_BUG09_export_xlsx_tanpa_respon
+- runFlow:
+    when:
+      notVisible: "Export XLSX"
+    commands:
+      - pressKey: back
+- stopRecording

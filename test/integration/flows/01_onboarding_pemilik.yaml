@@ -1,0 +1,70 @@
+# TC-01 Onboarding toko + buat akun Pemilik (instal bersih).
+# Cakupan: validasi nama toko wajib, pilih jenis usaha, validasi PIN
+# (minimal 6 digit & harus sama), masuk ke Beranda, versi app tampil.
+appId: com.sirko.app
+name: "01 Onboarding & akun pemilik"
+tags: [smoke, onboarding]
+---
+- startRecording: 01_onboarding_pemilik
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Selamat datang di Sirko"
+    timeout: 90000
+
+# Negatif: nama toko kosong
+- tapOn: "Lanjut"
+- assertVisible: "Nama toko wajib diisi"
+
+# Positif: isi toko & pilih jenis usaha
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama Toko", TEXT: "Toko Maestro" }
+- tapOn: "Jenis Usaha.*"
+- tapOn: "Minimarket"
+- assertVisible: "Jenis Usaha.*Minimarket"
+- tapOn: "Lanjut"
+- extendedWaitUntil:
+    visible: "Buat Akun Pemilik"
+    timeout: 20000
+
+# Negatif: PIN terlalu pendek
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama pemilik", TEXT: "Budi Pemilik" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "123" }
+- tapOn: "Buat & Masuk"
+- assertVisible: "PIN minimal 6 digit"
+
+# Negatif: PIN tidak sama
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "123456" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Ulangi PIN", TEXT: "654321" }
+- tapOn: "Buat & Masuk"
+- assertVisible: "PIN tidak sama"
+
+# Positif
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Ulangi PIN", TEXT: "123456" }
+- tapOn: "Buat & Masuk"
+- extendedWaitUntil:
+    visible: "Beranda.*"
+    timeout: 30000
+- assertVisible: 'Omzet Rp0 0 transaksi'
+- assertVisible: 'Piutang \(kredit\) Rp0 0 nota'
+- takeScreenshot: 01_beranda
+
+# Versi app tampil di tab Lainnya
+- tapOn: "Lainnya.*"
+- scrollUntilVisible:
+    element: 'Sirko v\d+\.\d+\.\d+ \(build \d+\)'
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: 01_lainnya
+- stopRecording

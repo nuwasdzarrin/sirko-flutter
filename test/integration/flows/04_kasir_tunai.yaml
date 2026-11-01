@@ -1,0 +1,125 @@
+# TC-04 Kasir inti: jual tunai, kembalian, struk, riwayat, stok berkurang,
+# batalkan transaksi (void) → stok kembali, dan penjagaan stok tidak cukup.
+# Prasyarat: TC-03 (Indomie stok 100 @3.500, Aqua stok 50 @3.500, Gula stok 5).
+# Ikon tanpa teks diketuk via id semantics (build 11): kasir_riwayat,
+# kasir_daftar_tunda, transaksi_batalkan.
+appId: com.sirko.app
+name: "04 Kasir tunai, struk, riwayat & void"
+tags: [smoke, kasir]
+---
+- startRecording: 04_kasir_tunai
+- runFlow: ../subflows/login_pemilik.yaml
+- tapOn: "Kasir.*Tab 2.*"
+- extendedWaitUntil:
+    visible: "Cari nama atau barcode.*"
+    timeout: 10000
+# Mode fokus kasir: bottom navbar disembunyikan
+- assertNotVisible: "Beranda.*Tab 1.*"
+
+# Tambah ke keranjang: Indomie ×2, Aqua ×1
+- tapOn: "Indomie Goreng.*"
+- tapOn: "Indomie Goreng.*"
+- tapOn: "Aqua 600ml.*"
+- assertVisible: "3 item"
+- assertVisible: "Rp10.500"
+
+# Buka keranjang, cek baris & subtotal
+- tapOn: "3"
+- extendedWaitUntil:
+    visible: "Keranjang.*"
+    timeout: 5000
+- assertVisible: "Indomie Goreng Rp3.500 2 Rp7.000"
+- assertVisible: "Aqua 600ml Rp3.500 1 Rp3.500"
+- takeScreenshot: 04_keranjang
+
+# Bayar tunai Rp20.000 → kembalian Rp9.500
+- tapOn: "Bayar  Rp10.500"
+- extendedWaitUntil:
+    visible: "Pembayaran"
+    timeout: 5000
+- assertVisible: "Uang pas"
+- tapOn: "Rp20.000"
+- assertVisible: "Kembalian"
+- assertVisible: "Rp9.500"
+- takeScreenshot: 04_pembayaran
+- tapOn: "Selesaikan & Cetak Struk"
+- extendedWaitUntil:
+    visible: "Transaksi berhasil"
+    timeout: 15000
+- assertVisible: "Invoice: INV-\\d{8}-0001"
+
+# Struk PDF → dialog cetak Android (1 halaman)
+- tapOn: "Preview PDF"
+- extendedWaitUntil:
+    visible: "Page 1 of 1"
+    timeout: 20000
+- takeScreenshot: 04_struk_pdf
+- pressKey: back
+- extendedWaitUntil:
+    visible: "Transaksi Baru"
+    timeout: 10000
+- tapOn: "Transaksi Baru"
+
+# Stok berkurang
+- assertVisible: "Aqua 600ml Rp3.500 Stok 49"
+- scrollUntilVisible:
+    element: "Indomie Goreng Rp3.500 Stok 98"
+    direction: DOWN
+
+# Riwayat & detail transaksi
+- tapOn:
+    id: "kasir_riwayat"
+- extendedWaitUntil:
+    visible: "Riwayat Transaksi"
+    timeout: 10000
+- tapOn: ".*INV-\\d{8}-0001.*"
+- extendedWaitUntil:
+    visible: "Detail Transaksi"
+    timeout: 10000
+- assertVisible: "INV-\\d{8}-0001 LUNAS"
+- assertVisible: "Indomie Goreng 2 x Rp3.500 Rp7.000"
+- assertVisible: "Total Rp10.500"
+- assertVisible: "Tunai Rp20.000"
+- assertVisible: "Kembalian Rp9.500"
+- takeScreenshot: 04_detail_transaksi
+
+# Void (batalkan) → stok dikembalikan
+- tapOn:
+    id: "transaksi_batalkan"
+- extendedWaitUntil:
+    visible: "Batalkan transaksi?"
+    timeout: 5000
+- tapOn: "Ya, Batalkan"
+- extendedWaitUntil:
+    visible: "Transaksi dibatalkan, stok dikembalikan."
+    timeout: 10000
+- takeScreenshot: 04_void
+- tapOn: "Kembali"
+- tapOn: "Kembali"
+- extendedWaitUntil:
+    visible: "Aqua 600ml Rp3.500 Stok 50"
+    timeout: 10000
+
+# Negatif: stok tidak cukup (Gula stok 5, coba jual 6)
+- repeat:
+    times: 6
+    commands:
+      - tapOn: "Gula Pasir 1kg.*"
+- assertVisible: "6 item"
+- tapOn: "Bayar"
+- extendedWaitUntil:
+    visible: "Pembayaran"
+    timeout: 5000
+- tapOn: "Selesaikan & Cetak Struk"
+- extendedWaitUntil:
+    visible: 'Stok "Gula Pasir 1kg" tidak cukup \(tersedia 5, diminta 6\)\.'
+    timeout: 5000
+- takeScreenshot: 04_stok_tidak_cukup
+# Tutup sheet & kosongkan keranjang (keranjang dipersist antar sesi)
+- pressKey: back
+- tapOn: "6"
+- tapOn: "Kosongkan"
+- extendedWaitUntil:
+    notVisible: "6 item"
+    timeout: 5000
+- stopRecording

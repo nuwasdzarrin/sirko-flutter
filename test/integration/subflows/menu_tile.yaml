@@ -1,0 +1,12 @@
+# Buka menu titik-tiga pada tile daftar lalu pilih aksi.
+# Tombol menu tak berlabel → anak ke-2 dari node tile (index 0 = tile itu sendiri).
+# Param env: ITEM (regex teks tile), AKSI (label item menu).
+appId: com.sirko.app
+---
+- tapOn:
+    childOf: ${ITEM}
+    index: 1
+- extendedWaitUntil:
+    visible: ${AKSI}
+    timeout: 5000
+- tapOn: ${AKSI}

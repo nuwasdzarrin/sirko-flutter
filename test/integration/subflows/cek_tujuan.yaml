@@ -1,0 +1,17 @@
+# Ketuk sebuah menu/pintasan, pastikan layar tujuan tampil, lalu kembali ke Beranda.
+# Param env: LABEL (teks yang diketuk), EXPECT (teks penanda layar tujuan).
+appId: com.sirko.app
+---
+- tapOn: ${LABEL}
+- extendedWaitUntil:
+    visible: ${EXPECT}
+    timeout: 10000
+- runFlow:
+    when:
+      visible: "Kembali"
+    commands:
+      - tapOn: "Kembali"
+- tapOn: "Beranda.*Tab 1.*"
+- extendedWaitUntil:
+    visible: "Pintasan"
+    timeout: 10000
