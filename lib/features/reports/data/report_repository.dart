@@ -53,9 +53,15 @@ class ReportRepository {
     );
   }
 
-  /// Laba §9: `revenue = Σ lineTotal`, `cost = Σ costPriceSnapshot·qty`.
-  /// `grossProfit = revenue − cost = Σ((unitPrice − cost)·qty − diskonItem)`.
+  /// Laba §9: `revenue = Σ lineTotal − Σ diskon transaksi`,
+  /// `cost = Σ costPriceSnapshot·qty`, `grossProfit = revenue − cost`.
+  /// Diskon transaksi (`transactions.discount_total`) ikut mengurangi laba.
   Future<ProfitReport> profitReport(ReportDateRange range) async {
+    final txDiscount = await _db.customSelect(
+      'SELECT COALESCE(SUM(discount_total), 0) AS disc '
+      'FROM transactions t WHERE $_txFilter',
+      variables: _range(range),
+    ).getSingle();
     final row = await _db.customSelect(
       'SELECT COALESCE(SUM(ti.line_total), 0) AS revenue, '
       'COALESCE(SUM(ti.cost_price_snapshot * ti.qty), 0) AS cost '
@@ -66,7 +72,7 @@ class ReportRepository {
     ).getSingle();
 
     return ProfitReport(
-      revenue: row.read<int>('revenue'),
+      revenue: row.read<int>('revenue') - txDiscount.read<int>('disc'),
       cost: row.read<int>('cost'),
     );
   }
@@ -75,7 +81,12 @@ class ReportRepository {
   Future<TransactionStatusSummary> statusSummary(ReportDateRange range) async {
     final rows = await _db.customSelect(
       'SELECT status, COUNT(*) AS cnt, '
-      'COALESCE(SUM(grand_total), 0) AS total '
+      'COALESCE(SUM(grand_total), 0) AS total, '
+      // Sisa tagihan per nota = total − dibayar saat checkout − pelunasan.
+      'COALESCE(SUM(MAX(grand_total - paid_total - COALESCE(('
+      'SELECT SUM(cp.amount) FROM credit_payments cp '
+      'WHERE cp.transaction_id = t.id AND cp.deleted_at IS NULL), 0), 0)), 0) '
+      'AS outstanding '
       'FROM transactions t '
       'WHERE $_txFilter '
       'GROUP BY status',
@@ -85,6 +96,7 @@ class ReportRepository {
     var paidCount = 0, paidTotal = 0;
     var partialCount = 0, partialTotal = 0;
     var creditCount = 0, creditTotal = 0;
+    var outstanding = 0;
     for (final row in rows) {
       final status = row.read<String>('status');
       final cnt = row.read<int>('cnt');
@@ -96,9 +108,11 @@ class ReportRepository {
         case 'partial':
           partialCount = cnt;
           partialTotal = total;
+          outstanding += row.read<int>('outstanding');
         case 'credit':
           creditCount = cnt;
           creditTotal = total;
+          outstanding += row.read<int>('outstanding');
       }
     }
     return TransactionStatusSummary(
@@ -108,6 +122,7 @@ class ReportRepository {
       partialTotal: partialTotal,
       creditCount: creditCount,
       creditTotal: creditTotal,
+      outstanding: outstanding,
     );
   }
 
@@ -146,7 +161,7 @@ class ReportRepository {
   }
 
   /// Arus kas **masuk** (Fase 5): pembayaran penjualan per metode + pelunasan
-  /// hutang (credit_payments). Kas keluar & wallet menyusul Fase 7/8.
+  /// hutang (credit_payments). Tunai = uang diterima − kembalian.
   Future<CashFlowSummary> cashFlow(ReportDateRange range) async {
     final byMethod = await _db.customSelect(
       'SELECT p.method AS method, COALESCE(SUM(p.amount), 0) AS total '
@@ -161,6 +176,16 @@ class ReportRepository {
     for (final row in byMethod) {
       final method = PaymentMethod.values.byName(row.read<String>('method'));
       salesByMethod[method] = row.read<int>('total');
+    }
+    // Pembayaran tunai menyimpan uang DITERIMA; kas bersih = − kembalian.
+    final cash = salesByMethod[PaymentMethod.cash];
+    if (cash != null) {
+      final change = await _db.customSelect(
+        'SELECT COALESCE(SUM(change_total), 0) AS chg '
+        'FROM transactions t WHERE $_txFilter',
+        variables: _range(range),
+      ).getSingle();
+      salesByMethod[PaymentMethod.cash] = cash - change.read<int>('chg');
     }
 
     final debt = await _db.customSelect(
@@ -264,9 +289,20 @@ class ReportRepository {
       variables: _range(range),
     ).get();
 
+    final discounts = await _db.customSelect(
+      'SELECT t.cashier_id AS uid, COALESCE(SUM(t.discount_total), 0) AS disc '
+      'FROM transactions t WHERE $_txFilter GROUP BY t.cashier_id',
+      variables: _range(range),
+    ).get();
+    final discByUid = <String?, int>{
+      for (final row in discounts)
+        row.read<String?>('uid'): row.read<int>('disc'),
+    };
+    // Laba = Σ laba item − diskon transaksi kasir tsb (§9).
     final profitByUid = <String?, int>{
       for (final row in profits)
-        row.read<String?>('uid'): row.read<int>('profit'),
+        row.read<String?>('uid'):
+            row.read<int>('profit') - (discByUid[row.read<String?>('uid')] ?? 0),
     };
 
     final rows = heads.map((row) {

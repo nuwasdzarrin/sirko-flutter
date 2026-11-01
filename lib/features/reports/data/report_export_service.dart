@@ -70,7 +70,7 @@ class ReportExportService {
     s.appendRow([]);
 
     s.appendRow([TextCellValue('LABA')]);
-    _kvMoney(s, 'Pendapatan (Σ line total)', b.profit.revenue);
+    _kvMoney(s, 'Pendapatan (setelah diskon)', b.profit.revenue);
     _kvMoney(s, 'HPP (Σ modal·qty)', b.profit.cost);
     _kvMoney(s, 'Laba kotor', b.profit.grossProfit);
     s.appendRow([
@@ -261,7 +261,7 @@ class ReportExportService {
             ['Unit terjual', '${b.sales.itemCount}'],
             ['Omzet', _rp(b.sales.grossRevenue)],
             ['Rata-rata / transaksi', _rp(b.sales.averageTicket)],
-            ['Pendapatan (line total)', _rp(b.profit.revenue)],
+            ['Pendapatan (setelah diskon)', _rp(b.profit.revenue)],
             ['HPP (modal terjual)', _rp(b.profit.cost)],
             ['Laba kotor', _rp(b.profit.grossProfit)],
             ['Margin', '${b.profit.marginPercent.toStringAsFixed(1)}%'],

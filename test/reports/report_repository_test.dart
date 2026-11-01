@@ -36,6 +36,10 @@ void main() {
     required int datetime,
     required TxStatus status,
     required int grandTotal,
+    int paidTotal = 0,
+    int discountTotal = 0,
+    int changeTotal = 0,
+    String? cashierId,
     List<({int qty, int unitPrice, int cost, int discount, String name})>
         items = const [],
     List<({PaymentMethod method, int amount})> payments = const [],
@@ -48,6 +52,10 @@ void main() {
           datetime: datetime,
           status: status,
           grandTotal: Value(grandTotal),
+          paidTotal: Value(paidTotal),
+          discountTotal: Value(discountTotal),
+          changeTotal: Value(changeTotal),
+          cashierId: Value(cashierId),
           createdAt: datetime,
           updatedAt: datetime,
           deletedAt: Value(deleted ? datetime : null),
@@ -323,6 +331,80 @@ void main() {
       expect(b.dailyRevenue.length, 2); // day + nextDay
       expect(b.dailyRevenue.first.revenue, 10000);
       expect(b.dailyRevenue.last.revenue, 0);
+    });
+  });
+
+  group('regresi bug laporan (QA 2026-10-31)', () {
+    // Indomie ×4 @3.500 modal 2.500, diskon item 10% (1.400) → line 12.600;
+    // diskon transaksi 600 → grand 12.000. Laba benar = 12.000 − 10.000.
+    Future<void> seedDiscountedSale() => seedTx(
+          datetime: midOf(day),
+          status: TxStatus.paid,
+          grandTotal: 12000,
+          discountTotal: 600,
+          items: [
+            (qty: 4, unitPrice: 3500, cost: 2500, discount: 1400, name: 'Indomie'),
+          ],
+        );
+
+    test('BUG-03 laba dikurangi diskon transaksi', () async {
+      await seedDiscountedSale();
+
+      final p = await repo.profitReport(today);
+
+      expect(p.revenue, 12000);
+      expect(p.grossProfit, 2000);
+    });
+
+    test('BUG-03 laba per karyawan dikurangi diskon transaksi', () async {
+      await seedDiscountedSale();
+
+      final rows = await repo.employeeSummary(today);
+
+      expect(rows.single.profit, 2000);
+    });
+
+    test('BUG-07 piutang = sisa tagihan (minus DP & pelunasan)', () async {
+      await db.into(db.customers).insert(CustomersCompanion.insert(
+            id: 'c1',
+            name: 'Bu Sri',
+            createdAt: 0,
+            updatedAt: 0,
+          ));
+      final tx = await seedTx(
+        datetime: midOf(day),
+        status: TxStatus.partial,
+        grandTotal: 32000,
+        paidTotal: 10000,
+      );
+      await db.into(db.creditPayments).insert(CreditPaymentsCompanion.insert(
+            id: 'cp1',
+            customerId: 'c1',
+            transactionId: Value(tx),
+            amount: 12000,
+            datetime: midOf(day),
+            method: PaymentMethod.cash,
+            createdAt: 0,
+            updatedAt: 0,
+          ));
+
+      final st = await repo.statusSummary(today);
+
+      expect(st.unpaidValue, 10000);
+    });
+
+    test('BUG-08 penjualan tunai di arus kas dikurangi kembalian', () async {
+      await seedTx(
+        datetime: midOf(day),
+        status: TxStatus.paid,
+        grandTotal: 7000,
+        changeTotal: 3000,
+        payments: [(method: PaymentMethod.cash, amount: 10000)],
+      );
+
+      final cf = await repo.cashFlow(today);
+
+      expect(cf.salesByMethod[PaymentMethod.cash], 7000);
     });
   });
 }

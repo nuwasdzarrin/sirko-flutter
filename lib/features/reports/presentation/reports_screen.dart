@@ -174,10 +174,10 @@ class _ProfitTab extends StatelessWidget {
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Text('Laba dihitung dari harga modal tersimpan per item.',
+          child: Text('Laba = pendapatan setelah diskon item & transaksi − modal tersimpan per item.',
               style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
         ),
-        _kvTile('Pendapatan (Σ line total)', Money(p.revenue).format()),
+        _kvTile('Pendapatan (setelah diskon)', Money(p.revenue).format()),
         _kvTile('HPP (Σ modal · qty)', Money(p.cost).format()),
         _kvTile('Laba kotor', Money(p.grossProfit).format(), bold: true),
         _kvTile('Margin', '${p.marginPercent.toStringAsFixed(1)}%'),
@@ -200,8 +200,9 @@ class _CashFlowTab extends StatelessWidget {
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Text('Kas masuk: pembayaran penjualan + pelunasan hutang. '
-              'Kas keluar & saldo wallet menyusul Fase 7–8.',
+          child: Text('Kas masuk: pembayaran penjualan (tunai sudah dikurangi '
+              'kembalian) + pelunasan hutang. Saldo & kas keluar per wallet: '
+              'menu Kas / Wallet.',
               style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
         ),
         for (final m in methods)

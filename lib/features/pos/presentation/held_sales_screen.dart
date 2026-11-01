@@ -87,6 +87,10 @@ class _HeldTile extends ConsumerWidget {
   }
 
   Future<void> _resume(BuildContext context, WidgetRef ref) async {
+    // Tangkap Navigator SEBELUM await: begitu tunda di-resume, stream daftar
+    // menghapus tile ini → `context` tile ter-unmount dan pop akan terlewat
+    // (layar tertinggal di "Daftar Tunda" kosong — BUG-01).
+    final navigator = Navigator.of(context);
     // Bila keranjang aktif tak kosong, konfirmasi agar tak menimpa tak sengaja.
     final cartNotEmpty = !ref.read(cartControllerProvider).isEmpty;
     if (cartNotEmpty) {
@@ -110,7 +114,7 @@ class _HeldTile extends ConsumerWidget {
     }
     final done =
         await ref.read(heldSaleControllerProvider.notifier).resume(summary.id);
-    if (done && context.mounted) Navigator.of(context).pop();
+    if (done && navigator.mounted) navigator.pop();
   }
 
   Future<void> _cancel(BuildContext context, WidgetRef ref) async {

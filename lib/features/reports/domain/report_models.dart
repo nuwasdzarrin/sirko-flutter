@@ -30,10 +30,10 @@ class SalesSummary {
 }
 
 /// Laba/margin (spec 03 §9). `profit = revenue − cost` di mana
-/// `revenue = Σ lineTotal` (unitPrice·qty − diskonItem) dan `cost = Σ cost·qty`.
-/// Identitas: `profit = Σ((unitPrice − costSnapshot)·qty − diskon)` = rumus §9.
+/// `revenue = Σ lineTotal − Σ diskon transaksi` dan `cost = Σ cost·qty`.
+/// Identitas: `profit = Σ((unitPrice − costSnapshot)·qty − diskonItem) − diskonTx`.
 class ProfitReport {
-  /// Σ `lineTotal` item non-void (pendapatan bersih setelah diskon item).
+  /// Pendapatan bersih: Σ `lineTotal` item non-void − Σ diskon transaksi.
   final int revenue;
 
   /// Σ `costPriceSnapshot · qty` item non-void (harga pokok penjualan).
@@ -87,6 +87,7 @@ class TransactionStatusSummary {
     this.partialTotal = 0,
     this.creditCount = 0,
     this.creditTotal = 0,
+    this.outstanding,
   });
 
   static const empty = TransactionStatusSummary();
@@ -94,9 +95,12 @@ class TransactionStatusSummary {
   int get totalCount => paidCount + partialCount + creditCount;
   int get totalValue => paidTotal + partialTotal + creditTotal;
 
-  /// Sisa yang belum tertagih (jadi piutang) = nilai kredit + partial.
-  /// Catatan: partial/credit menambah `debtBalance` di modul hutang (§7).
-  int get unpaidValue => partialTotal + creditTotal;
+  /// Σ sisa tagihan nota kredit/sebagian (total − DP − pelunasan). Null =
+  /// tak dihitung (mis. objek dibuat manual) → jatuh ke nilai nota penuh.
+  final int? outstanding;
+
+  /// Sisa yang belum tertagih (piutang) dari nota dalam rentang.
+  int get unpaidValue => outstanding ?? (partialTotal + creditTotal);
 }
 
 /// Ringkasan arus kas **masuk** (scope Fase 5 — wallet & kas keluar di Fase 7/8).

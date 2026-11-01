@@ -106,7 +106,11 @@ Future<void> _payDebtDialog(
       TextEditingController(text: formatRupiahThousands(maxAmount));
   String? walletId; // opsional: kas keluar
 
-  final wallets = ref.read(walletsProvider).asData?.value ?? const [];
+  // Baca langsung dari repo: `walletsProvider` (stream autoDispose) tak
+  // di-watch di layar ini → `ref.read` masih loading → daftar kosong (BUG-05).
+  final wallets =
+      await ref.read(walletRepositoryProvider).watchWallets().first;
+  if (!context.mounted) return;
 
   final ok = await showDialog<bool>(
     context: context,

@@ -23,12 +23,19 @@ class ReportFileSharer {
   }
 
   /// Tulis XLSX ke temp lalu buka dengan aplikasi spreadsheet perangkat.
+  /// Bila tak ada aplikasi yang bisa membuka (umum di HP kasir), jatuh ke
+  /// share sheet agar tombol tak "diam" (BUG-09).
   Future<String> openXlsx(ReportBundle bundle) async {
     final path = await _writeTemp(
       '${_service.baseFileName(bundle)}.xlsx',
       _service.buildXlsx(bundle),
     );
-    await OpenFilex.open(path);
+    final result = await OpenFilex.open(path);
+    if (result.type != ResultType.done) {
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(path)], text: 'Laporan ${bundle.storeName}'),
+      );
+    }
     return path;
   }
 

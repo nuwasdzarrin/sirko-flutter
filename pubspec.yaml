@@ -2,7 +2,7 @@ name: sirko
 description: "Sirko — POS/kasir digital untuk ritel (kelontong, grosir, supermarket). Local-first."
 publish_to: 'none'
 
-version: 1.2.0+11
+version: 1.2.0+13
 
 environment:
   sdk: ^3.8.1
