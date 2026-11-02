@@ -10,6 +10,8 @@ allprojects {
 // membuat Flutter Gradle plugin gagal membuat folder flutter_assets di Windows
 // (path terpecah jadi "C:\Users\WINDOWS"). Solusi lintas-mesin: pindahkan proyek
 // ke path tanpa spasi. Sementara, relokasikan build ke C:/fbuild/sirko.
+// File kerja (intermediates) saja yang di sini; APK release otomatis disalin
+// ke KasirWarung/apk-release (lihat app/build.gradle.kts).
 val newBuildDir = file("C:/fbuild/sirko")
 rootProject.layout.buildDirectory.set(newBuildDir)
 

@@ -56,6 +56,46 @@ flutter {
     source = "../.."
 }
 
+// --- Hasil build release → KasirWarung/apk-release ---
+// Build dir dialihkan ke C:/fbuild (lihat android/build.gradle.kts, masalah
+// spasi di path). Agar APK mudah ditemukan, tiap `assembleRelease` (termasuk
+// `flutter build apk --release [--split-per-abi]`) menyalin APK ke folder
+// apk-release dengan nama Sirko-<versi>-b<build>[-<abi>].apk.
+val apkReleaseDir = rootProject.file("../../apk-release")
+android.applicationVariants.configureEach {
+    val variant = this
+    if (variant.buildType.name != "release") return@configureEach
+    val copyApk = tasks.register<Copy>(
+        "copy${variant.name.replaceFirstChar { it.uppercase() }}ApkToApkRelease"
+    ) {
+        from(variant.outputs.map { it.outputFile })
+        into(apkReleaseDir)
+        rename { fileName ->
+            // app-release.apk → "" ; app-arm64-v8a-release.apk → "-arm64-v8a"
+            val abi = fileName.removePrefix("app-").removeSuffix(".apk")
+                .removeSuffix("-release").removeSuffix("release")
+            val suffix = if (abi.isEmpty()) "" else "-$abi"
+            "Sirko-${variant.versionName}-b${variant.versionCode}$suffix.apk"
+        }
+    }
+    // Tool `flutter build apk` mencari APK di <proyek>/build/app/outputs/
+    // flutter-apk; tanpa salinan ini ia melapor "failed to produce an .apk"
+    // (palsu) karena build dir dialihkan ke C:/fbuild.
+    val copyForFlutterTool = tasks.register<Copy>(
+        "copy${variant.name.replaceFirstChar { it.uppercase() }}ApkForFlutterTool"
+    ) {
+        from(layout.buildDirectory.dir("outputs/flutter-apk"))
+        into(rootProject.file("../build/app/outputs/flutter-apk"))
+    }
+    variant.assembleProvider.configure { finalizedBy(copyApk, copyForFlutterTool) }
+}
+
+// Kompilasi Dart (app.so) SELALU diulang: dengan build dir di luar proyek,
+// Gradle pernah menganggapnya up-to-date sehingga APK baru berisi kode lama.
+tasks.matching { it.name.startsWith("compileFlutterBuild") }.configureEach {
+    outputs.upToDateWhen { false }
+}
+
 dependencies {
     // Orchestrator runtime untuk instrumentasi Patrol.
     androidTestUtil("androidx.test:orchestrator:1.5.1")
