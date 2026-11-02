@@ -202,7 +202,8 @@ void main() {
     server.failWith = const SocketException('offline');
 
     await expectLater(a.engine.syncNow(), throwsA(isA<SocketException>()));
-    expect(await SyncLocalStore(a.db).pendingCount(), 1);
+    // Produk + log rekonsiliasi stok awalnya (dibuat sebelum push, §8.6).
+    expect(await SyncLocalStore(a.db).pendingCount(), 2);
 
     server.failWith = null;
     await a.engine.syncNow();

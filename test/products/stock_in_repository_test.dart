@@ -44,7 +44,10 @@ void main() {
             .getSingle();
     expect(product.stock, 7);
 
-    final logs = await db.select(db.stockLogs).get();
+    // Selain log stok awal produk (StockLedger.logInitial).
+    final logs = await (db.select(db.stockLogs)
+          ..where((t) => t.refType.equals('stock_in')))
+        .get();
     expect(logs.length, 1);
     expect(logs.first.type, StockLogType.inbound);
     expect(logs.first.qtyChange, 2);

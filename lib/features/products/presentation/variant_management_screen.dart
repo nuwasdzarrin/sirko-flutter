@@ -42,7 +42,8 @@ class VariantManagementScreen extends ConsumerWidget {
         barcode: result.barcode,
         sellingPrice: result.sellingPrice,
         costPrice: result.costPrice,
-        stock: result.stock,
+        // null = stok tak diubah → jangan timpa penjualan bersamaan.
+        stock: result.stock == existing.stock ? null : result.stock,
       );
     }
   }

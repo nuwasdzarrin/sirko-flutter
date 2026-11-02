@@ -157,6 +157,19 @@ void main() {
     test('LWW: baris baru disisipkan bersih', () async {
       await store.applyRemote({
         'products': [wireProduct('p9', updatedAt: 2000)],
+        'stock_logs': [
+          {
+            'id': 'log-p9',
+            'createdAt': 500,
+            'updatedAt': 500,
+            'deletedAt': null,
+            'productId': 'p9',
+            'variantId': null,
+            'type': 'initial',
+            'qtyChange': 7,
+            'stockAfter': 7,
+          },
+        ],
       });
 
       final p = await product('p9');

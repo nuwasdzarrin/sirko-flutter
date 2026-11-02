@@ -168,6 +168,25 @@ class OpnameRepository {
       for (final item in items) {
         if (item.diff == 0) continue;
         adjusted++;
+        // Log = fisik − stok SAAT INI (bukan `diff` saat dihitung) → invarian
+        // stok = Σ stock_logs tetap utuh walau ada penjualan setelah
+        // penghitungan (SYNC.md §8.6).
+        final int current;
+        if (item.variantId != null) {
+          current = (await (_db.select(_db.productVariants)
+                    ..where((t) => t.id.equals(item.variantId!)))
+                  .getSingleOrNull())
+              ?.stock ?? item.systemQty;
+        } else if (item.productId != null) {
+          current = (await (_db.select(_db.products)
+                    ..where((t) => t.id.equals(item.productId!)))
+                  .getSingleOrNull())
+              ?.stock ?? item.systemQty;
+        } else {
+          current = item.systemQty;
+        }
+        final change = item.physicalQty - current;
+        if (change == 0) continue;
         // Set stok sistem = fisik.
         if (item.variantId != null) {
           await (_db.update(_db.productVariants)
@@ -193,7 +212,7 @@ class OpnameRepository {
                 productId: Value(item.productId),
                 variantId: Value(item.variantId),
                 type: StockLogType.adjustment,
-                qtyChange: item.diff,
+                qtyChange: change,
                 stockAfter: item.physicalQty,
                 refType: const Value('opname'),
                 refId: Value(opnameId),

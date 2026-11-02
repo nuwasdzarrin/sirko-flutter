@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/date_time_utils.dart';
@@ -150,6 +151,7 @@ class SyncLocalStore {
     var conflicts = 0;
     final details = <String>[];
     final touched = <TableInfo>{};
+    final affected = _Affected();
 
     await _db.customStatement('PRAGMA foreign_keys = OFF');
     try {
@@ -159,6 +161,7 @@ class SyncLocalStore {
           if (rows == null || rows.isEmpty) continue;
           for (final row in rows) {
             if (_isCloudOnlyUser(t, row)) continue;
+            affected.collect(t.wire, row);
             try {
               final changed = switch (t.kind) {
                 SyncKind.singleton => await _applyBusiness(t, row),
@@ -176,6 +179,12 @@ class SyncLocalStore {
           }
           touched.add(_tableInfo(t.local));
         }
+        // Stok/saldo = Σ ledger (SYNC.md §8.6): perubahan bersamaan dari
+        // beberapa kasir tak hilang oleh LWW kolom master.
+        final r = await _recompute(affected);
+        if (r.products) touched.add(_tableInfo('products'));
+        if (r.variants) touched.add(_tableInfo('product_variants'));
+        if (r.wallets) touched.add(_tableInfo('wallets'));
       });
     } finally {
       await _db.customStatement('PRAGMA foreign_keys = ON');
@@ -325,6 +334,140 @@ class SyncLocalStore {
         _ => Variable.withString(v.toString()),
       };
 
+  // ── Ledger: rekonsiliasi & hitung ulang (SYNC.md §8.6) ─────────────────────
+
+  static const keyLedgerReconciled = 'ledger_reconciled_v1';
+  static const _uuid = Uuid();
+
+  static const _productLedgerSql =
+      'SELECT COALESCE(SUM(l.qty_change), 0) FROM stock_logs l '
+      'WHERE l.product_id = p.id AND l.variant_id IS NULL '
+      'AND l.deleted_at IS NULL';
+  static const _variantLedgerSql =
+      'SELECT COALESCE(SUM(l.qty_change), 0) FROM stock_logs l '
+      'WHERE l.variant_id = v.id AND l.deleted_at IS NULL';
+  static const _walletLedgerSql = "SELECT COALESCE(SUM(CASE "
+      "WHEN m.wallet_id = w.id AND m.type = 'in' THEN m.amount "
+      "WHEN m.wallet_id = w.id AND m.type IN ('out', 'transfer') "
+      "THEN -m.amount "
+      "WHEN m.target_wallet_id = w.id AND m.type = 'transfer' THEN m.amount "
+      "ELSE 0 END), 0) FROM wallet_transactions m "
+      "WHERE (m.wallet_id = w.id OR m.target_wallet_id = w.id) "
+      "AND m.deleted_at IS NULL";
+
+  /// Sekali per database, sebelum sync pertama build ini: stok/saldo data lama
+  /// yang tak cocok dengan ledger dicatat selisihnya sebagai baris ledger
+  /// ber-id **deterministik** (UUID v5) → dua HP dengan data sama menghasilkan
+  /// baris yang sama (server menyimpan sekali). Return jumlah baris dibuat.
+  Future<int> reconcileLedgersOnce() async {
+    if (await _get(keyLedgerReconciled) != null) return 0;
+    var count = 0;
+    await _db.transaction(() async {
+      final now = DateTimeUtils.nowEpochMs();
+      final stocks = [
+        ...await _db.customSelect(
+          'SELECT p.id AS id, p.id AS pid, NULL AS vid, p.stock AS qty, '
+          '($_productLedgerSql) AS ledger, (SELECT COUNT(*) FROM stock_logs l '
+          'WHERE l.product_id = p.id AND l.variant_id IS NULL) AS n '
+          'FROM products p',
+        ).get(),
+        ...await _db.customSelect(
+          'SELECT v.id AS id, v.product_id AS pid, v.id AS vid, v.stock AS qty, '
+          '($_variantLedgerSql) AS ledger, (SELECT COUNT(*) FROM stock_logs l '
+          'WHERE l.variant_id = v.id) AS n FROM product_variants v',
+        ).get(),
+      ];
+      for (final r in stocks) {
+        final qty = r.read<int>('qty');
+        final diff = qty - r.read<int>('ledger');
+        if (diff == 0) continue;
+        final vid = r.readNullable<String>('vid');
+        await _db.customStatement(
+          'INSERT OR IGNORE INTO stock_logs (id, product_id, variant_id, type, '
+          'qty_change, stock_after, ref_type, note, created_at, updated_at) '
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            _reconcileId('${vid == null ? 'product' : 'variant'}:'
+                '${r.read<String>('id')}'),
+            r.read<String>('pid'),
+            vid,
+            r.read<int>('n') == 0 ? 'initial' : 'adjustment',
+            diff,
+            qty,
+            'reconcile',
+            'Rekonsiliasi saldo awal (sync)',
+            now,
+            now,
+          ],
+        );
+        count++;
+      }
+      final wallets = await _db.customSelect(
+        'SELECT w.id AS id, w.balance AS balance, ($_walletLedgerSql) AS ledger '
+        'FROM wallets w',
+      ).get();
+      for (final r in wallets) {
+        final diff = r.read<int>('balance') - r.read<int>('ledger');
+        if (diff == 0) continue;
+        await _db.customStatement(
+          'INSERT OR IGNORE INTO wallet_transactions (id, wallet_id, type, '
+          'amount, category, ref_type, note, datetime, created_at, updated_at) '
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            _reconcileId('wallet:${r.read<String>('id')}'),
+            r.read<String>('id'),
+            diff > 0 ? 'in' : 'out',
+            diff.abs(),
+            'rekonsiliasi',
+            'reconcile',
+            'Rekonsiliasi saldo awal (sync)',
+            now,
+            now,
+            now,
+          ],
+        );
+        count++;
+      }
+      await _set(keyLedgerReconciled, '$now');
+    });
+    return count;
+  }
+
+  String _reconcileId(String key) =>
+      _uuid.v5(Namespace.url.value, 'sirko:ledger-reconcile:v1:$key');
+
+  /// Hitung ulang stok/saldo baris yang tersentuh pull dari ledger. Hanya
+  /// menulis bila berbeda. Dijalankan di dalam [applying] (tak jadi dirty).
+  Future<({bool products, bool variants, bool wallets})> _recompute(
+      _Affected a) async {
+    Future<bool> run(String table, String alias, String col, String ledger,
+        Set<String> ids) async {
+      var changed = false;
+      final list = ids.toList();
+      for (var i = 0; i < list.length; i += 400) {
+        final end = i + 400 > list.length ? list.length : i + 400;
+        final chunk = list.sublist(i, end);
+        final marks = List.filled(chunk.length, '?').join(', ');
+        final n = await _db.customUpdate(
+          'UPDATE $table AS $alias SET $col = ($ledger) '
+          'WHERE $alias.id IN ($marks) AND $alias.$col != ($ledger)',
+          variables: chunk.map(Variable.withString).toList(),
+        );
+        if (n > 0) changed = true;
+      }
+      return changed;
+    }
+
+    return (
+      products:
+          await run('products', 'p', 'stock', _productLedgerSql, a.products),
+      variants: await run(
+          'product_variants', 'v', 'stock', _variantLedgerSql, a.variants),
+      wallets:
+          await run('wallets', 'w', 'balance', _walletLedgerSql, a.wallets),
+    );
+  }
+
   // ── Cursor & meta (kunci perangkat, tak ikut push) ─────────────────────────
 
   Future<String?> _get(String key) async => (await _db.customSelect(
@@ -360,4 +503,36 @@ class SyncLocalStore {
 
   Future<int?> lastSyncAt() async => int.tryParse(await _get(keyLastSyncAt) ?? '');
   Future<void> setLastSyncAt(int ms) => _set(keyLastSyncAt, '$ms');
+}
+
+/// Id baris yang stok/saldonya perlu dihitung ulang setelah pull.
+class _Affected {
+  final products = <String>{};
+  final variants = <String>{};
+  final wallets = <String>{};
+
+  void collect(String wire, WireRow r) {
+    final id = r['id'] as String;
+    switch (wire) {
+      case 'products':
+        products.add(id);
+      case 'product_variants':
+        variants.add(id);
+      case 'stock_logs':
+        final v = r['variantId'] as String?;
+        final p = r['productId'] as String?;
+        if (v != null) {
+          variants.add(v);
+        } else if (p != null) {
+          products.add(p);
+        }
+      case 'wallets':
+        wallets.add(id);
+      case 'wallet_transactions':
+        final w = r['walletId'] as String?;
+        final target = r['targetWalletId'] as String?;
+        if (w != null) wallets.add(w);
+        if (target != null) wallets.add(target);
+    }
+  }
 }

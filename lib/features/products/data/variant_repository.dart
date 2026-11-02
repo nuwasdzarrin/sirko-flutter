@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/date_time_utils.dart';
+import 'stock_ledger.dart';
 
 /// Akses tabel `product_variants` (Fase 3). UI/application tak menyentuh Drift
 /// langsung — selalu lewat repo ini.
@@ -50,19 +51,23 @@ class VariantRepository {
   }) async {
     final now = DateTimeUtils.nowEpochMs();
     final id = _uuid.v4();
-    await _db.into(_db.productVariants).insert(
-          ProductVariantsCompanion.insert(
-            id: id,
-            productId: productId,
-            name: name,
-            barcode: Value(barcode),
-            sellingPrice: Value(sellingPrice),
-            costPrice: Value(costPrice),
-            stock: Value(stock),
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
+    await _db.transaction(() async {
+      await _db.into(_db.productVariants).insert(
+            ProductVariantsCompanion.insert(
+              id: id,
+              productId: productId,
+              name: name,
+              barcode: Value(barcode),
+              sellingPrice: Value(sellingPrice),
+              costPrice: Value(costPrice),
+              stock: Value(stock),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await StockLedger.logInitial(_db,
+          productId: productId, variantId: id, qty: stock, now: now);
+    });
     return id;
   }
 
@@ -72,20 +77,38 @@ class VariantRepository {
     String? barcode,
     int sellingPrice = 0,
     int costPrice = 0,
-    int stock = 0,
+    // null = stok tak diubah form (lihat ProductRepository.update).
+    int? stock,
   }) {
-    return (_db.update(_db.productVariants)..where((t) => t.id.equals(id)))
-        .write(
-      ProductVariantsCompanion(
-        name: Value(name),
-        barcode: Value(barcode),
-        sellingPrice: Value(sellingPrice),
-        costPrice: Value(costPrice),
-        stock: Value(stock),
-        updatedAt: Value(DateTimeUtils.nowEpochMs()),
-        isDirty: const Value(true),
-      ),
-    );
+    return _db.transaction(() async {
+      final now = DateTimeUtils.nowEpochMs();
+      if (stock != null) {
+        final current = await (_db.select(_db.productVariants)
+              ..where((t) => t.id.equals(id)))
+            .getSingleOrNull();
+        if (current != null && current.stock != stock) {
+          await StockLedger.logAdjustment(_db,
+              productId: current.productId,
+              variantId: id,
+              qtyChange: stock - current.stock,
+              stockAfter: stock,
+              note: 'Ubah stok lewat form varian',
+              now: now);
+        }
+      }
+      await (_db.update(_db.productVariants)..where((t) => t.id.equals(id)))
+          .write(
+        ProductVariantsCompanion(
+          name: Value(name),
+          barcode: Value(barcode),
+          sellingPrice: Value(sellingPrice),
+          costPrice: Value(costPrice),
+          stock: stock == null ? const Value.absent() : Value(stock),
+          updatedAt: Value(now),
+          isDirty: const Value(true),
+        ),
+      );
+    });
   }
 
   /// Soft delete varian (§12).

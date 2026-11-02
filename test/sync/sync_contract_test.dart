@@ -10,14 +10,19 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:sirko/core/database/app_database.dart';
+import 'package:sirko/core/database/tables/wallets.dart';
 import 'package:sirko/core/network/cloud_api.dart';
 import 'package:sirko/features/cloud/data/cloud_api_client.dart';
 import 'package:sirko/features/cloud/data/cloud_auth_repository.dart';
 import 'package:sirko/features/cloud/data/cloud_token_store.dart';
+import 'package:sirko/features/pos/data/app_settings_repository.dart';
+import 'package:sirko/features/products/data/inventory_repository.dart';
+import 'package:sirko/features/products/data/product_repository.dart';
 import 'package:sirko/features/sync/application/sync_engine.dart';
 import 'package:sirko/features/sync/data/sync_local_store.dart';
 import 'package:sirko/features/sync/data/sync_remote.dart';
 import 'package:sirko/features/sync/domain/sync_registry.dart';
+import 'package:sirko/features/wallets/data/wallet_repository.dart';
 
 class _MemoryStorage extends FlutterSecureStorage {
   final data = <String, String>{};
@@ -292,6 +297,53 @@ void main() {
             "SELECT selling_price FROM products WHERE id = '${ids['products']}'")
         .getSingle();
     expect(price.read<int>('selling_price'), 4500);
+
+    await a.db.close();
+    await b.db.close();
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('kontrak multi-kasir: stok & saldo konvergen dari ledger (§8.6)',
+      skip: _isLocal ? false : 'Butuh backend lokal (SIRKO_API_BASE=localhost)',
+      () async {
+    final email = 'kasir2-${_uuid().substring(0, 8)}@toko.id';
+    const password = 'rahasia123';
+    final a = _Device.create();
+    await a.auth.register(
+      businessName: 'Toko Dua Kasir',
+      ownerName: 'Budi',
+      emailOrPhone: email,
+      password: password,
+    );
+    WalletRepository wallets(AppDatabase db) =>
+        WalletRepository(db, AppSettingsRepository(db));
+    final pid =
+        await ProductRepository(a.db).create(name: 'Indomie', stock: 100);
+    final wid = await wallets(a.db)
+        .createWallet(name: 'Laci', type: WalletType.cash, openingBalance: 1000);
+    await a.engine.syncNow();
+
+    final b = _Device.create();
+    await b.auth.login(emailOrPhone: email, password: password);
+    await b.engine.syncNow();
+
+    // Offline bersamaan: A −2 & +7000; B −3 & +3000.
+    await InventoryRepository(a.db).adjust(productId: pid, newQty: 98);
+    await wallets(a.db).deposit(wid, 7000);
+    await InventoryRepository(b.db).adjust(productId: pid, newQty: 97);
+    await wallets(b.db).deposit(wid, 3000);
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+
+    for (final d in [a.db, b.db]) {
+      final p = await (d.select(d.products)..where((t) => t.id.equals(pid)))
+          .getSingle();
+      final w = await (d.select(d.wallets)..where((t) => t.id.equals(wid)))
+          .getSingle();
+      expect(p.stock, 95);
+      expect(w.balance, 11000);
+    }
 
     await a.db.close();
     await b.db.close();

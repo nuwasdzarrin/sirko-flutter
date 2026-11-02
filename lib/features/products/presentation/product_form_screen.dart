@@ -181,7 +181,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           unitId: args['unitId'] as String?,
           costPrice: args['costPrice'] as int,
           sellingPrice: args['sellingPrice'] as int,
-          stock: args['stock'] as int,
+          // Kirim stok HANYA bila diubah di form; selain itu biarkan stok
+          // terkini (bisa sudah berubah karena penjualan saat form terbuka).
+          stock: (args['stock'] as int) == widget.existing!.stock
+              ? null
+              : args['stock'] as int,
           minStock: args['minStock'] as int?,
           imagePath: args['imagePath'] as String?,
           expiryDate: args['expiryDate'] as int?,

@@ -5,6 +5,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/utils/date_time_utils.dart';
 import '../domain/product_list_item.dart';
 import '../domain/product_query.dart';
+import 'stock_ledger.dart';
 
 /// Akses data tabel `products` (+ join kategori & satuan untuk tampilan).
 /// UI/application tidak menyentuh Drift langsung — selalu lewat repo ini.
@@ -137,25 +138,29 @@ class ProductRepository {
   }) async {
     final now = DateTimeUtils.nowEpochMs();
     final id = _uuid.v4();
-    await _db.into(_db.products).insert(
-          ProductsCompanion.insert(
-            id: id,
-            name: name,
-            barcode: Value(barcode),
-            categoryId: Value(categoryId),
-            unitId: Value(unitId),
-            costPrice: Value(costPrice),
-            sellingPrice: Value(sellingPrice),
-            stock: Value(stock),
-            minStock: Value(minStock),
-            expiryDate: Value(expiryDate),
-            imagePath: Value(imagePath),
-            hasVariants: Value(hasVariants),
-            needsPrice: Value(needsPrice),
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
+    await _db.transaction(() async {
+      await _db.into(_db.products).insert(
+            ProductsCompanion.insert(
+              id: id,
+              name: name,
+              barcode: Value(barcode),
+              categoryId: Value(categoryId),
+              unitId: Value(unitId),
+              costPrice: Value(costPrice),
+              sellingPrice: Value(sellingPrice),
+              stock: Value(stock),
+              minStock: Value(minStock),
+              expiryDate: Value(expiryDate),
+              imagePath: Value(imagePath),
+              hasVariants: Value(hasVariants),
+              needsPrice: Value(needsPrice),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await StockLedger.logInitial(_db,
+          productId: id, qty: stock, now: now);
+    });
     return id;
   }
 
@@ -167,33 +172,52 @@ class ProductRepository {
     String? unitId,
     int costPrice = 0,
     int sellingPrice = 0,
-    int stock = 0,
+    // null = stok tak diubah form → jangan timpa stok terkini (penjualan
+    // bisa terjadi saat form terbuka). Bila diisi, selisihnya dicatat sebagai
+    // penyesuaian agar stok = Σ stock_logs (SYNC.md §8.6).
+    int? stock,
     int? minStock,
     int? expiryDate,
     String? imagePath,
     bool hasVariants = false,
   }) {
-    return (_db.update(_db.products)..where((t) => t.id.equals(id))).write(
-      ProductsCompanion(
-        name: Value(name),
-        barcode: Value(barcode),
-        categoryId: Value(categoryId),
-        unitId: Value(unitId),
-        costPrice: Value(costPrice),
-        sellingPrice: Value(sellingPrice),
-        stock: Value(stock),
-        minStock: Value(minStock),
-        expiryDate: Value(expiryDate),
-        imagePath: Value(imagePath),
-        hasVariants: Value(hasVariants),
-        // Harga jual sudah diisi (>0) → lepas penanda "perlu harga" (§ guard
-        // kasir). Bila masih 0, biarkan penanda apa adanya (Value.absent).
-        needsPrice:
-            sellingPrice > 0 ? const Value(false) : const Value.absent(),
-        updatedAt: Value(DateTimeUtils.nowEpochMs()),
-        isDirty: const Value(true),
-      ),
-    );
+    return _db.transaction(() async {
+      final now = DateTimeUtils.nowEpochMs();
+      if (stock != null) {
+        final current = await (_db.select(_db.products)
+              ..where((t) => t.id.equals(id)))
+            .getSingleOrNull();
+        if (current != null && current.stock != stock) {
+          await StockLedger.logAdjustment(_db,
+              productId: id,
+              qtyChange: stock - current.stock,
+              stockAfter: stock,
+              note: 'Ubah stok lewat form produk',
+              now: now);
+        }
+      }
+      await (_db.update(_db.products)..where((t) => t.id.equals(id))).write(
+        ProductsCompanion(
+          name: Value(name),
+          barcode: Value(barcode),
+          categoryId: Value(categoryId),
+          unitId: Value(unitId),
+          costPrice: Value(costPrice),
+          sellingPrice: Value(sellingPrice),
+          stock: stock == null ? const Value.absent() : Value(stock),
+          minStock: Value(minStock),
+          expiryDate: Value(expiryDate),
+          imagePath: Value(imagePath),
+          hasVariants: Value(hasVariants),
+          // Harga jual sudah diisi (>0) → lepas penanda "perlu harga" (§ guard
+          // kasir). Bila masih 0, biarkan penanda apa adanya (Value.absent).
+          needsPrice:
+              sellingPrice > 0 ? const Value(false) : const Value.absent(),
+          updatedAt: Value(now),
+          isDirty: const Value(true),
+        ),
+      );
+    });
   }
 
   /// Soft delete → masuk Recycle Bin (§12).
@@ -342,5 +366,13 @@ class ProductRepository {
         ),
       ]);
     });
+    // Ledger lengkap: catat stok awal tiap produk contoh (SYNC.md §8.6).
+    final seeded = await (_db.select(_db.products)
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    for (final p in seeded) {
+      await StockLedger.logInitial(_db,
+          productId: p.id, qty: p.stock, now: now);
+    }
   }
 }

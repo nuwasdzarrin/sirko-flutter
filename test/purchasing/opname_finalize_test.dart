@@ -74,6 +74,22 @@ void main() {
     expect((await db.select(db.stockLogs).get()).isEmpty, isTrue);
   });
 
+  test('finalisasi setelah ada penjualan: log = fisik − stok saat ini',
+      () async {
+    await seedProduct('p1', 10);
+    final id = await repo.createDraft();
+    await repo.setPhysical((await itemFor(id, 'p1')).id, 7);
+    // Terjual 2 setelah penghitungan → stok sistem 8 saat finalisasi.
+    await (db.update(db.products)..where((t) => t.id.equals('p1')))
+        .write(const ProductsCompanion(stock: Value(8)));
+
+    await repo.finalize(id);
+
+    final log = (await db.select(db.stockLogs).get()).single;
+    expect(log.qtyChange, -1); // bukan diff -3
+    expect(log.stockAfter, 7);
+  });
+
   test('finalisasi: stok = fisik + stock_logs(adjustment) untuk diff≠0',
       () async {
     await seedProduct('p1', 10);

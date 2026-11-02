@@ -66,6 +66,9 @@ class SyncEngine {
 
   Future<SyncReport> _run() async {
     await _guardBusiness();
+    // Sekali: data lama dicocokkan dengan ledger sebelum stok/saldo dihitung
+    // ulang dari ledger saat pull (SYNC.md §8.6).
+    await _store.reconcileLedgersOnce();
     final deviceId = await _deviceId();
 
     // ── PUSH ──
