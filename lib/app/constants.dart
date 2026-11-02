@@ -34,6 +34,7 @@ class Routes {
   static const String settings = '/settings';
   static const String more = '/more'; // tab "Lainnya" (hub fitur sekunder)
   static const String catalog = '/catalog'; // Katalog Umum (dibuka via push)
+  static const String sync = '/sync'; // Sinkronisasi Cloud (dibuka via push)
 
   /// Tab utama **bottom navbar** (urutan = urutan tab). Tab "Lainnya" (→[more])
   /// ditambahkan terpisah sebagai tab terakhir yang selalu tampil.
@@ -122,6 +123,11 @@ class Routes {
         icon: Icons.manage_accounts_outlined,
         path: users,
         permission: Permission.userService),
+    NavDestinationItem(
+        label: 'Sinkronisasi',
+        icon: Icons.cloud_sync_outlined,
+        path: sync,
+        permission: Permission.settingCompany),
     NavDestinationItem(
         label: 'Pengaturan',
         icon: Icons.settings_outlined,

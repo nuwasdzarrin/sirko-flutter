@@ -37,13 +37,14 @@ class CloudApiClient {
   /// POST JSON ber-otorisasi (Bearer). 401 → refresh → ulangi sekali.
   Future<Map<String, dynamic>> postJson(
     String path,
-    Map<String, dynamic> body,
-  ) async {
-    var res = await _sendPost(path, body);
+    Map<String, dynamic> body, {
+    Map<String, String> headers = const {},
+  }) async {
+    var res = await _sendPost(path, body, headers);
     if (res.statusCode == 401) {
       final refreshed = await _auth.refresh();
       if (!refreshed) throw const NotConnectedException();
-      res = await _sendPost(path, body);
+      res = await _sendPost(path, body, headers);
       if (res.statusCode == 401) throw const NotConnectedException();
     }
     if (res.statusCode >= 400) {
@@ -59,11 +60,13 @@ class CloudApiClient {
     return _http.get(uri, headers: {'Authorization': 'Bearer $token'});
   }
 
-  Future<http.Response> _sendPost(String path, Map<String, dynamic> body) async {
+  Future<http.Response> _sendPost(String path, Map<String, dynamic> body,
+      [Map<String, String> extra = const {}]) async {
     final token = await _requireToken();
     final uri = Uri.parse('${CloudConfig.baseUrl}$path');
     return _http.post(uri,
         headers: {
+          ...extra,
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },

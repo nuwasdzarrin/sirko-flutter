@@ -108,6 +108,10 @@ class SessionController extends _$SessionController {
     );
   }
 
+  /// Muat ulang status toko/pengguna dari DB — mis. setelah data dipulihkan
+  /// dari cloud di HP baru (SYNC.md §8.5).
+  Future<void> reload() => _load();
+
   void onBusinessCreated() => state = state.copyWith(hasBusiness: true);
 
   /// Owner baru dibuat pada layar setup → langsung login.

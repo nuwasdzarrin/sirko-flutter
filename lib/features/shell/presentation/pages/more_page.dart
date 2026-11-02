@@ -6,6 +6,7 @@ import '../../../../app/app_version.dart';
 import '../../../../app/constants.dart';
 import '../../../../app/session_controller.dart';
 import '../../../catalog/presentation/katalog_umum_screen.dart';
+import '../../../sync/presentation/sync_screen.dart';
 import '../../../users/application/user_providers.dart';
 
 /// Halaman "Lainnya" (tab terakhir): hub fitur sekunder berupa grid tombol
@@ -59,6 +60,10 @@ class MorePage extends ConsumerWidget {
                   if (d.path == Routes.catalog) {
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const KatalogUmumScreen(),
+                    ));
+                  } else if (d.path == Routes.sync) {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const SyncScreen(),
                     ));
                   } else {
                     context.go(d.path);

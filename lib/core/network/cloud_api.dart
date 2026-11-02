@@ -2,8 +2,12 @@
 class CloudConfig {
   const CloudConfig._();
 
-  /// Base URL backend; semua endpoint di `/v1`.
-  static const String baseUrl = 'https://sirko-be-hono-supabase.vercel.app';
+  /// Base URL backend; semua endpoint di `/v1`. Bisa ditimpa saat build/test
+  /// (mis. backend lokal) via `--dart-define=SIRKO_API_BASE=http://10.0.2.2:3000`.
+  static const String baseUrl = String.fromEnvironment(
+    'SIRKO_API_BASE',
+    defaultValue: 'https://sirko.vercel.app',
+  );
 }
 
 /// Error jaringan/HTTP cloud (pesan siap tampil ke user).

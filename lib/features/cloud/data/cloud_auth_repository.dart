@@ -52,6 +52,47 @@ class CloudAuthRepository {
     );
   }
 
+  /// Daftar akun cloud untuk toko ini (`POST /v1/auth/register-business`,
+  /// SYNC.md §1). [emailOrPhone] berisi `@` → email, selain itu → nomor HP.
+  /// Lempar [CloudException] bila gagal (mis. email sudah terdaftar).
+  Future<void> register({
+    required String businessName,
+    String? businessType,
+    required String ownerName,
+    required String emailOrPhone,
+    required String password,
+  }) async {
+    final contact = emailOrPhone.trim();
+    final isEmail = contact.contains('@');
+    final res = await _http.post(
+      Uri.parse('${CloudConfig.baseUrl}/v1/auth/register-business'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'business': {
+          'name': businessName,
+          if (businessType != null && businessType.isNotEmpty)
+            'businessType': businessType,
+        },
+        'owner': {
+          'name': ownerName,
+          if (isEmail) 'email': contact else 'phone': contact,
+          'password': password,
+        },
+      }),
+    );
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw CloudException(_errorMessage(res, 'Pendaftaran gagal'),
+          statusCode: res.statusCode);
+    }
+    final data = _data(res.body);
+    await _store.saveTokens(
+      access: data['accessToken'] as String,
+      refresh: data['refreshToken'] as String,
+      businessId: (data['user'] as Map?)?['businessId'] as String?,
+      email: contact,
+    );
+  }
+
   /// Perbarui access token via refresh token. Return true bila sukses; bila
   /// gagal (refresh kadaluarsa) → token dibersihkan & return false.
   Future<bool> refresh() async {

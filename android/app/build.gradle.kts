@@ -64,6 +64,17 @@ flutter {
 val apkReleaseDir = rootProject.file("../../apk-release")
 android.applicationVariants.configureEach {
     val variant = this
+    // Tool `flutter build apk` mencari APK di <proyek>/build/app/outputs/
+    // flutter-apk; tanpa salinan ini ia melapor "failed to produce an .apk"
+    // (palsu) karena build dir dialihkan ke C:/fbuild. Berlaku semua varian.
+    val copyForFlutterTool = tasks.register<Copy>(
+        "copy${variant.name.replaceFirstChar { it.uppercase() }}ApkForFlutterTool"
+    ) {
+        from(layout.buildDirectory.dir("outputs/flutter-apk"))
+        into(rootProject.file("../build/app/outputs/flutter-apk"))
+    }
+    variant.assembleProvider.configure { finalizedBy(copyForFlutterTool) }
+
     if (variant.buildType.name != "release") return@configureEach
     val copyApk = tasks.register<Copy>(
         "copy${variant.name.replaceFirstChar { it.uppercase() }}ApkToApkRelease"
@@ -78,16 +89,7 @@ android.applicationVariants.configureEach {
             "Sirko-${variant.versionName}-b${variant.versionCode}$suffix.apk"
         }
     }
-    // Tool `flutter build apk` mencari APK di <proyek>/build/app/outputs/
-    // flutter-apk; tanpa salinan ini ia melapor "failed to produce an .apk"
-    // (palsu) karena build dir dialihkan ke C:/fbuild.
-    val copyForFlutterTool = tasks.register<Copy>(
-        "copy${variant.name.replaceFirstChar { it.uppercase() }}ApkForFlutterTool"
-    ) {
-        from(layout.buildDirectory.dir("outputs/flutter-apk"))
-        into(rootProject.file("../build/app/outputs/flutter-apk"))
-    }
-    variant.assembleProvider.configure { finalizedBy(copyApk, copyForFlutterTool) }
+    variant.assembleProvider.configure { finalizedBy(copyApk) }
 }
 
 // Kompilasi Dart (app.so) SELALU diulang: dengan build dir di luar proyek,

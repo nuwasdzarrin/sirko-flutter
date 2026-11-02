@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../cloud/presentation/cloud_connect_screen.dart';
+import '../../sync/application/sync_controller.dart';
 import '../../../app/constants.dart';
 import '../../../app/session_controller.dart';
 import '../application/onboarding_providers.dart';
@@ -52,6 +54,44 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         );
       }
     }
+  }
+
+  /// HP baru / instal ulang: masuk akun cloud → pull penuh → layar PIN
+  /// (SYNC.md §8.5). Tidak membuat toko/pemilik baru.
+  Future<void> _restore() async {
+    final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(
+      builder: (_) =>
+          const CloudConnectScreen(mode: CloudConnectMode.restore),
+    ));
+    if (ok != true || !mounted) return;
+    setState(() => _submitting = true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(children: [
+          CircularProgressIndicator(),
+          SizedBox(width: 20),
+          Expanded(child: Text('Memulihkan data toko dari cloud…')),
+        ]),
+      ),
+    );
+    final report = await ref.read(syncControllerProvider.notifier).syncNow();
+    final business =
+        await ref.read(businessRepositoryProvider).getBusiness();
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // tutup dialog progres
+    if (report == null || business == null) {
+      setState(() => _submitting = false);
+      final status = ref.read(syncControllerProvider);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(report == null
+            ? (status.message ?? 'Gagal memulihkan data. Coba lagi.')
+            : 'Akun cloud ini belum punya data toko. Buat toko baru di sini.'),
+      ));
+      return;
+    }
+    await ref.read(sessionControllerProvider.notifier).reload();
   }
 
   @override
@@ -120,6 +160,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           : const Icon(Icons.arrow_forward),
                       label: const Text('Lanjut'),
                     ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _submitting ? null : _restore,
+                      icon: const Icon(Icons.cloud_download_outlined),
+                      label: const Text('Pulihkan dari Cloud'),
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Sudah memakai Sirko di HP lain? Masuk dengan akun '
+                        'cloud toko untuk memulihkan semua data.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.colorScheme.outline)),
                   ],
                 ),
               ),

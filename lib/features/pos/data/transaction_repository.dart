@@ -285,7 +285,21 @@ class TransactionRepository {
     final ymd = _localYmd(DateTime.now());
     final key = 'invoice_seq_$ymd';
     final current = await _settings.getValue(key);
-    final seq = (current == null ? 0 : (int.tryParse(current) ?? 0)) + 1;
+    final counter = current == null ? 0 : (int.tryParse(current) ?? 0);
+    // Counter lokal per perangkat (tak ikut sync). Lanjutkan juga dari nota
+    // hari ini yang sudah ada di DB (mis. hasil pulihkan cloud / instal ulang)
+    // agar nomor tak bentrok (SYNC.md §8.6).
+    final prefix = 'INV-$ymd-';
+    final maxRow = await _db.customSelect(
+      'SELECT MAX(CAST(substr(invoice_no, ?) AS INTEGER)) AS m '
+      'FROM transactions WHERE invoice_no LIKE ?',
+      variables: [
+        Variable.withInt(prefix.length + 1),
+        Variable.withString('$prefix%'),
+      ],
+    ).getSingle();
+    final existing = maxRow.read<int?>('m') ?? 0;
+    final seq = (counter > existing ? counter : existing) + 1;
     await _settings.setValue(key, seq.toString());
     return 'INV-$ymd-${seq.toString().padLeft(4, '0')}';
   }

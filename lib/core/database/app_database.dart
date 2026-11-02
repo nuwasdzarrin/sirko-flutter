@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../features/sync/data/sync_triggers.dart';
 import 'connection.dart';
 import 'tables/app_settings.dart';
 import 'tables/bills.dart';
@@ -165,6 +166,8 @@ class AppDatabase extends _$AppDatabase {
         beforeOpen: (details) async {
           // Aktifkan foreign key (Drift tidak menyalakannya secara default).
           await customStatement('PRAGMA foreign_keys = ON');
+          // Dirty tracking sync (SYNC.md §8.1): TEMP trigger per koneksi.
+          await SyncTriggers.installOn(this);
         },
       );
 }

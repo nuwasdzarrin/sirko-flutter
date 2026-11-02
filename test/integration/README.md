@@ -63,9 +63,24 @@ bila lulus — belum tentu sudah diperbaiki.
 | TC-12 | `12_laporan_ekspor` | Beranda & 5 tab laporan, ekspor PDF (share → print preview), ekspor XLSX |
 | TC-13 | `13_katalog_umum` | Katalog seed offline (cari nama/barcode), tab Online & Usulkan butuh cloud, validasi login cloud |
 | TC-14 | `14_navigasi_menu` | 5 tab, mode fokus Kasir, 10 menu Lainnya, 8 pintasan Beranda |
+| TC-15 | `15_sync_cloud` | Sinkronisasi cloud: daftar akun dari HP berisi data → push → "Tersinkron"; hapus data app (HP baru) → **Pulihkan dari Cloud** → PIN pemilik & data kembali. **Butuh backend uji** (lihat bawah) |
 | BUG-01…09 | `90`–`98` | Regresi bug terkonfirmasi — lihat `test/qa-reports/maestro-e2e-2026-10-31.md` |
 
 Data uji: toko **Toko Maestro**, pemilik **Budi Pemilik / PIN 123456**, kasir **Rina Kasir / PIN 111111**.
+
+### TC-15 (sinkronisasi) — backend uji lokal, JANGAN produksi
+TC-15 membuat akun cloud baru. Jalankan terhadap backend lokal + Postgres uji:
+```bash
+# 1) backend lokal (sirko-backend) — env eksplisit, BUKAN `npm run dev` (.env = PROD)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sirko_test JWT_SECRET=<min 32 char> JWT_REFRESH_SECRET=<min 32 char> PORT=3000 node --import tsx src/dev-server.ts
+# 2) APK debug yang menunjuk backend lokal (HTTP polos hanya diizinkan di debug)
+flutter build apk --debug --target-platform android-x64   --dart-define=SIRKO_API_BASE=http://10.0.2.2:3000
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+# 3) jalankan
+bash test/integration/scripts/run_all.sh 01 02 03 04 15
+```
+Uji kontrak sync tanpa emulator (backend lokal sama):
+`flutter test --dart-define=SIRKO_API_BASE=http://localhost:3000 test/sync/sync_contract_test.dart`
 
 ## Struktur
 

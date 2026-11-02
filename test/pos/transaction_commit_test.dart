@@ -158,6 +158,26 @@ void main() {
       final r = await repo.commit(buildCash([buyLine('p1', 'Indomie', 1)]));
       expect(r.invoiceNo, endsWith('-0001'));
     });
+
+    test('lanjut dari nomor tertinggi hari ini walau counter lokal hilang '
+        '(HP hasil pulihkan cloud / instal ulang)', () async {
+      await seedProduct('p1', 'Indomie', 10);
+      final now = DateTime.now();
+      String two(int n) => n.toString().padLeft(2, '0');
+      final ymd = '${now.year}${two(now.month)}${two(now.day)}';
+      // Nota hari ini yang tiba dari cloud; counter lokal belum ada.
+      await db.into(db.transactions).insert(TransactionsCompanion.insert(
+          id: 'pulled',
+          invoiceNo: 'INV-$ymd-0007',
+          datetime: 1,
+          status: TxStatus.paid,
+          createdAt: 1,
+          updatedAt: 1));
+
+      final r = await repo.commit(buildCash([buyLine('p1', 'Indomie', 1)]));
+
+      expect(r.invoiceNo, 'INV-$ymd-0008');
+    });
   });
 
   group('transaksi tersimpan lengkap', () {

@@ -48,6 +48,25 @@ class CloudSession extends _$CloudSession {
     await future;
   }
 
+  /// Daftar akun cloud untuk toko ini lalu terhubung (SYNC.md §8.5).
+  Future<void> register({
+    required String businessName,
+    String? businessType,
+    required String ownerName,
+    required String emailOrPhone,
+    required String password,
+  }) async {
+    await ref.read(cloudAuthRepositoryProvider).register(
+          businessName: businessName,
+          businessType: businessType,
+          ownerName: ownerName,
+          emailOrPhone: emailOrPhone,
+          password: password,
+        );
+    ref.invalidateSelf();
+    await future;
+  }
+
   Future<void> logout() async {
     await ref.read(cloudAuthRepositoryProvider).logout();
     ref.invalidateSelf();
