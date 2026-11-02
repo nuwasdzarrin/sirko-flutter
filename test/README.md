@@ -2,7 +2,7 @@
 
 Fondasi test mengikuti `spec/06-agen-qa-automation.md` bagian F. Uang selalu
 integer rupiah; semua fitur offline. **Kode fitur produksi tidak diubah oleh
-agen QA** — bug/testability dilaporkan ke `qa-reports/`.
+agen QA** — bug/testability dilaporkan ke `test/qa-reports/`.
 
 ## Struktur
 
