@@ -8,23 +8,26 @@ part of 'database_provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Provider tunggal untuk [AppDatabase] (keepAlive: hidup selama app).
+/// Provider tunggal untuk [AppDatabase] toko aktif (keepAlive).
 /// Semua repository mengambil DB dari sini — presentation/application
-/// tidak pernah menyentuh Drift langsung.
+/// tidak pernah menyentuh Drift langsung. Pindah toko → [activeDbNameProvider]
+/// berubah → DB lama ditutup & semua turunan dibangun ulang.
 
 @ProviderFor(appDatabase)
 const appDatabaseProvider = AppDatabaseProvider._();
 
-/// Provider tunggal untuk [AppDatabase] (keepAlive: hidup selama app).
+/// Provider tunggal untuk [AppDatabase] toko aktif (keepAlive).
 /// Semua repository mengambil DB dari sini — presentation/application
-/// tidak pernah menyentuh Drift langsung.
+/// tidak pernah menyentuh Drift langsung. Pindah toko → [activeDbNameProvider]
+/// berubah → DB lama ditutup & semua turunan dibangun ulang.
 
 final class AppDatabaseProvider
     extends $FunctionalProvider<AppDatabase, AppDatabase, AppDatabase>
     with $Provider<AppDatabase> {
-  /// Provider tunggal untuk [AppDatabase] (keepAlive: hidup selama app).
+  /// Provider tunggal untuk [AppDatabase] toko aktif (keepAlive).
   /// Semua repository mengambil DB dari sini — presentation/application
-  /// tidak pernah menyentuh Drift langsung.
+  /// tidak pernah menyentuh Drift langsung. Pindah toko → [activeDbNameProvider]
+  /// berubah → DB lama ditutup & semua turunan dibangun ulang.
   const AppDatabaseProvider._()
     : super(
         from: null,
@@ -58,4 +61,4 @@ final class AppDatabaseProvider
   }
 }
 
-String _$appDatabaseHash() => r'59cce38d45eeaba199eddd097d8e149d66f9f3e1';
+String _$appDatabaseHash() => r'15f8d40ac59c91244d8350017eecdae4fa061e55';
