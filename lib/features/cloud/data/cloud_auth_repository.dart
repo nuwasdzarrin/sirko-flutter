@@ -50,6 +50,14 @@ class CloudAuthRepository {
       businessId: (data['user'] as Map?)?['businessId'] as String?,
       email: emailOrPhone,
     );
+    await _savePlan(data);
+  }
+
+  /// Simpan objek `plan` bila server sudah mengirimnya (backend Juragan);
+  /// server lama tanpa `plan` → tak berubah.
+  Future<void> _savePlan(Map<String, dynamic> data) async {
+    final plan = data['plan'];
+    if (plan is Map) await _store.savePlanJson(jsonEncode(plan));
   }
 
   /// Daftar akun cloud untuk toko ini (`POST /v1/auth/register-business`,
@@ -91,6 +99,7 @@ class CloudAuthRepository {
       businessId: (data['user'] as Map?)?['businessId'] as String?,
       email: contact,
     );
+    await _savePlan(data);
   }
 
   /// Perbarui access token via refresh token. Return true bila sukses; bila

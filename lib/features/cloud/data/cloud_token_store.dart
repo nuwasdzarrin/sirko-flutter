@@ -11,11 +11,18 @@ class CloudTokenStore {
   static const _kRefresh = 'cloud_refresh_token';
   static const _kBusiness = 'cloud_business_id';
   static const _kEmail = 'cloud_email';
+  static const _kPlan = 'cloud_plan';
 
   Future<String?> accessToken() => _storage.read(key: _kAccess);
   Future<String?> refreshToken() => _storage.read(key: _kRefresh);
   Future<String?> businessId() => _storage.read(key: _kBusiness);
   Future<String?> email() => _storage.read(key: _kEmail);
+
+  /// Objek `plan` terakhir dari server (JSON, JURAGAN.md §3.3) — cache
+  /// hak akses paket untuk dipakai saat offline.
+  Future<String?> planJson() => _storage.read(key: _kPlan);
+  Future<void> savePlanJson(String json) =>
+      _storage.write(key: _kPlan, value: json);
 
   Future<bool> isConnected() async => (await accessToken()) != null;
 
@@ -36,5 +43,6 @@ class CloudTokenStore {
     await _storage.delete(key: _kRefresh);
     await _storage.delete(key: _kBusiness);
     await _storage.delete(key: _kEmail);
+    await _storage.delete(key: _kPlan);
   }
 }
