@@ -34,9 +34,15 @@ if ($have -ne $want) { throw "Flutter $have, proyek mengunci $want (.flutter-ver
 # 2) URL backend
 if (-not $Api) { $Api = $local.SIRKO_API_BASE }
 if (-not $Api) {
-  $ip = (Get-NetIPAddress -AddressFamily IPv4 |
-    Where-Object { $_.PrefixOrigin -in 'Dhcp','Manual' -and $_.IPAddress -notlike '169.254*' -and $_.InterfaceAlias -notmatch 'vEthernet|WSL|Loopback|VirtualBox|VMware' } |
-    Select-Object -First 1).IPAddress
+  # Utamakan adaptor ber-default-gateway (Wi-Fi/LAN asli). Adaptor virtual
+  # (mis. VirtualBox Host-Only bernama "Ethernet 2", 192.168.56.1) tak punya gateway.
+  $ip = (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } |
+    Select-Object -First 1).IPv4Address.IPAddress | Select-Object -First 1
+  if (-not $ip) {
+    $ip = (Get-NetIPAddress -AddressFamily IPv4 |
+      Where-Object { $_.PrefixOrigin -in 'Dhcp','Manual' -and $_.IPAddress -notlike '169.254*' -and $_.InterfaceAlias -notmatch 'vEthernet|WSL|Loopback|VirtualBox|VMware' } |
+      Select-Object -First 1).IPAddress
+  }
   if (-not $ip) { throw "IP LAN tak terdeteksi; pakai -Api URL." }
   $port = if ($env:SIRKO_API_PORT) { $env:SIRKO_API_PORT } else { "47321" }
   $Api = "http://${ip}:$port"
