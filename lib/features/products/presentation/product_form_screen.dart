@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/widgets/permission_gate.dart';
 import '../../../core/widgets/test_id.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/date_time_utils.dart';
 import '../application/catalog_providers.dart';
 import '../application/product_providers.dart';
+import '../../users/domain/permission.dart';
 import 'barcode_scanner_screen.dart';
 import 'category_management_screen.dart';
 import 'unit_management_screen.dart';
@@ -276,11 +278,18 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               onChanged: (v) => setState(() => _unitId = v),
             ),
             const SizedBox(height: 16),
-            RupiahField(
-                controller: _costController,
-                label: 'Harga modal',
-                icon: Icons.payments_outlined),
-            const SizedBox(height: 16),
+            // Harga modal disembunyikan dari karyawan tanpa izin; nilainya
+            // tetap tersimpan apa adanya saat form disimpan.
+            PermissionGate(
+              permission: Permission.viewCostProfit,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: RupiahField(
+                    controller: _costController,
+                    label: 'Harga modal',
+                    icon: Icons.payments_outlined),
+              ),
+            ),
             RupiahField(
                 controller: _sellingController,
                 label: 'Harga jual',

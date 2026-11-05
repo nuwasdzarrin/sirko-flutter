@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/money/money.dart';
+import '../../../core/widgets/permission_gate.dart';
+import '../../users/domain/permission.dart';
 import '../application/inventory_providers.dart';
 import 'widgets/rupiah_field.dart';
 import 'widgets/stock_adjustment_dialog.dart';
@@ -192,8 +194,14 @@ class _VariantDialogState extends State<_VariantDialog> {
               const SizedBox(height: 12),
               RupiahField(controller: _selling, label: 'Harga jual'),
               const SizedBox(height: 12),
-              RupiahField(controller: _cost, label: 'Harga modal'),
-              const SizedBox(height: 12),
+              // Disembunyikan dari karyawan tanpa izin; nilai lama tetap.
+              PermissionGate(
+                permission: Permission.viewCostProfit,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: RupiahField(controller: _cost, label: 'Harga modal'),
+                ),
+              ),
               TextFormField(
                 controller: _stock,
                 keyboardType: TextInputType.number,

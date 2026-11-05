@@ -7,6 +7,8 @@ import '../../../core/money/money.dart';
 import '../../../core/money/rupiah_input_formatter.dart';
 import '../../products/application/inventory_providers.dart';
 import '../../products/application/product_providers.dart';
+import '../../users/application/user_providers.dart';
+import '../../users/domain/permission.dart';
 import '../../wallets/application/wallet_providers.dart';
 import '../application/purchasing_providers.dart';
 import '../data/purchase_repository.dart';
@@ -357,6 +359,7 @@ class _ProductPickerSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final products = ref.watch(productListProvider);
+    final seeCost = ref.watch(canProvider(Permission.viewCostProfit));
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.7,
@@ -370,7 +373,9 @@ class _ProductPickerSheet extends ConsumerWidget {
             final p = list[i];
             return ListTile(
               title: Text(p.name),
-              subtitle: Text('Modal ${p.costPrice.format()} • stok ${p.stock}'),
+              subtitle: Text(seeCost
+                  ? 'Modal ${p.costPrice.format()} • stok ${p.stock}'
+                  : 'Stok ${p.stock}'),
               trailing: p.product.hasVariants
                   ? const Icon(Icons.chevron_right)
                   : null,
@@ -408,6 +413,7 @@ class _ProductPickerSheet extends ConsumerWidget {
       context: context,
       builder: (_) => Consumer(builder: (_, ref, __) {
         final variants = ref.watch(variantListProvider(productId));
+        final seeCost = ref.watch(canProvider(Permission.viewCostProfit));
         return variants.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Gagal: $e')),
@@ -417,8 +423,9 @@ class _ProductPickerSheet extends ConsumerWidget {
               for (final v in list)
                 ListTile(
                   title: Text(v.name),
-                  subtitle: Text(
-                      'Modal ${Money(v.costPrice).format()} • stok ${v.stock}'),
+                  subtitle: Text(seeCost
+                      ? 'Modal ${Money(v.costPrice).format()} • stok ${v.stock}'
+                      : 'Stok ${v.stock}'),
                   onTap: () => Navigator.pop(
                     context,
                     _DraftLine(

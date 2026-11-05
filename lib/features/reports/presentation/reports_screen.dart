@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/tables/payments.dart';
 import '../../../core/database/tables/stock_logs.dart';
 import '../../../core/money/money.dart';
+import '../../users/application/user_providers.dart';
+import '../../users/domain/permission.dart';
 import '../application/report_providers.dart';
 import '../domain/report_labels.dart';
 import '../domain/report_models.dart';
@@ -18,24 +20,26 @@ class ReportsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final range = ref.watch(reportRangeProvider);
     final bundleAsync = ref.watch(reportBundleProvider(range));
+    // Tab Laba & laba per produk hanya untuk yang berizin `viewCostProfit`.
+    final seeProfit = ref.watch(canProvider(Permission.viewCostProfit));
 
     return DefaultTabController(
-      length: 5,
+      length: seeProfit ? 5 : 4,
       child: Column(
         children: [
           const SizedBox(height: 8),
           const DateRangeBar(),
           const SizedBox(height: 4),
           _ExportBar(bundle: bundleAsync.asData?.value),
-          const TabBar(
+          TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
-              Tab(text: 'Penjualan'),
-              Tab(text: 'Laba'),
-              Tab(text: 'Arus Kas'),
-              Tab(text: 'Arus Stok'),
-              Tab(text: 'Produk'),
+              const Tab(text: 'Penjualan'),
+              if (seeProfit) const Tab(text: 'Laba'),
+              const Tab(text: 'Arus Kas'),
+              const Tab(text: 'Arus Stok'),
+              const Tab(text: 'Produk'),
             ],
           ),
           Expanded(
@@ -46,10 +50,10 @@ class ReportsScreen extends ConsumerWidget {
               data: (b) => TabBarView(
                 children: [
                   _SalesTab(bundle: b),
-                  _ProfitTab(bundle: b),
+                  if (seeProfit) _ProfitTab(bundle: b),
                   _CashFlowTab(bundle: b),
                   _StockFlowTab(bundle: b),
-                  _ProductsTab(bundle: b),
+                  _ProductsTab(bundle: b, seeProfit: seeProfit),
                 ],
               ),
             ),
@@ -244,7 +248,8 @@ class _StockFlowTab extends StatelessWidget {
 
 class _ProductsTab extends StatelessWidget {
   final ReportBundle bundle;
-  const _ProductsTab({required this.bundle});
+  final bool seeProfit;
+  const _ProductsTab({required this.bundle, required this.seeProfit});
 
   @override
   Widget build(BuildContext context) {
@@ -261,7 +266,8 @@ class _ProductsTab extends StatelessWidget {
           dense: true,
           leading: CircleAvatar(radius: 14, child: Text('${i + 1}')),
           title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text('${p.qtySold} terjual • Laba ${Money(p.profit).format()}'),
+          subtitle: Text('${p.qtySold} terjual'
+              '${seeProfit ? ' • Laba ${Money(p.profit).format()}' : ''}'),
           trailing: Text(Money(p.revenue).format(),
               style: const TextStyle(fontWeight: FontWeight.w600)),
         );

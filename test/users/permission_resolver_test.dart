@@ -95,4 +95,26 @@ void main() {
         PermissionResolver.resolve(AppRole.owner, '["transactionList"]');
     expect(perms, Permission.values.toSet());
   });
+
+  group('viewCostProfit (Juragan: karyawan tak lihat laba & modal)', () {
+    test('owner & admin boleh; kasir & staf tidak', () {
+      bool can(AppRole r) => PermissionResolver.resolve(r)
+          .contains(Permission.viewCostProfit);
+      expect(can(AppRole.owner), isTrue);
+      expect(can(AppRole.admin), isTrue);
+      expect(can(AppRole.cashier), isFalse);
+      expect(can(AppRole.staff), isFalse);
+    });
+
+    test('custom hanya bila dicentang', () {
+      expect(
+          PermissionResolver.resolve(AppRole.custom, '["transactionExport"]')
+              .contains(Permission.viewCostProfit),
+          isFalse);
+      expect(
+          PermissionResolver.resolve(AppRole.custom, '["viewCostProfit"]')
+              .contains(Permission.viewCostProfit),
+          isTrue);
+    });
+  });
 }

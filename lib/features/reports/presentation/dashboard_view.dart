@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/money/money.dart';
+import '../../users/application/user_providers.dart';
+import '../../users/domain/permission.dart';
 import '../application/report_providers.dart';
 import '../domain/report_models.dart';
 import 'widgets/date_range_bar.dart';
@@ -16,6 +18,7 @@ class DashboardView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final range = ref.watch(reportRangeProvider);
     final bundleAsync = ref.watch(reportBundleProvider(range));
+    final seeProfit = ref.watch(canProvider(Permission.viewCostProfit));
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(reportBundleProvider(range)),
@@ -34,7 +37,7 @@ class DashboardView extends ConsumerWidget {
               padding: const EdgeInsets.all(24),
               child: Center(child: Text('Gagal memuat dashboard: $e')),
             ),
-            data: (b) => _DashboardBody(bundle: b),
+            data: (b) => _DashboardBody(bundle: b, seeProfit: seeProfit),
           ),
         ],
       ),
@@ -44,7 +47,10 @@ class DashboardView extends ConsumerWidget {
 
 class _DashboardBody extends StatelessWidget {
   final ReportBundle bundle;
-  const _DashboardBody({required this.bundle});
+
+  /// Kartu laba hanya untuk yang berizin `viewCostProfit`.
+  final bool seeProfit;
+  const _DashboardBody({required this.bundle, required this.seeProfit});
 
   @override
   Widget build(BuildContext context) {
@@ -72,13 +78,15 @@ class _DashboardBody extends StatelessWidget {
                 icon: Icons.payments_outlined,
                 subtitle: '${b.sales.transactionCount} transaksi',
               ),
-              MetricCard(
-                label: 'Laba',
-                value: Money(b.profit.grossProfit).format(),
-                icon: Icons.trending_up_outlined,
-                accent: Colors.green.shade700,
-                subtitle: 'Margin ${b.profit.marginPercent.toStringAsFixed(1)}%',
-              ),
+              if (seeProfit)
+                MetricCard(
+                  label: 'Laba',
+                  value: Money(b.profit.grossProfit).format(),
+                  icon: Icons.trending_up_outlined,
+                  accent: Colors.green.shade700,
+                  subtitle:
+                      'Margin ${b.profit.marginPercent.toStringAsFixed(1)}%',
+                ),
               MetricCard(
                 label: 'Item terjual',
                 value: '${b.sales.itemCount}',

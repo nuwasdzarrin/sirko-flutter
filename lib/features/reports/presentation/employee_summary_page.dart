@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/money/money.dart';
+import '../../users/application/user_providers.dart';
+import '../../users/domain/permission.dart';
 import '../application/report_providers.dart';
 import '../domain/date_range.dart';
 
@@ -13,6 +15,7 @@ class EmployeeSummaryPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final range = ref.watch(reportRangeProvider);
     final summary = ref.watch(employeeSummaryProvider(range));
+    final seeProfit = ref.watch(canProvider(Permission.viewCostProfit));
 
     return Column(
       children: [
@@ -39,8 +42,8 @@ class EmployeeSummaryPage extends ConsumerWidget {
                           : '?'),
                     ),
                     title: Text(r.name),
-                    subtitle: Text('${r.transactionCount} transaksi · '
-                        'Laba ${Money(r.profit).format()}'),
+                    subtitle: Text('${r.transactionCount} transaksi'
+                        '${seeProfit ? ' · Laba ${Money(r.profit).format()}' : ''}'),
                     trailing: Text(
                       Money(r.revenue).format(),
                       style: const TextStyle(fontWeight: FontWeight.bold),

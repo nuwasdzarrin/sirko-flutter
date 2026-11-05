@@ -25,6 +25,10 @@ enum Permission {
   userService,
   addUser,
   administrator,
+
+  /// Melihat laba, margin & harga modal (paket Juragan: karyawan penjaga
+  /// warung tak boleh melihatnya). Owner selalu; admin default.
+  viewCostProfit,
 }
 
 /// Label ramah bahasa Indonesia untuk editor permission (role `custom`).
@@ -51,5 +55,6 @@ extension PermissionLabel on Permission {
         Permission.userService => 'Kelola karyawan',
         Permission.addUser => 'Tambah karyawan',
         Permission.administrator => 'Administrator',
+        Permission.viewCostProfit => 'Lihat laba & harga modal',
       };
 }

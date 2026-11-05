@@ -33,6 +33,7 @@ class PermissionResolver {
       Permission.employeeSummary,
       Permission.notificationSetting,
       Permission.recycleBin,
+      Permission.viewCostProfit,
     },
     // Cashier: operasi kasir + pelanggan + hutang; tanpa produk/laporan/setting.
     AppRole.cashier: {
