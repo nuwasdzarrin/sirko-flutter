@@ -6,8 +6,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sirko/core/database/app_database.dart';
 import 'package:sirko/core/database/database_provider.dart';
 import 'package:sirko/core/database/tables/transactions.dart';
+import 'package:sirko/core/database/tables/users.dart';
 import 'package:sirko/core/utils/date_time_utils.dart';
 import 'package:sirko/features/reports/presentation/dashboard_view.dart';
+import 'package:sirko/features/users/application/user_providers.dart';
+import 'package:sirko/features/users/domain/current_user.dart';
+import 'package:sirko/features/users/domain/permission_resolver.dart';
 
 /// Widget test Fase 5 (host-runnable via `flutter test`) — wiring
 /// [DashboardView] di atas Drift **in-memory** yang di-inject via override:
@@ -80,8 +84,20 @@ void main() {
       DateTimeUtils.startOfDayLocal(DateTime.now().subtract(Duration(days: d))) +
       12 * 3600 * 1000;
 
-  Widget wrap() => ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
+  CurrentUser userAs(AppRole role) => CurrentUser(
+        id: 'u-${role.name}',
+        name: role.name,
+        username: role.name,
+        role: role,
+        permissions: PermissionResolver.resolve(role),
+      );
+
+  /// Default: pemilik (berhak melihat laba).
+  Widget wrap({AppRole role = AppRole.owner}) => ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          currentUserProvider.overrideWithValue(userAs(role)),
+        ],
         child: const MaterialApp(home: Scaffold(body: DashboardView())),
       );
 
@@ -118,6 +134,27 @@ void main() {
       expect(find.text('Rp20.000'), findsOneWidget); // laba §9
       // Nilai void (Rp99.999 / Rp999.990) tak muncul.
       expect(find.textContaining('99.999'), findsNothing);
+
+      await teardownTree(tester);
+    });
+  });
+
+  testWidgets('kasir melihat omzet tapi TIDAK melihat laba (Juragan)',
+      (tester) async {
+    await tester.runAsync(() async {
+      await seedTx(
+        datetime: todayMid(),
+        status: TxStatus.paid,
+        grandTotal: 50000,
+        qty: 5,
+        unitPrice: 10000,
+        cost: 6000,
+      );
+
+      await tester.pumpWidget(wrap(role: AppRole.cashier));
+      await pumpUntilFound(tester, find.text('Rp50.000')); // omzet tetap
+      expect(find.text('Laba'), findsNothing);
+      expect(find.text('Rp20.000'), findsNothing);
 
       await teardownTree(tester);
     });
