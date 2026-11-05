@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/database/database_provider.dart';
+import '../../../core/database/store_registry.dart';
 import '../../../core/network/cloud_api.dart';
 import '../../cloud/application/cloud_providers.dart';
 import '../data/sync_local_store.dart';
@@ -76,6 +77,9 @@ class SyncController extends Notifier<SyncStatus> {
 
   @override
   SyncStatus build() {
+    // Pindah toko (DB lain) → build ulang: engine & langganan perubahan
+    // dibuat untuk DB baru.
+    ref.watch(syncLocalStoreProvider);
     ref.onDispose(_stop);
     ref.listen(cloudSessionProvider, (_, next) {
       final connected = next.asData?.value.connected ?? false;
@@ -126,6 +130,7 @@ class SyncController extends Notifier<SyncStatus> {
     _changes = null;
     _lifecycle?.dispose();
     _lifecycle = null;
+    _engine = null;
   }
 
   /// Perubahan data lokal → sync ±5 dtk kemudian (hanya bila ada yang dirty).
@@ -154,6 +159,22 @@ class SyncController extends Notifier<SyncStatus> {
     );
   }
 
+  /// Ikat toko aktif di daftar toko ke bisnis cloud yang baru tersinkron.
+  Future<void> _linkStore() async {
+    try {
+      final bid = await ref.read(cloudTokenStoreProvider).businessId();
+      if (bid == null) return;
+      final db = ref.read(appDatabaseProvider);
+      final biz =
+          await (db.select(db.businesses)..limit(1)).getSingleOrNull();
+      await ref
+          .read(storeRegistryProvider.notifier)
+          .linkActive(businessId: bid, name: biz?.name);
+    } catch (_) {
+      // Daftar toko hanya metadata; jangan gagalkan sync karenanya.
+    }
+  }
+
   Future<SyncReport?>? _inFlight;
 
   /// Jalankan satu siklus sekarang; panggilan bersamaan menunggu siklus yang
@@ -171,6 +192,7 @@ class SyncController extends Notifier<SyncStatus> {
     try {
       final engine = await _engineFor();
       final report = await engine.syncNow();
+      await _linkStore();
       final pending = await _store.pendingCount();
       state = state.copyWith(
         phase: SyncPhase.idle,
