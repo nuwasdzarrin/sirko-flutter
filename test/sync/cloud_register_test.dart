@@ -133,4 +133,28 @@ void main() {
           .having((e) => e.message, 'message', 'Email sudah terdaftar')),
     );
   });
+
+  test('login menyimpan objek plan dari server Juragan; server lama tanpa plan '
+      'tak mengubah apa pun', () async {
+    Map<String, Object?>? plan;
+    final client = MockClient((req) async => http.Response(
+        jsonEncode({
+          'data': {
+            'accessToken': 'a',
+            'refreshToken': 'r',
+            'user': {'businessId': 'b'},
+            if (plan != null) 'plan': plan,
+          }
+        }),
+        200));
+    final storage = _MemoryStorage();
+    final repo = CloudAuthRepository(client, CloudTokenStore(storage));
+
+    await repo.login(emailOrPhone: 'x@y.id', password: 'rahasia123');
+    expect(await CloudTokenStore(storage).planJson(), isNull);
+
+    plan = {'name': 'juragan', 'maxStores': 3, 'features': ['staff']};
+    await repo.login(emailOrPhone: 'x@y.id', password: 'rahasia123');
+    expect(await CloudTokenStore(storage).planJson(), contains('juragan'));
+  });
 }

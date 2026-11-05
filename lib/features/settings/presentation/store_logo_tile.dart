@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../onboarding/application/onboarding_providers.dart';
+import '../../subscription/application/plan_providers.dart';
+import '../../subscription/domain/plan.dart';
+import '../../subscription/presentation/juragan_screen.dart';
 import '../application/store_logo_providers.dart';
 
 /// Pengaturan logo struk (branding struk — fitur paket Juragan).
@@ -18,6 +21,8 @@ class _StoreLogoTileState extends ConsumerState<StoreLogoTile> {
   bool _busy = false;
 
   Future<void> _pick() async {
+    // Logo di struk = fitur Paket Juragan (branding struk).
+    if (!requireFeature(context, ref, PlanFeature.receiptBranding)) return;
     final messenger = ScaffoldMessenger.of(context);
     final storage = ref.read(storeLogoStorageProvider);
     final repo = ref.read(businessRepositoryProvider);
@@ -30,7 +35,7 @@ class _StoreLogoTileState extends ConsumerState<StoreLogoTile> {
       final path = await storage.persist(picked.path);
       await repo.setLogoPath(path);
       if (old != path) await storage.deleteIfExists(old);
-      ref.invalidate(receiptLogoProvider);
+      ref.invalidate(storedLogoProvider);
       messenger.showSnackBar(
           const SnackBar(content: Text('Logo struk disimpan.')));
     } on FormatException catch (e) {
@@ -45,12 +50,14 @@ class _StoreLogoTileState extends ConsumerState<StoreLogoTile> {
     final old = (await repo.getBusiness())?.logoPath;
     await repo.setLogoPath(null);
     await ref.read(storeLogoStorageProvider).deleteIfExists(old);
-    ref.invalidate(receiptLogoProvider);
+    ref.invalidate(storedLogoProvider);
   }
 
   @override
   Widget build(BuildContext context) {
-    final logo = ref.watch(receiptLogoProvider).asData?.value;
+    final logo = ref.watch(storedLogoProvider).asData?.value;
+    final allowed =
+        ref.watch(featureAllowedProvider(PlanFeature.receiptBranding));
     return ListTile(
       leading: SizedBox(
         width: 48,
@@ -60,9 +67,13 @@ class _StoreLogoTileState extends ConsumerState<StoreLogoTile> {
             : Image.memory(logo, fit: BoxFit.contain),
       ),
       title: const Text('Logo di struk'),
-      subtitle: Text(logo == null
-          ? 'Belum ada. Tampil di atas nama warung pada struk.'
-          : 'Tampil di atas nama warung pada struk.'),
+      subtitle: Text(!allowed
+          ? 'Fitur Paket Juragan — ketuk untuk berlangganan.'
+          : logo == null
+              ? 'Belum ada. Tampil di atas nama warung pada struk.'
+              : 'Tampil di atas nama warung pada struk.'),
+      onTap: allowed ? null : () => openJuraganScreen(context,
+          locked: PlanFeature.receiptBranding),
       trailing: _busy
           ? const SizedBox(
               width: 24, height: 24, child: CircularProgressIndicator())
@@ -77,7 +88,8 @@ class _StoreLogoTileState extends ConsumerState<StoreLogoTile> {
                   ),
                 IconButton(
                   tooltip: logo == null ? 'Pilih logo' : 'Ganti logo',
-                  icon: const Icon(Icons.upload_outlined),
+                  icon: Icon(
+                      allowed ? Icons.upload_outlined : Icons.lock_outline),
                   onPressed: _pick,
                 ),
               ],

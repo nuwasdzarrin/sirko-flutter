@@ -7,6 +7,8 @@ import 'package:local_auth/local_auth.dart';
 import '../../../app/constants.dart';
 import '../../../app/session_controller.dart';
 import '../../../core/database/app_database.dart';
+import '../../subscription/application/plan_providers.dart';
+import '../../subscription/domain/plan.dart';
 import '../../users/application/user_providers.dart';
 import '../../users/domain/current_user.dart';
 import '../application/auth_providers.dart';
@@ -33,6 +35,18 @@ class _PinLoginScreenState extends ConsumerState<PinLoginScreen> {
   }
 
   void _loginAs(User user) {
+    final current = CurrentUser.fromRow(user);
+    // Akun karyawan = fitur Paket Juragan; owner selalu bisa masuk (J6).
+    if (!current.isOwner &&
+        !ref.read(featureAllowedProvider(PlanFeature.staff))) {
+      setState(() {
+        _verifying = false;
+        _error = 'Akun karyawan butuh Paket Juragan. '
+            'Minta pemilik toko berlangganan.';
+        _pinController.clear();
+      });
+      return;
+    }
     ref
         .read(sessionControllerProvider.notifier)
         .login(CurrentUser.fromRow(user));

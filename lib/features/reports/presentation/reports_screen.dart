@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/tables/payments.dart';
 import '../../../core/database/tables/stock_logs.dart';
 import '../../../core/money/money.dart';
+import '../../subscription/application/plan_providers.dart';
+import '../../subscription/domain/plan.dart';
+import '../../subscription/presentation/juragan_screen.dart';
 import '../../users/application/user_providers.dart';
 import '../../users/domain/permission.dart';
 import '../application/report_providers.dart';
@@ -77,6 +80,8 @@ class _ExportBarState extends ConsumerState<_ExportBar> {
 
   Future<void> _run(Future<void> Function() action, String doing) async {
     if (widget.bundle == null || _busy) return;
+    // Ekspor Excel/PDF = fitur Paket Juragan (laporan lanjut).
+    if (!requireFeature(context, ref, PlanFeature.advancedReports)) return;
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -93,6 +98,8 @@ class _ExportBarState extends ConsumerState<_ExportBar> {
     final sharer = ref.read(reportFileSharerProvider);
     final b = widget.bundle;
     final enabled = b != null && !_busy;
+    final locked =
+        !ref.watch(featureAllowedProvider(PlanFeature.advancedReports));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
@@ -108,7 +115,8 @@ class _ExportBarState extends ConsumerState<_ExportBar> {
             ),
           Expanded(
             child: OutlinedButton.icon(
-              icon: const Icon(Icons.table_view_outlined, size: 18),
+              icon: Icon(locked ? Icons.lock_outline : Icons.table_view_outlined,
+                  size: 18),
               label: const Text('Export XLSX'),
               onPressed: enabled
                   ? () => _run(() => sharer.openXlsx(b), 'ekspor XLSX')
@@ -118,7 +126,9 @@ class _ExportBarState extends ConsumerState<_ExportBar> {
           const SizedBox(width: 8),
           Expanded(
             child: OutlinedButton.icon(
-              icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+              icon: Icon(
+                  locked ? Icons.lock_outline : Icons.picture_as_pdf_outlined,
+                  size: 18),
               label: const Text('Export PDF'),
               onPressed: enabled
                   ? () => _run(() => sharer.sharePdf(b), 'ekspor PDF')

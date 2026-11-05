@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/tables/users.dart';
 import '../../../core/errors/failures.dart';
+import '../../subscription/domain/plan.dart';
+import '../../subscription/presentation/juragan_screen.dart';
 import '../application/user_providers.dart';
 import '../domain/permission.dart';
 import 'user_form_screen.dart';
@@ -34,9 +36,13 @@ class UsersPage extends ConsumerWidget {
       ),
       floatingActionButton: canAdd
           ? FloatingActionButton.extended(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const UserFormScreen()),
-              ),
+              onPressed: () {
+                // Akun karyawan = fitur Paket Juragan (multi-karyawan).
+                if (!requireFeature(context, ref, PlanFeature.staff)) return;
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const UserFormScreen()),
+                );
+              },
               icon: const Icon(Icons.person_add_alt),
               label: const Text('Tambah'),
             )

@@ -6,6 +6,8 @@ import '../../../../app/app_version.dart';
 import '../../../../app/constants.dart';
 import '../../../../app/session_controller.dart';
 import '../../../catalog/presentation/katalog_umum_screen.dart';
+import '../../../subscription/application/plan_providers.dart';
+import '../../../subscription/presentation/juragan_screen.dart';
 import '../../../sync/presentation/sync_screen.dart';
 import '../../../users/application/user_providers.dart';
 
@@ -40,6 +42,20 @@ class MorePage extends ConsumerWidget {
               ),
               title: Text(user.name),
               subtitle: Text('Masuk sebagai ${user.role.name}'),
+            ),
+          ),
+        // Paket Juragan: hanya tampil setelah penguncian paket dinyalakan
+        // (backend langganan sudah rilis) & untuk pemilik.
+        if (ref.watch(juraganGatingProvider) && (user?.isOwner ?? false))
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.workspace_premium_outlined),
+              title: const Text('Paket Juragan'),
+              subtitle: Text(ref.watch(planProvider).isJuragan
+                  ? 'Aktif — lihat atau perpanjang'
+                  : 'Multi-cabang, karyawan, laporan Excel/PDF, logo struk'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => openJuraganScreen(context),
             ),
           ),
         const SizedBox(height: 12),

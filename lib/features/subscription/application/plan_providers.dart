@@ -23,12 +23,13 @@ class PlanController extends Notifier<PlanInfo> {
   Future<void> reload() async {
     try {
       final raw = await ref.read(cloudTokenStoreProvider).planJson();
+      if (!ref.mounted) return; // provider dibuang selama menunggu storage
       state = raw == null
           ? PlanInfo.warung
           : PlanInfo.fromJson(
               (jsonDecode(raw) as Map).cast<String, Object?>());
     } catch (_) {
-      state = PlanInfo.warung; // cache rusak → anggap gratis
+      if (ref.mounted) state = PlanInfo.warung; // cache rusak → anggap gratis
     }
   }
 
@@ -37,7 +38,7 @@ class PlanController extends Notifier<PlanInfo> {
     await ref
         .read(cloudTokenStoreProvider)
         .savePlanJson(jsonEncode(planJson));
-    state = PlanInfo.fromJson(planJson);
+    if (ref.mounted) state = PlanInfo.fromJson(planJson);
   }
 }
 
