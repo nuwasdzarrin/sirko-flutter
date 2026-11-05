@@ -6,6 +6,8 @@ import '../../../../app/app_version.dart';
 import '../../../../app/constants.dart';
 import '../../../../app/session_controller.dart';
 import '../../../catalog/presentation/katalog_umum_screen.dart';
+import '../../../cloud/application/cloud_providers.dart';
+import '../../../stores/presentation/stores_screen.dart';
 import '../../../subscription/application/plan_providers.dart';
 import '../../../subscription/presentation/juragan_screen.dart';
 import '../../../sync/presentation/sync_screen.dart';
@@ -56,6 +58,19 @@ class MorePage extends ConsumerWidget {
                   : 'Multi-cabang, karyawan, laporan Excel/PDF, logo struk'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => openJuraganScreen(context),
+            ),
+          ),
+        // Toko Saya (multi-cabang): pemilik yang terhubung ke cloud.
+        if ((user?.isOwner ?? false) &&
+            (ref.watch(cloudSessionProvider).asData?.value.connected ?? false))
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.storefront_outlined),
+              title: const Text('Toko Saya'),
+              subtitle: const Text('Pindah toko, tambah cabang, laporan gabungan'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const StoresScreen())),
             ),
           ),
         const SizedBox(height: 12),

@@ -15,7 +15,13 @@ class CloudConfig {
 class CloudException implements Exception {
   final String message;
   final int? statusCode;
-  const CloudException(this.message, {this.statusCode});
+
+  /// `error.code` dari server (mis. `PLAN_REQUIRED`, `PLAN_LIMIT`), bila ada.
+  final String? code;
+  const CloudException(this.message, {this.statusCode, this.code});
+
+  /// Ditolak karena paket (Juragan) — UI arahkan ke layar berlangganan.
+  bool get isPlanError => code == 'PLAN_REQUIRED' || code == 'PLAN_LIMIT';
 
   bool get isUnauthorized => statusCode == 401;
   bool get isNotFound => statusCode == 404;

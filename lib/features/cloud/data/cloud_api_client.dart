@@ -27,10 +27,7 @@ class CloudApiClient {
       res = await _send(path, query);
       if (res.statusCode == 401) throw const NotConnectedException();
     }
-    if (res.statusCode >= 400) {
-      throw CloudException('Gagal memuat data (${res.statusCode})',
-          statusCode: res.statusCode);
-    }
+    if (res.statusCode >= 400) throw _error(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
@@ -47,9 +44,7 @@ class CloudApiClient {
       res = await _sendPost(path, body, headers);
       if (res.statusCode == 401) throw const NotConnectedException();
     }
-    if (res.statusCode >= 400) {
-      throw CloudException(_errorMessage(res), statusCode: res.statusCode);
-    }
+    if (res.statusCode >= 400) throw _error(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
@@ -79,14 +74,21 @@ class CloudApiClient {
     return token;
   }
 
-  String _errorMessage(http.Response res) {
+  /// Amplop error server `{error:{code,message}}` → [CloudException] dengan
+  /// pesan siap tampil (bahasa Indonesia dari server) + kode.
+  CloudException _error(http.Response res) {
+    String? message;
+    String? code;
     try {
       final b = jsonDecode(res.body);
       if (b is Map && b['error'] is Map) {
         final m = b['error']['message'];
-        if (m is String && m.isNotEmpty) return m;
+        final c = b['error']['code'];
+        if (m is String && m.isNotEmpty) message = m;
+        if (c is String) code = c;
       }
     } catch (_) {}
-    return 'Gagal (${res.statusCode})';
+    return CloudException(message ?? 'Gagal (${res.statusCode})',
+        statusCode: res.statusCode, code: code);
   }
 }

@@ -11,6 +11,7 @@ import '../../../core/database/database_provider.dart';
 import '../../../core/database/store_registry.dart';
 import '../../../core/network/cloud_api.dart';
 import '../../cloud/application/cloud_providers.dart';
+import '../../stores/application/store_switcher.dart';
 import '../data/sync_local_store.dart';
 import '../data/sync_remote.dart';
 import 'sync_engine.dart';
@@ -172,6 +173,12 @@ class SyncController extends Notifier<SyncStatus> {
           .linkActive(businessId: bid, name: biz?.name);
     } catch (_) {
       // Daftar toko hanya metadata; jangan gagalkan sync karenanya.
+    }
+    try {
+      // Paket & daftar toko terbaru (konfirmasi admin, langganan habis).
+      await ref.read(storeSwitcherProvider).refreshMe();
+    } catch (_) {
+      // Server lama / offline → cache paket terakhir tetap dipakai (K7).
     }
   }
 
