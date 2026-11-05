@@ -1,12 +1,13 @@
-/// Konfigurasi & error dasar integrasi cloud (backend Hono @ Vercel).
+/// Konfigurasi & error dasar integrasi cloud (backend Hono `sirko-hono`).
 class CloudConfig {
   const CloudConfig._();
 
-  /// Base URL backend; semua endpoint di `/v1`. Bisa ditimpa saat build/test
-  /// (mis. backend lokal) via `--dart-define=SIRKO_API_BASE=http://10.0.2.2:3000`.
+  /// Base URL backend produksi (server Kreatora, sejak 2026-11-05; dulu
+  /// `sirko.vercel.app`); semua endpoint di `/v1`. Bisa ditimpa saat build/test
+  /// (mis. backend lokal) via `--dart-define=SIRKO_API_BASE=http://10.0.2.2:47321`.
   static const String baseUrl = String.fromEnvironment(
     'SIRKO_API_BASE',
-    defaultValue: 'https://sirko.vercel.app',
+    defaultValue: 'https://sirko.produkdesa.com',
   );
 }
 
