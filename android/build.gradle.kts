@@ -12,7 +12,11 @@ allprojects {
 // ke path tanpa spasi. Sementara, relokasikan build ke C:/fbuild/sirko.
 // File kerja (intermediates) saja yang di sini; APK release otomatis disalin
 // ke KasirWarung/apk-release (lihat app/build.gradle.kts).
-val newBuildDir = file("C:/fbuild/sirko")
+// Relokasi HANYA di Windows dengan path berspasi; mesin lain (macOS/Linux, atau
+// Windows tanpa spasi) memakai layout standar Flutter: <proyek>/build.
+val relocateBuildDir = System.getProperty("os.name").startsWith("Windows") &&
+    rootDir.absolutePath.contains(' ')
+val newBuildDir = if (relocateBuildDir) file("C:/fbuild/sirko") else file("../build")
 rootProject.layout.buildDirectory.set(newBuildDir)
 
 subprojects {

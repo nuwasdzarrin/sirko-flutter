@@ -13,3 +13,10 @@
 *.woff2 binary
 *.jar binary
 *.keystore binary
+
+# Script: .sh wajib LF (bash), .ps1/.bat CRLF (Windows). DB seed = biner.
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.sqlite binary
+*.apk binary

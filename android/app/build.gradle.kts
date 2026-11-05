@@ -24,6 +24,7 @@ android {
 
     defaultConfig {
         applicationId = "com.sirko.app"
+        manifestPlaceholders["appLabel"] = "Sirko"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23 // mobile_scanner butuh minimal API 23
@@ -44,6 +45,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Debug terpasang BERDAMPINGAN dengan rilis (ID paket & signature beda)
+            // agar uji di HP tak perlu uninstall app rilis beserta datanya.
+            applicationIdSuffix = ".dev"
+            manifestPlaceholders["appLabel"] = "Sirko Dev"
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
@@ -67,13 +74,18 @@ android.applicationVariants.configureEach {
     // Tool `flutter build apk` mencari APK di <proyek>/build/app/outputs/
     // flutter-apk; tanpa salinan ini ia melapor "failed to produce an .apk"
     // (palsu) karena build dir dialihkan ke C:/fbuild. Berlaku semua varian.
-    val copyForFlutterTool = tasks.register<Copy>(
-        "copy${variant.name.replaceFirstChar { it.uppercase() }}ApkForFlutterTool"
-    ) {
-        from(layout.buildDirectory.dir("outputs/flutter-apk"))
-        into(rootProject.file("../build/app/outputs/flutter-apk"))
+    // Dilewati bila build dir sudah di lokasi standar (tak dialihkan).
+    val flutterToolApkDir = rootProject.file("../build/app/outputs/flutter-apk")
+    val apkDir = layout.buildDirectory.dir("outputs/flutter-apk").get().asFile
+    if (apkDir.canonicalPath != flutterToolApkDir.canonicalPath) {
+        val copyForFlutterTool = tasks.register<Copy>(
+            "copy${variant.name.replaceFirstChar { it.uppercase() }}ApkForFlutterTool"
+        ) {
+            from(apkDir)
+            into(flutterToolApkDir)
+        }
+        variant.assembleProvider.configure { finalizedBy(copyForFlutterTool) }
     }
-    variant.assembleProvider.configure { finalizedBy(copyForFlutterTool) }
 
     if (variant.buildType.name != "release") return@configureEach
     val copyApk = tasks.register<Copy>(

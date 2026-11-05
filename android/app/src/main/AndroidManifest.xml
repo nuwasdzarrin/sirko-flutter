@@ -9,7 +9,7 @@
     <!-- Baca kontak untuk impor pelanggan (Fase 4, opsional — flutter_contacts) -->
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <application
-        android:label="Sirko"
+        android:label="${appLabel}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

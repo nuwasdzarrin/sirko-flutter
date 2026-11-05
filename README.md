@@ -9,6 +9,8 @@ kelontong, toko grosir, hingga supermarket. Dibangun dengan Flutter, **local-fir
 - Prinsip non-negosiasi: uang = **integer rupiah**, primary key **UUID**, **soft delete**,
   waktu **epoch ms UTC**, jalan penuh **offline**.
 
+> **Setup dev (macOS + Windows, HP via ADB Wi-Fi): lihat [SETUP.md](SETUP.md).**
+
 ## Stack
 | Kebutuhan | Package |
 |---|---|
