@@ -5,6 +5,7 @@ import '../../../../app/session_controller.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../onboarding/application/onboarding_providers.dart';
 import '../../../pos/application/pos_providers.dart';
+import '../../../settings/presentation/store_logo_tile.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -26,6 +27,7 @@ class SettingsPage extends ConsumerWidget {
             );
           },
         ),
+        const StoreLogoTile(),
         const Divider(),
         const _RequireOpenBillTile(),
         const Divider(),

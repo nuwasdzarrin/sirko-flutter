@@ -71,6 +71,14 @@ class ReceiptPdfBuilder {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
+              if (data.logoPng != null)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 4),
+                  child: pw.Center(
+                    child: pw.Image(pw.MemoryImage(data.logoPng!),
+                        height: 40, fit: pw.BoxFit.contain),
+                  ),
+                ),
               pw.Center(
                 child: pw.Text(
                   data.storeName,

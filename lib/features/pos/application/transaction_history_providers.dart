@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../onboarding/application/onboarding_providers.dart';
+import '../../settings/application/store_logo_providers.dart';
 import '../domain/receipt_data.dart';
 import '../domain/transaction_detail.dart';
 import 'pos_providers.dart';
@@ -37,5 +38,6 @@ Future<ReceiptData?> receiptData(Ref ref, String transactionId) async {
     transaction: detail.transaction,
     items: detail.items,
     payments: detail.payments,
+    logoPng: await ref.watch(receiptLogoProvider.future),
   );
 }

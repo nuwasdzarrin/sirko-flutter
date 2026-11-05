@@ -1,4 +1,5 @@
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
+import 'package:image/image.dart' as img;
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 
 import '../../../core/money/money.dart';
@@ -77,6 +78,10 @@ class ReceiptThermalPrinter {
     final g = Generator(paper, profile);
     var bytes = <int>[];
 
+    final logo = data.logoPng == null ? null : img.decodePng(data.logoPng!);
+    if (logo != null) {
+      bytes += g.imageRaster(logo, align: PosAlign.center);
+    }
     bytes += g.text(data.storeName,
         styles: const PosStyles(
             align: PosAlign.center, bold: true, height: PosTextSize.size2));

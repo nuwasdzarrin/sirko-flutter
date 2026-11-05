@@ -154,7 +154,7 @@ final class ReceiptDataProvider
   }
 }
 
-String _$receiptDataHash() => r'000b83ee869578bfdd0c26605ea94743a4e872f9';
+String _$receiptDataHash() => r'00382db644f14ec720acc3f0cedb90fec3476f93';
 
 /// Data siap-cetak struk untuk sebuah transaksi (gabung detail + data toko).
 

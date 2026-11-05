@@ -20,6 +20,19 @@ class BusinessRepository {
         .getSingleOrNull();
   }
 
+  /// Simpan / hapus (null) path logo struk toko aktif.
+  Future<void> setLogoPath(String? path) async {
+    final b = await getBusiness();
+    if (b == null) return;
+    await (_db.update(_db.businesses)..where((t) => t.id.equals(b.id))).write(
+      BusinessesCompanion(
+        logoPath: Value(path),
+        updatedAt: Value(DateTimeUtils.nowEpochMs()),
+        isDirty: const Value(true),
+      ),
+    );
+  }
+
   /// Buat baris toko baru (dipakai saat onboarding pertama).
   Future<void> createBusiness({
     required String name,

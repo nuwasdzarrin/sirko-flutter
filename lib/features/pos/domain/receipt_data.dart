@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../core/database/app_database.dart';
 import '../../../core/database/tables/payments.dart';
 
@@ -52,6 +54,10 @@ class ReceiptData {
 
   final String? footerText;
 
+  /// Logo toko (PNG hitam-putih siap cetak, lihat `StoreLogoStorage`).
+  /// Null = tanpa logo (belum diunggah / bukan paket Juragan).
+  final Uint8List? logoPng;
+
   const ReceiptData({
     required this.storeName,
     this.storeAddress,
@@ -69,6 +75,7 @@ class ReceiptData {
     required this.paidTotal,
     required this.changeTotal,
     this.footerText,
+    this.logoPng,
   });
 
   /// Bangun dari baris Drift hasil commit + data toko.
@@ -78,6 +85,7 @@ class ReceiptData {
     required List<TransactionItem> items,
     required List<Payment> payments,
     String? footerText,
+    Uint8List? logoPng,
   }) {
     return ReceiptData(
       storeName: business.name,
@@ -106,6 +114,7 @@ class ReceiptData {
       paidTotal: transaction.paidTotal,
       changeTotal: transaction.changeTotal,
       footerText: footerText,
+      logoPng: logoPng,
     );
   }
 }
