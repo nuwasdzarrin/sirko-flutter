@@ -159,6 +159,12 @@ class _CrossStoreScreenState extends ConsumerState<CrossStoreScreen> {
                   itemBuilder: (_, i) {
                     final r = shown[i];
                     final q = _qty[r.key] ?? 0;
+                    final dec = q == 0
+                        ? null
+                        : () => setState(() => _qty[r.key] = q - 1);
+                    final inc = q >= r.stock
+                        ? null
+                        : () => setState(() => _qty[r.key] = q + 1);
                     if (!_send) {
                       return CheckboxListTile(
                         value: q > 0,
@@ -173,20 +179,31 @@ class _CrossStoreScreenState extends ConsumerState<CrossStoreScreen> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove_circle_outline),
-                            onPressed: q == 0
-                                ? null
-                                : () => setState(() => _qty[r.key] = q - 1),
+                          // Label Semantics: dibacakan TalkBack (tooltip tidak).
+                          Semantics(
+                            label: 'Kurangi ${r.name}',
+                            button: true,
+                            enabled: dec != null,
+                            onTap: dec,
+                            excludeSemantics: true,
+                            child: IconButton(
+                              icon: const Icon(Icons.remove_circle_outline),
+                              onPressed: dec,
+                            ),
                           ),
                           Text('$q',
                               style: const TextStyle(
                                   fontSize: 18, fontWeight: FontWeight.bold)),
-                          IconButton(
-                            icon: const Icon(Icons.add_circle_outline),
-                            onPressed: q >= r.stock
-                                ? null
-                                : () => setState(() => _qty[r.key] = q + 1),
+                          Semantics(
+                            label: 'Tambah ${r.name}',
+                            button: true,
+                            enabled: inc != null,
+                            onTap: inc,
+                            excludeSemantics: true,
+                            child: IconButton(
+                              icon: const Icon(Icons.add_circle_outline),
+                              onPressed: inc,
+                            ),
                           ),
                         ],
                       ),

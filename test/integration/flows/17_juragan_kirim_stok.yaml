@@ -1,0 +1,127 @@
+# TC-17 Paket Juragan — salin produk & kirim stok ke cabang.
+# Prasyarat: TC-16b (Paket Juragan aktif, toko utama "Toko Maestro" sedang
+# dibuka, cabang "Cabang Pasar" sudah ada, pemilik PIN 123456).
+# Cakupan: buat 2 produk di toko utama → salin "Teh Pucuk" ke cabang (stok 0)
+# → kirim 3 "Kopi Kapal Api" ke cabang (stok utama 20→17) → buka cabang →
+# Kopi Kapal Api stok 3 & Teh Pucuk stok 0 tiba lewat sync.
+appId: com.sirko.app
+name: "17 Juragan - salin produk & kirim stok ke cabang"
+tags: [juragan]
+---
+- startRecording: 17_juragan_kirim_stok
+- runFlow: ../subflows/login_pemilik.yaml
+
+# --- Dua produk baru di toko utama ---
+- tapOn: "Produk.*Tab 3.*"
+- tapOn:
+    text: "Produk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Produk Baru"
+    timeout: 10000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama produk", TEXT: "Kopi Kapal Api" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Harga jual", TEXT: "2000" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Stok awal", TEXT: "20" }
+- scrollUntilVisible:
+    element: "Simpan Produk"
+    direction: DOWN
+- tapOn: "Simpan Produk"
+- extendedWaitUntil:
+    visible: "Kopi Kapal Api.*"
+    timeout: 20000
+- tapOn:
+    text: "Produk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Produk Baru"
+    timeout: 10000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama produk", TEXT: "Teh Pucuk" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Harga jual", TEXT: "4000" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Stok awal", TEXT: "5" }
+- scrollUntilVisible:
+    element: "Simpan Produk"
+    direction: DOWN
+- tapOn: "Simpan Produk"
+- extendedWaitUntil:
+    visible: "Teh Pucuk.*"
+    timeout: 20000
+- assertVisible: "Kopi Kapal Api.*Stok 20.*"
+
+# --- Salin "Teh Pucuk" ke cabang (stok tidak ikut) ---
+- tapOn: "Lainnya.*"
+- tapOn: "Toko Saya.*"
+- extendedWaitUntil:
+    visible: "Salin produk ke cabang"
+    timeout: 20000
+- tapOn: "Salin produk ke cabang"
+- tapOn: "Toko tujuan"
+- tapOn: "Cabang Pasar"
+- tapOn: "Teh Pucuk"
+- tapOn: "Salin 1 produk"
+- extendedWaitUntil:
+    visible: ".*1 produk disalin.*"
+    timeout: 90000
+- takeScreenshot: 17_salin_produk
+
+# --- Kirim 3 "Kopi Kapal Api" ke cabang ---
+- tapOn: "Kirim stok ke cabang"
+- tapOn: "Toko tujuan"
+- tapOn: "Cabang Pasar"
+- tapOn: "Tambah Kopi Kapal Api"
+- tapOn: "Tambah Kopi Kapal Api"
+- tapOn: "Tambah Kopi Kapal Api"
+- tapOn: "Kirim 1 barang"
+- extendedWaitUntil:
+    visible: ".*1 barang dikirim.*"
+    timeout: 120000
+- takeScreenshot: 17_kirim_stok
+
+# Stok toko utama berkurang 3 (dihitung ulang dari ledger setelah sync).
+- back
+- tapOn: "Produk.*Tab 3.*"
+- extendedWaitUntil:
+    visible: "Kopi Kapal Api.*Stok 17.*"
+    timeout: 30000
+
+# --- Buka cabang: produk & stok tiba lewat sync ---
+- tapOn: "Lainnya.*"
+- tapOn: "Toko Saya.*"
+- extendedWaitUntil:
+    visible: "Cabang Pasar.*Ketuk untuk membuka.*"
+    timeout: 20000
+- tapOn: "Cabang Pasar.*"
+- tapOn: "Buka"
+- extendedWaitUntil:
+    visible: "Pengguna.*"
+    timeout: 180000
+- runFlow:
+    file: ../subflows/pilih_pengguna.yaml
+    env: { USER: "Budi Pemilik \\(owner\\)" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "123456" }
+- tapOn:
+    text: "Masuk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Beranda.*"
+    timeout: 60000
+- tapOn: "Produk.*Tab 3.*"
+- extendedWaitUntil:
+    visible: "Kopi Kapal Api.*Stok 3.*"
+    timeout: 30000
+- assertVisible: "Teh Pucuk.*Stok 0.*"
+- takeScreenshot: 17_stok_di_cabang
+- stopRecording
