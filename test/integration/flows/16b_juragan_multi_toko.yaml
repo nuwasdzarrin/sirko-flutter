@@ -1,0 +1,91 @@
+# TC-16b Paket Juragan — bagian 2 (setelah admin mengonfirmasi tagihan 16a).
+# Cakupan: status terkonfirmasi → paket aktif → ekspor terbuka → Toko Saya →
+# tambah cabang (buat owner cabang) → pindah kembali ke toko utama (PIN).
+appId: com.sirko.app
+name: "16b Juragan - aktif, tambah cabang & pindah toko"
+tags: [juragan]
+---
+- startRecording: 16b_juragan_multi_toko
+- runFlow: ../subflows/login_pemilik.yaml
+
+# --- Paket aktif setelah konfirmasi (disegarkan oleh sync / cek status) ---
+- tapOn: "Lainnya.*"
+- extendedWaitUntil:
+    visible: "Paket Juragan.*"
+    timeout: 10000
+- tapOn: "Paket Juragan.*"
+- extendedWaitUntil:
+    visible: ".*Paket Juragan aktif.*"
+    timeout: 60000
+- takeScreenshot: 16b_paket_aktif
+- back
+
+# --- Ekspor kini terbuka (tak lagi diarahkan ke layar berlangganan) ---
+- tapOn: "Laporan.*Tab 4.*"
+- extendedWaitUntil:
+    visible: "Export XLSX"
+    timeout: 15000
+- tapOn: "Export XLSX"
+- assertNotVisible: ".*termasuk Paket Juragan.*"
+- back
+
+# --- Toko Saya → tambah cabang ---
+- tapOn: "Lainnya.*"
+- tapOn: "Toko Saya.*"
+- extendedWaitUntil:
+    visible: ".*Sedang dibuka di HP ini.*"
+    timeout: 20000
+- assertVisible: "Toko Maestro.*"
+- takeScreenshot: 16b_toko_saya
+- tapOn: "Tambah cabang"
+- extendedWaitUntil:
+    visible: "Tambah toko cabang"
+    timeout: 10000
+- inputText: "Cabang Pasar"
+- tapOn: "Buat & buka"
+
+# Toko baru kosong → buat akun pemilik cabang
+- extendedWaitUntil:
+    visible: "Buat & Masuk"
+    timeout: 120000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama pemilik", TEXT: "Budi Cabang" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "654321" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Ulangi PIN", TEXT: "654321" }
+- tapOn: "Buat & Masuk"
+- extendedWaitUntil:
+    visible: "Beranda.*"
+    timeout: 60000
+- takeScreenshot: 16b_cabang_baru
+
+# --- Pindah kembali ke toko utama ---
+- tapOn: "Lainnya.*"
+- tapOn: "Toko Saya.*"
+- extendedWaitUntil:
+    visible: "Toko Maestro.*Ketuk untuk membuka.*"
+    timeout: 20000
+- assertVisible: "Cabang Pasar.*Sedang dibuka di HP ini.*"
+- tapOn: "Toko Maestro.*"
+- tapOn: "Buka"
+- extendedWaitUntil:
+    visible: "Pengguna.*"
+    timeout: 120000
+- runFlow:
+    file: ../subflows/pilih_pengguna.yaml
+    env: { USER: "Budi Pemilik \\(owner\\)" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "PIN", TEXT: "123456" }
+- tapOn:
+    text: "Masuk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Beranda.*"
+    timeout: 20000
+- takeScreenshot: 16b_kembali_toko_utama
+- stopRecording

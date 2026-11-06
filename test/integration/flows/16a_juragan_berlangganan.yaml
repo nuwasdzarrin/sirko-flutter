@@ -1,0 +1,73 @@
+# TC-16a Paket Juragan — bagian 1 (sebelum konfirmasi admin).
+# Prasyarat: TC-01 (toko "Toko Maestro", pemilik PIN 123456).
+# Backend: APK debug dengan --dart-define=SIRKO_API_BASE=<backend uji>
+# (flow ini MEMBUAT akun cloud & tagihan langganan — jangan ke produksi
+# tanpa izin pemilik). Lanjutan: konfirmasi admin (dashboard/SQL) → TC-16b.
+appId: com.sirko.app
+name: "16a Juragan - fitur terkunci & bayar QRIS"
+tags: [juragan]
+---
+- startRecording: 16a_juragan_berlangganan
+- evalScript: ${output.email = 'juragan' + Date.now() + '@toko.id'}
+- runFlow: ../subflows/login_pemilik.yaml
+
+# --- Paket Warung: ekspor laporan terkunci → layar berlangganan ---
+- tapOn: "Laporan.*Tab 4.*"
+- extendedWaitUntil:
+    visible: "Export XLSX"
+    timeout: 15000
+- tapOn: "Export XLSX"
+- extendedWaitUntil:
+    visible: ".*Laporan lanjut \\(Excel/PDF\\).*termasuk Paket Juragan.*"
+    timeout: 10000
+- takeScreenshot: 16a_ekspor_terkunci
+- assertVisible: ".*Rp49.000.*"
+- assertVisible: ".*Rp499.000.*"
+- back
+
+# --- Daftar akun cloud (bayar butuh akun) ---
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Sinkronisasi" }
+- extendedWaitUntil:
+    visible: "Daftar akun cloud"
+    timeout: 10000
+- tapOn: "Daftar akun cloud"
+- extendedWaitUntil:
+    visible: "Daftar Akun Cloud"
+    timeout: 10000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama pemilik", TEXT: "Budi Pemilik" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Email atau No. HP", TEXT: "${output.email}" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Password", TEXT: "rahasia123" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Ulangi password", TEXT: "rahasia123" }
+- tapOn: "Daftar & Hubungkan"
+- extendedWaitUntil:
+    visible: ".*Tersinkron.*"
+    timeout: 90000
+- back
+
+# --- Paket Juragan dari tab Lainnya → bayar QRIS ---
+- tapOn: "Lainnya.*"
+- extendedWaitUntil:
+    visible: "Paket Juragan.*"
+    timeout: 10000
+- tapOn: "Paket Juragan.*"
+- extendedWaitUntil:
+    visible: "Bayar dengan QRIS"
+    timeout: 10000
+- tapOn: "Bayar dengan QRIS"
+- extendedWaitUntil:
+    visible: "Bayar PERSIS"
+    timeout: 20000
+- assertVisible: "Rp49.\\d{3}"
+- assertVisible: ".*kode unik.*"
+- takeScreenshot: 16a_tagihan_qris
+- stopRecording

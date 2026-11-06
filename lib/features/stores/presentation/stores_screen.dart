@@ -9,6 +9,7 @@ import '../../subscription/presentation/juragan_screen.dart';
 import '../application/store_switcher.dart';
 import '../data/store_remote.dart';
 import 'combined_report_screen.dart';
+import 'cross_store_screen.dart';
 
 /// "Toko Saya" (paket Juragan, multi-cabang): pilih toko yang dibuka di HP
 /// ini, tambah cabang, dan laporan gabungan.
@@ -189,6 +190,25 @@ class _StoresScreenState extends ConsumerState<StoresScreen> {
                     builder: (_) => const CombinedReportScreen()));
               },
             ),
+            for (final (mode, icon, title) in [
+              (CrossStoreMode.sendStock, Icons.local_shipping_outlined,
+                  'Kirim stok ke cabang'),
+              (CrossStoreMode.copyProducts, Icons.copy_all_outlined,
+                  'Salin produk ke cabang'),
+            ])
+              ListTile(
+                leading: Icon(icon),
+                title: Text(title),
+                trailing:
+                    Icon(canMulti ? Icons.chevron_right : Icons.lock_outline),
+                onTap: () {
+                  if (!requireFeature(context, ref, PlanFeature.multiStore)) {
+                    return;
+                  }
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => CrossStoreScreen(mode: mode)));
+                },
+              ),
             const Divider(),
             for (final b in businesses)
               ListTile(

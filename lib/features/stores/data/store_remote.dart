@@ -1,4 +1,5 @@
 import '../../cloud/data/cloud_api_client.dart';
+import '../domain/cross_store.dart';
 
 /// Toko yang bisa dibuka akun ini (`businesses[]`, KONTRAK §1.2).
 class CloudBusiness {
@@ -107,6 +108,19 @@ abstract class StoreRemote {
   Future<SessionPayload> switchBusiness(String businessId);
   Future<SessionPayload> createBusiness(String name, {String? businessType});
   Future<CombinedReport> combinedReport(String preset);
+
+  /// Pasangan produk yang sudah tertaut [fromBusinessId] → [toBusinessId].
+  Future<List<ProductLink>> productLinks(
+      String fromBusinessId, String toBusinessId);
+
+  /// Salin produk ke toko tujuan (tanpa duplikat; stok salinan 0).
+  Future<CopyResult> copyProducts(
+      String fromBusinessId, String toBusinessId, List<String> productIds);
+
+  /// Kirim stok antar-toko; return id transfer.
+  Future<String> stockTransfer(String fromBusinessId, String toBusinessId,
+      List<TransferLine> lines,
+      {String? note});
 }
 
 class HttpStoreRemote implements StoreRemote {
@@ -154,5 +168,41 @@ class HttpStoreRemote implements StoreRemote {
       total: StoreSummary.fromJson(
           ((d['total'] as Map?) ?? const {}).cast<String, Object?>()),
     );
+  }
+
+  @override
+  Future<List<ProductLink>> productLinks(
+      String fromBusinessId, String toBusinessId) async {
+    final d = _data(await _api.getJson('/v1/juragan/product-links', query: {
+      'fromBusinessId': fromBusinessId,
+      'toBusinessId': toBusinessId,
+    }));
+    return [
+      for (final l in (d['links'] as List?) ?? const [])
+        if (l is Map) ProductLink.fromJson(l.cast<String, Object?>()),
+    ];
+  }
+
+  @override
+  Future<CopyResult> copyProducts(String fromBusinessId, String toBusinessId,
+          List<String> productIds) async =>
+      CopyResult.fromJson(
+          _data(await _api.postJson('/v1/juragan/copy-products', {
+        'fromBusinessId': fromBusinessId,
+        'toBusinessId': toBusinessId,
+        'productIds': productIds,
+      })));
+
+  @override
+  Future<String> stockTransfer(
+      String fromBusinessId, String toBusinessId, List<TransferLine> lines,
+      {String? note}) async {
+    final d = _data(await _api.postJson('/v1/juragan/stock-transfers', {
+      'fromBusinessId': fromBusinessId,
+      'toBusinessId': toBusinessId,
+      'lines': [for (final l in lines) l.toJson()],
+      if (note != null && note.isNotEmpty) 'note': note,
+    }));
+    return (d['transferId'] as String?) ?? '';
   }
 }

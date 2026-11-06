@@ -7,6 +7,7 @@ import '../../cloud/application/cloud_providers.dart';
 import '../../subscription/application/plan_providers.dart';
 import '../../sync/application/sync_controller.dart';
 import '../data/store_remote.dart';
+import '../domain/cross_store.dart';
 
 final storeRemoteProvider = Provider<StoreRemote>(
     (ref) => HttpStoreRemote(ref.watch(cloudApiClientProvider)));
@@ -67,6 +68,51 @@ class StoreSwitcher {
         .read(storeRemoteProvider)
         .createBusiness(name, businessType: businessType);
     await _open(payload, onStep);
+  }
+
+  String _activeBusinessId() {
+    final id = _ref.read(storeRegistryProvider).active.businessId;
+    if (id == null) {
+      throw const CloudException(
+          'Toko ini belum tersinkron ke cloud. Sinkronkan dulu.');
+    }
+    return id;
+  }
+
+  /// Salin produk toko aktif ke toko [toBusinessId] (tanpa duplikat; stok 0).
+  Future<CopyResult> copyProducts(
+      String toBusinessId, List<String> productIds) async {
+    await _flushActive(null);
+    return _ref
+        .read(storeRemoteProvider)
+        .copyProducts(_activeBusinessId(), toBusinessId, productIds);
+  }
+
+  /// Kirim stok dari toko aktif ke [toBusinessId]. Produk yang belum ada di
+  /// toko tujuan disalin dulu otomatis. Setelahnya data ditarik ulang agar
+  /// stok lokal dihitung ulang dari ledger (SYNC.md §8.6).
+  Future<int> sendStock(String toBusinessId, List<TransferPick> picks,
+      {String? note}) async {
+    await _flushActive(null);
+    final from = _activeBusinessId();
+    final remote = _ref.read(storeRemoteProvider);
+    final links = [...await remote.productLinks(from, toBusinessId)];
+    final need = CrossStorePlanner.needCopy(picks, links);
+    if (need.isNotEmpty) {
+      final copied = await remote.copyProducts(from, toBusinessId, need.toList());
+      links.addAll(copied.all);
+    }
+    final plan = CrossStorePlanner.plan(picks, links);
+    if (plan.unmatched.isNotEmpty) {
+      throw CloudException('Belum bisa dipasangkan di toko tujuan: '
+          '${plan.unmatched.join(', ')}.');
+    }
+    if (plan.lines.isEmpty) {
+      throw const CloudException('Isi jumlah barang yang dikirim.');
+    }
+    await remote.stockTransfer(from, toBusinessId, plan.lines, note: note);
+    await _ref.read(syncControllerProvider.notifier).syncNow();
+    return plan.lines.length;
   }
 
   /// Data toko aktif harus sudah terkirim sebelum pindah (DB toko lain tak

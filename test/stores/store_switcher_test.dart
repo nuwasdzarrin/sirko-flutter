@@ -8,6 +8,7 @@ import 'package:sirko/features/cloud/application/cloud_providers.dart';
 import 'package:sirko/features/cloud/data/cloud_token_store.dart';
 import 'package:sirko/features/stores/application/store_switcher.dart';
 import 'package:sirko/features/stores/data/store_remote.dart';
+import 'package:sirko/features/stores/domain/cross_store.dart';
 import 'package:sirko/features/subscription/application/plan_providers.dart';
 import 'package:sirko/features/sync/application/sync_controller.dart';
 import 'package:sirko/features/sync/application/sync_engine.dart';
@@ -127,6 +128,36 @@ class _FakeRemote implements StoreRemote {
   @override
   Future<CombinedReport> combinedReport(String preset) =>
       throw UnimplementedError();
+
+  // Lintas-toko: tautan + salin + kirim stok (dicatat untuk diperiksa).
+  List<ProductLink> links = const [];
+  List<String>? copiedIds;
+  List<TransferLine>? sentLines;
+
+  @override
+  Future<List<ProductLink>> productLinks(String from, String to) async =>
+      links;
+
+  @override
+  Future<CopyResult> copyProducts(
+      String from, String to, List<String> ids) async {
+    copiedIds = ids;
+    return CopyResult(copied: [
+      for (final id in ids)
+        ProductLink(
+            fromProductId: id,
+            toProductId: 'to-$id',
+            variants: {'v-$id': 'tov-$id'}),
+    ]);
+  }
+
+  @override
+  Future<String> stockTransfer(String from, String to, List<TransferLine> l,
+      {String? note}) async {
+    sentLines = l;
+    _log.add('transfer');
+    return 'tr-1';
+  }
 }
 
 /// Pindah toko / tambah cabang (JURAGAN.md §4.4).
@@ -223,5 +254,44 @@ void main() {
     await c.read(storeSwitcherProvider).refreshMe();
     expect(c.read(cloudBusinessesProvider).single.name, 'Toko A');
     expect(c.read(planProvider).isJuragan, isTrue);
+  });
+
+  test('kirim stok: produk tertaut langsung, yang belum disalin dulu, lalu '
+      'kirim & tarik ulang', () async {
+    remote.links = const [
+      ProductLink(fromProductId: 'p1', toProductId: 'q1'),
+    ];
+    final n = await c.read(storeSwitcherProvider).sendStock('biz-b', const [
+      TransferPick(productId: 'p1', name: 'Indomie', qty: 5),
+      TransferPick(productId: 'p2', variantId: 'v-p2', name: 'Kopi Mix', qty: 2),
+      TransferPick(productId: 'p3', name: 'Tidak dikirim', qty: 0),
+    ]);
+    expect(n, 2);
+    // Hanya produk tanpa tautan yang disalin (p1 sudah tertaut).
+    expect(remote.copiedIds, unorderedEquals(['p2', 'p3']));
+    expect(remote.sentLines!.map((l) => l.toJson()), [
+      {'productId': 'p1', 'toProductId': 'q1', 'qty': 5},
+      {
+        'productId': 'p2',
+        'toProductId': 'to-p2',
+        'variantId': 'v-p2',
+        'toVariantId': 'tov-p2',
+        'qty': 2
+      },
+    ]);
+    // Antrean dikirim dulu, sesudah transfer data ditarik ulang.
+    expect(_log, ['sync:sirko', 'transfer', 'sync:sirko']);
+  });
+
+  test('kirim stok ditolak bila toko aktif masih punya data belum terkirim',
+      () async {
+    _FakeSync.pendingAfterSync = 1;
+    await expectLater(
+      c.read(storeSwitcherProvider).sendStock('biz-b', const [
+        TransferPick(productId: 'p1', name: 'Indomie', qty: 1),
+      ]),
+      throwsA(isA<CloudException>()),
+    );
+    expect(remote.sentLines, isNull);
   });
 }
