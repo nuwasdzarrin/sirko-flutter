@@ -108,7 +108,7 @@ void main() {
     permissions: PermissionResolver.resolve(AppRole.owner),
   );
 
-  test('penguncian NYALA: paket Warung terkunci; plan Juragan → terbuka',
+  test('penguncian NYALA (default): paket Warung terkunci; plan Juragan → terbuka',
       () async {
     final storage = _MemoryStorage();
     final c = ProviderContainer(overrides: [
@@ -128,8 +128,9 @@ void main() {
     expect(storage.data['cloud_plan'], contains('juragan'));
   });
 
-  test('penguncian MATI (default build): semua fitur terbuka', () {
-    final c = ProviderContainer();
+  test('penguncian dimatikan (darurat): semua fitur terbuka', () {
+    final c = ProviderContainer(
+        overrides: [juraganGatingProvider.overrideWithValue(false)]);
     addTearDown(c.dispose);
     for (final f in PlanFeature.values) {
       expect(c.read(featureAllowedProvider(f)), isTrue);

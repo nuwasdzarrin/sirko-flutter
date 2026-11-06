@@ -5,12 +5,11 @@
 /// (tanpa I/O) agar mudah diuji.
 library;
 
-/// Saklar penguncian fitur paket. **Default mati**: selama backend Juragan
-/// belum rilis, semua fitur tetap terbuka seperti sebelumnya. Dinyalakan
-/// saat build rilis yang menyertai backend:
-/// `--dart-define=JURAGAN_GATING=true`.
+/// Saklar penguncian fitur paket. **Nyala** sejak backend Juragan rilis
+/// (2026-11-06; aplikasi belum dipakai umum, jadi tanpa masa peralihan J13).
+/// Darurat bisa dimatikan saat build: `--dart-define=JURAGAN_GATING=false`.
 const bool kJuraganGatingEnabled =
-    bool.fromEnvironment('JURAGAN_GATING', defaultValue: false);
+    bool.fromEnvironment('JURAGAN_GATING', defaultValue: true);
 
 /// Fitur bundle Juragan. [code] = string dari server (`plan.features`).
 enum PlanFeature {
