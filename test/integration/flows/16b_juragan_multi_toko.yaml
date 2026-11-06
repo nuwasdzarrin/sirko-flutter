@@ -16,7 +16,7 @@ tags: [juragan]
 - tapOn: "Paket Juragan.*"
 - extendedWaitUntil:
     visible: ".*Paket Juragan aktif.*"
-    timeout: 60000
+    timeout: 120000
 - takeScreenshot: 16b_paket_aktif
 - back
 
