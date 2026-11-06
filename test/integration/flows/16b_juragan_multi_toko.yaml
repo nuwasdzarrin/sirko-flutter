@@ -26,8 +26,16 @@ tags: [juragan]
     visible: "Export XLSX"
     timeout: 15000
 - tapOn: "Export XLSX"
+# Terbuka: file XLSX langsung dibagikan (lembar berbagi Android), bukan
+# diarahkan ke layar berlangganan.
+- extendedWaitUntil:
+    visible: '.*laporan-.*[.]xlsx.*'
+    timeout: 60000
 - assertNotVisible: ".*termasuk Paket Juragan.*"
-- back
+- takeScreenshot: 16b_ekspor_terbuka
+- pressKey: Back   # tutup lembar berbagi sistem
+# Lembar berbagi milik sistem → buka ulang app & masuk lagi (deterministik).
+- runFlow: ../subflows/login_pemilik.yaml
 
 # --- Toko Saya → tambah cabang ---
 - tapOn: "Lainnya.*"
@@ -44,20 +52,20 @@ tags: [juragan]
 - inputText: "Cabang Pasar"
 - tapOn: "Buat & buka"
 
-# Toko baru kosong → buat akun pemilik cabang
+# Cabang baru: pemilik dibuat otomatis dari kredensial PIN pemilik di HP ini
+# (nama = nama toko, PIN sama) → langsung minta PIN.
 - extendedWaitUntil:
-    visible: "Buat & Masuk"
-    timeout: 120000
+    visible: "Pengguna.*"
+    timeout: 180000
+- runFlow:
+    file: ../subflows/pilih_pengguna.yaml
+    env: { USER: "Cabang Pasar \\(owner\\)" }
 - runFlow:
     file: ../subflows/isi_field.yaml
-    env: { FIELD: "Nama pemilik", TEXT: "Budi Cabang" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "654321" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Ulangi PIN", TEXT: "654321" }
-- tapOn: "Buat & Masuk"
+    env: { FIELD: "PIN", TEXT: "123456" }
+- tapOn:
+    text: "Masuk"
+    index: 1
 - extendedWaitUntil:
     visible: "Beranda.*"
     timeout: 60000

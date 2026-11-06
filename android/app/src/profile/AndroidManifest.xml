@@ -4,4 +4,10 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- KHUSUS PROFILE (uji E2E, AOT secepat rilis): izinkan HTTP ke backend
+         uji lokal (mis. http://10.0.2.2:47322). Build release tetap HTTPS-only
+         karena manifest ini hanya di-merge pada varian profile. -->
+    <application
+        android:usesCleartextTraffic="true" />
 </manifest>
