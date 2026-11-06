@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/session_controller.dart';
 import '../../../core/database/store_registry.dart';
 import '../../../core/network/cloud_api.dart';
+import '../../auth/application/auth_providers.dart';
 import '../../cloud/application/cloud_providers.dart';
 import '../../subscription/application/plan_providers.dart';
 import '../../sync/application/sync_controller.dart';
+import '../../users/application/user_providers.dart';
 import '../data/store_remote.dart';
 import '../domain/cross_store.dart';
 
@@ -151,6 +153,10 @@ class StoreSwitcher {
       entry = _ref.read(storeRegistryProvider).byBusinessId(p.businessId)!;
     }
 
+    // Pemilik yang sedang login = orang yang sama di toko tujuan.
+    final me = _ref.read(currentUserProvider);
+    final ownerName = (me != null && me.isOwner) ? me.name : null;
+
     // Ganti file DB: user toko lama keluar dulu (user PIN berbeda per toko).
     _ref.read(sessionControllerProvider.notifier).logout();
     await stores.activate(entry.key);
@@ -158,6 +164,14 @@ class StoreSwitcher {
     onStep?.call(SwitchStep.pulling);
     // syncControllerProvider dibangun ulang untuk DB baru → tarik data toko.
     await _ref.read(syncControllerProvider.notifier).syncNow();
+    // Toko tanpa pengguna (cabang baru): pemilik = orang yang sama, PIN sama,
+    // NAMA orangnya (bukan nama toko). Toko yang sudah punya pengguna dari
+    // cloud tidak diubah (seed hanya bila belum ada user aktif).
+    await _ref.read(userRepositoryProvider).seedOwnerFromLegacy(
+          legacyCredential:
+              await _ref.read(pinRepositoryProvider).exportLegacyCredential(),
+          ownerName: ownerName ?? p.businessName ?? 'Pemilik',
+        );
     await _ref.read(sessionControllerProvider.notifier).reload();
     onStep?.call(SwitchStep.done);
   }

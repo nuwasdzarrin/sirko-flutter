@@ -52,14 +52,14 @@ tags: [juragan]
 - inputText: "Cabang Pasar"
 - tapOn: "Buat & buka"
 
-# Cabang baru: pemilik dibuat otomatis dari kredensial PIN pemilik di HP ini
-# (nama = nama toko, PIN sama) → langsung minta PIN.
+# Cabang baru: pemilik dibuat otomatis = orang yang sama (nama & PIN pemilik
+# yang sedang login) → langsung minta PIN.
 - extendedWaitUntil:
     visible: "Pengguna.*"
     timeout: 180000
 - runFlow:
     file: ../subflows/pilih_pengguna.yaml
-    env: { USER: "Cabang Pasar \\(owner\\)" }
+    env: { USER: "Budi Pemilik \\(owner\\)" }
 - runFlow:
     file: ../subflows/isi_field.yaml
     env: { FIELD: "PIN", TEXT: "123456" }

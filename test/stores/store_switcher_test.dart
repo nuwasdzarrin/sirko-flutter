@@ -1,7 +1,13 @@
+import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sirko/app/session_controller.dart';
+import 'package:sirko/core/database/app_database.dart';
+import 'package:sirko/core/database/database_provider.dart';
+import 'package:sirko/core/database/tables/users.dart';
+import 'package:sirko/features/auth/application/auth_providers.dart';
+import 'package:sirko/features/auth/data/pin_repository.dart';
 import 'package:sirko/core/database/store_registry.dart';
 import 'package:sirko/core/network/cloud_api.dart';
 import 'package:sirko/features/cloud/application/cloud_providers.dart';
@@ -12,6 +18,9 @@ import 'package:sirko/features/stores/domain/cross_store.dart';
 import 'package:sirko/features/subscription/application/plan_providers.dart';
 import 'package:sirko/features/sync/application/sync_controller.dart';
 import 'package:sirko/features/sync/application/sync_engine.dart';
+import 'package:sirko/features/users/application/user_providers.dart';
+import 'package:sirko/features/users/domain/current_user.dart';
+import 'package:sirko/features/users/domain/permission_resolver.dart';
 
 class _MemoryStorage extends FlutterSecureStorage {
   final data = <String, String>{};
@@ -165,8 +174,12 @@ void main() {
   late ProviderContainer c;
   late _FakeRemote remote;
   late _MemoryStorage storage;
+  late Map<String, AppDatabase> dbs; // satu DB in-memory per file toko
 
-  setUp(() {
+  setUp(() async {
+    dbs = {};
+    final pins = PinRepository(_MemoryStorage());
+    await pins.setPin('123456'); // PIN pemilik di HP ini
     _log.clear();
     _FakeSync.pendingAfterSync = 0;
     remote = _FakeRemote();
@@ -176,11 +189,27 @@ void main() {
       cloudTokenStoreProvider.overrideWithValue(CloudTokenStore(storage)),
       syncControllerProvider.overrideWith(_FakeSync.new),
       sessionControllerProvider.overrideWith(_FakeSession.new),
+      appDatabaseProvider.overrideWith((ref) => dbs.putIfAbsent(
+          ref.watch(activeDbNameProvider),
+          () => AppDatabase(NativeDatabase.memory()))),
+      pinRepositoryProvider.overrideWithValue(pins),
+      currentUserProvider.overrideWithValue(CurrentUser(
+        id: 'u0',
+        name: 'Budi Pemilik',
+        username: 'owner',
+        role: AppRole.owner,
+        permissions: PermissionResolver.resolve(AppRole.owner),
+      )),
       // Toko aktif = file lama, sudah terikat biz-a.
       initialStoreRegistryProvider.overrideWithValue(
           StoreRegistry.initial().linkActive(businessId: 'biz-a')),
     ]);
-    addTearDown(c.dispose);
+    addTearDown(() async {
+      c.dispose();
+      for (final d in dbs.values) {
+        await d.close();
+      }
+    });
   });
 
   test('pindah toko: kirim antrean → token tujuan → keluar → buka DB → tarik → '
@@ -293,5 +322,32 @@ void main() {
       throwsA(isA<CloudException>()),
     );
     expect(remote.sentLines, isNull);
+  });
+
+  test('cabang baru: pemilik dibuat dengan NAMA ORANG yang sedang login & '
+      'PIN yang sama (bukan nama toko)', () async {
+    await c.read(storeSwitcherProvider).createStore('Cabang Pasar');
+    final db = dbs['sirko_biz-new']!;
+    final owner = await db.select(db.users).getSingle();
+    expect(owner.name, 'Budi Pemilik');
+    expect(owner.role, AppRole.owner);
+    expect(owner.pinHash,
+        await c.read(pinRepositoryProvider).exportLegacyCredential());
+  });
+
+  test('toko tujuan yang sudah punya pengguna (dari cloud) tidak ditambah '
+      'pemilik baru', () async {
+    final db = dbs.putIfAbsent(
+        'sirko_biz-b', () => AppDatabase(NativeDatabase.memory()));
+    await db.into(db.users).insert(UsersCompanion.insert(
+        id: 'kasir-b',
+        name: 'Kasir B',
+        username: 'kasirb',
+        pinHash: 'x',
+        role: AppRole.cashier,
+        createdAt: 1,
+        updatedAt: 1));
+    await c.read(storeSwitcherProvider).switchTo('biz-b');
+    expect((await db.select(db.users).get()).map((u) => u.name), ['Kasir B']);
   });
 }
