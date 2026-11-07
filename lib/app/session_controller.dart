@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -77,6 +78,15 @@ class SessionController extends _$SessionController {
   /// "Ganti pengguna": pemilik keluar ke layar PIN karyawan; jangan otomatis
   /// masuk sebagai pemilik lagi sampai pemilik memasukkan password.
   bool _staffMode = false;
+  bool _staffModeRead = false;
+
+  /// Simpan mode karyawan agar tak bisa "kabur" jadi pemilik dengan menutup
+  /// lalu membuka app.
+  void _setStaffMode(bool value) {
+    _staffMode = value;
+    _staffModeRead = true;
+    unawaited(ref.read(cloudTokenStoreProvider).setStaffMode(value));
+  }
 
   @override
   SessionState build() {
@@ -98,8 +108,14 @@ class SessionController extends _$SessionController {
   }
 
   Future<void> _load() async {
-    final hasToken = await ref.read(cloudTokenStoreProvider).isConnected();
-    final signedIn = hasToken || _offlineUnlocked;
+    final tokens = ref.read(cloudTokenStoreProvider);
+    if (!_staffModeRead) {
+      _staffModeRead = true;
+      _staffMode = await tokens.isStaffMode();
+    }
+    final hasToken = await tokens.isConnected();
+    final signedIn =
+        hasToken || _offlineUnlocked || await tokens.isOfflineUnlocked();
     final business = await ref.read(businessRepositoryProvider).getBusiness();
 
     CurrentUser? owner;
@@ -151,27 +167,28 @@ class SessionController extends _$SessionController {
   /// Masuk offline berhasil (password cocok dengan `offlineAuth`).
   Future<void> unlockOffline() async {
     _offlineUnlocked = true;
-    _staffMode = false;
+    await ref.read(cloudTokenStoreProvider).setOfflineUnlocked(true);
+    _setStaffMode(false);
     await _load();
   }
 
   /// Keluar dari akun pemilik (token dihapus oleh `AccountController`).
   Future<void> signOut() async {
     _offlineUnlocked = false;
-    _staffMode = false;
+    _setStaffMode(false);
     state = state.copyWith(clearCurrentUser: true);
     await _load();
   }
 
   /// "Ganti pengguna" → layar PIN karyawan.
   void switchToStaff() {
-    _staffMode = true;
+    _setStaffMode(true);
     state = state.copyWith(clearCurrentUser: true);
   }
 
   /// Pemilik kembali dari layar PIN (password terverifikasi).
   Future<void> resumeOwner() async {
-    _staffMode = false;
+    _setStaffMode(false);
     state = state.copyWith(clearCurrentUser: true);
     await _load();
   }
@@ -179,7 +196,7 @@ class SessionController extends _$SessionController {
   /// Sebelum pindah file DB toko: lepas user aktif; setelah [reload] pemilik
   /// otomatis masuk lagi di toko tujuan.
   void clearForSwitch() {
-    _staffMode = false;
+    _setStaffMode(false);
     state = state.copyWith(clearCurrentUser: true);
   }
 
@@ -188,7 +205,7 @@ class SessionController extends _$SessionController {
 
   /// Karyawan keluar → kembali ke layar PIN.
   void logout() {
-    _staffMode = true;
+    _setStaffMode(true);
     state = state.copyWith(clearCurrentUser: true);
   }
 }

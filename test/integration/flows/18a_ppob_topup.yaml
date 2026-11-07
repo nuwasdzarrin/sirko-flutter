@@ -1,0 +1,28 @@
+# TC-18a Poin Sirko: banner & menu Poin, ajukan top-up Rp100.000 → instruksi
+# transfer (nominal unik). Konfirmasi admin dilakukan hook 18b (backend LOKAL).
+# Backend: PPOB_ENABLED=true.
+appId: com.sirko.app
+name: "18a PPOB - top-up Poin"
+tags: [ppob]
+---
+- startRecording: 18a_ppob_topup
+- runFlow: ../subflows/login_pemilik.yaml
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Poin Sirko" }
+- extendedWaitUntil:
+    visible: "Saldo Poin"
+    timeout: 20000
+- assertVisible: "Rp0"
+- tapOn: "Top-up Poin"
+- extendedWaitUntil:
+    visible: "Nominal top-up"
+    timeout: 10000
+- tapOn: "Rp100.000"
+- tapOn: "Lanjut ke pembayaran"
+- extendedWaitUntil:
+    visible: "Saya sudah transfer.*"
+    timeout: 20000
+- assertVisible: '.*Rp100[.]\d{3}.*'
+- takeScreenshot: 18a_instruksi_transfer
+- stopRecording

@@ -18,6 +18,17 @@ else
   FLOWS=$(for p in "$@"; do ls ${p}*.yaml 2>/dev/null; done | sort -u)
 fi
 
+# Akun uji per run (alur akun baru: daftar email+WA+password). TC-01 membuat
+# akun baru `e2e<RUN_ID>@toko.id`; flow lain memakai RUN_ID yang sama
+# (disimpan di record/.run_id agar subset run tetap memakai akun TC-01).
+if echo "$FLOWS" | grep -q '^01_'; then
+  RUN_ID="${RUN_ID:-$(date +%s)}"
+  echo "$RUN_ID" > "$ROOT/record/.run_id"
+else
+  RUN_ID="${RUN_ID:-$(cat "$ROOT/record/.run_id" 2>/dev/null || date +%s)}"
+fi
+echo "Akun uji: e2e${RUN_ID}@toko.id / rahasia123"
+
 # Preflight: paksa keyboard layar tampil. Setelah cold boot emulator bisa
 # menganggap ada keyboard fisik → keyboard layar tak muncul → hideKeyboard
 # Maestro jadi tombol Back (menutup dialog / keluar app).
@@ -47,12 +58,17 @@ APP_VER=$(adb -s "$DEVICE" shell dumpsys package com.sirko.app | grep -m1 versio
 PASS=0; FAIL=0; BUGS=0; FIXED=0
 for f in $FLOWS; do
   base="${f%.yaml}"
+  # Hook opsional sebelum flow (aksi admin backend LOKAL, mis. konfirmasi
+  # top-up Poin / isi token PLN): hooks/<flow>.sh <RUN_ID>.
+  if [ -f "$ROOT/hooks/$base.sh" ]; then
+    bash "$ROOT/hooks/$base.sh" "$RUN_ID" > "$RUN/artifacts/$base.hook.log" 2>&1       || echo "  [$base] hook gagal (lihat artifacts/$base.hook.log)" >&2
+  fi
   start=$(date +%s)
   ok=0
   # Ulangi (maks 2×) HANYA bila driver Maestro gagal start — flow belum
   # menyentuh app, jadi state data aman untuk diulang.
   for attempt in 1 2 3; do
-    if maestro --device "$DEVICE" test "$f" \
+    if maestro --device "$DEVICE" test "$f" -e RUN_ID="$RUN_ID" \
          --format junit --output "$RUN/junit/$base.xml" \
          --test-output-dir "$RUN/artifacts/$base" > "$RUN/artifacts/$base.log" 2>&1; then
       ok=1; break

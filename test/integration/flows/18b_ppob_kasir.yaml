@@ -1,0 +1,71 @@
+# TC-18b Kasir PPOB — nota campuran (SPEC §5). Hook sebelum flow: admin
+# mengonfirmasi top-up 18a + produk Token PLN 20.000 tersedia.
+# Token PLN = diproses admin (waiting_admin) → di kasir "Belum ada jawaban":
+# item PPOB keluar dari nota, barang fisik tetap tersimpan, total disesuaikan.
+appId: com.sirko.app
+name: "18b PPOB - kasir nota campuran"
+tags: [ppob]
+---
+- startRecording: 18b_ppob_kasir
+- runFlow: ../subflows/login_pemilik.yaml
+
+# Saldo Poin sudah masuk
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Poin Sirko" }
+- extendedWaitUntil:
+    visible: "Rp100.000"
+    timeout: 20000
+- assertVisible: '.*Top-up Poin.*[+]Rp100.000.*'
+- back
+
+# Produk → PPOB: harga jual dari aturan untung
+- tapOn: "Produk.*Tab 3.*"
+- tapOn: "PPOB.*Tab 2 dari 2"
+- extendedWaitUntil:
+    visible: "Untung per transaksi"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Token Listrik.*produk"
+    direction: DOWN
+- tapOn: "Token Listrik.*produk"
+- extendedWaitUntil:
+    visible: ".*20.000.*Modal.*"
+    timeout: 10000
+- takeScreenshot: 18b_harga_ppob
+
+# Kasir → PPOB → Token Listrik 20.000
+- tapOn: "Kasir.*Tab 2.*"
+- tapOn: "PPOB.*Tab 2 dari 2"
+- extendedWaitUntil:
+    visible: "Saldo Poin Rp100.000"
+    timeout: 20000
+- tapOn: "Token Listrik"
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nomor meter / ID pelanggan", TEXT: "51234567890" }
+- extendedWaitUntil:
+    visible: ".*20.000.*"
+    timeout: 20000
+- tapOn: ".*Token.*20.000.*"
+- extendedWaitUntil:
+    visible: "Masuk keranjang.*"
+    timeout: 5000
+
+# + barang fisik
+- tapOn: "Fisik.*Tab 1 dari 2"
+- tapOn: "Aqua 600ml.*"
+- tapOn: "Bayar"
+- extendedWaitUntil:
+    visible: "Pembayaran"
+    timeout: 5000
+- tapOn: "Uang pas"
+- tapOn: "Selesaikan & Cetak Struk"
+- extendedWaitUntil:
+    visible: "Transaksi berhasil"
+    timeout: 30000
+- assertVisible: ".*Belum ada jawaban.*keluar dari nota.*"
+- assertVisible: "Total jadi Rp.* kembalian Rp.*"
+- takeScreenshot: 18b_ppob_tertunda
+- tapOn: "Transaksi Baru"
+- stopRecording

@@ -1,63 +1,117 @@
-# TC-01 Onboarding toko + buat akun Pemilik (instal bersih).
-# Cakupan: validasi nama toko wajib, pilih jenis usaha, validasi PIN
-# (minimal 6 digit & harus sama), masuk ke Beranda, versi app tampil.
+# TC-01 Daftar akun pemilik (online) → OTP email → Buat toko → Beranda.
+# Backend LOKAL wajib AUTH_DEV_OTP_ECHO=true: kode OTP tampil di layar
+# ("Kode uji (server lokal): 123456") lalu disalin flow ini.
+# Akun: e2e${RUN_ID}@toko.id · WA 0813<8 digit RUN_ID> · password rahasia123
+# (RUN_ID dari run_all.sh). Nama pemilik "Budi Pemilik" dipakai flow lain.
 appId: com.sirko.app
-name: "01 Onboarding & akun pemilik"
+name: "01 Daftar akun pemilik & buat toko"
 tags: [smoke, onboarding]
+env:
+  RUN_ID: "0000000000"
 ---
 - startRecording: 01_onboarding_pemilik
+- evalScript: ${output.email = 'e2e' + RUN_ID + '@toko.id'}
+- evalScript: ${output.phone = '0813' + RUN_ID.slice(-8)}
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: "Selamat datang di Sirko"
+    visible: "Masuk ke Sirko"
     timeout: 90000
+- tapOn: "Daftar akun baru"
+- extendedWaitUntil:
+    visible: "Daftar akun"
+    timeout: 10000
 
-# Negatif: nama toko kosong
-- tapOn: "Lanjut"
-- assertVisible: "Nama toko wajib diisi"
+# Negatif: form kosong
+- scrollUntilVisible:
+    element: "Daftar"
+    direction: DOWN
+- tapOn: "Daftar"
+- assertVisible: "Nama wajib diisi"
 
-# Positif: isi toko & pilih jenis usaha
+# Isi data
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama Anda", TEXT: "Budi Pemilik" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Email", TEXT: "${output.email}" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nomor WA", TEXT: "${output.phone}" }
+
+# Negatif: password pendek & tidak sama
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Password", TEXT: "rahasia" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Ulangi password", TEXT: "rahasia124" }
+- scrollUntilVisible:
+    element: "Daftar"
+    direction: DOWN
+- tapOn: "Daftar"
+- assertVisible: "Password minimal 8 karakter"
+- assertVisible: "Password tidak sama"
+
+# Positif
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Password", TEXT: "rahasia123" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Ulangi password", TEXT: "rahasia123" }
+- scrollUntilVisible:
+    element: "Daftar"
+    direction: DOWN
+- tapOn: "Daftar"
+- extendedWaitUntil:
+    visible: "Kode uji.*"
+    timeout: 30000
+- takeScreenshot: 01_otp
+
+# Negatif: kode salah
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Kode verifikasi", TEXT: "000000" }
+- tapOn: "Verifikasi"
+- extendedWaitUntil:
+    visible: ".*[Kk]ode.*(salah|tidak valid|kedaluwarsa).*"
+    timeout: 15000
+
+# Positif: salin kode uji dari layar
+- copyTextFrom:
+    text: "Kode uji.*"
+- evalScript: ${output.otp = maestro.copiedText.replace(/[^0-9]/g, '')}
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Kode verifikasi", TEXT: "${output.otp}" }
+- tapOn: "Verifikasi"
+- extendedWaitUntil:
+    visible: "Buat toko"
+    timeout: 30000
+
+# Buat toko: validasi nama wajib
+- tapOn:
+    text: "Buat toko"
+    index: 1
+- assertVisible: ".*[Nn]ama toko wajib.*"
 - runFlow:
     file: ../subflows/isi_field.yaml
     env: { FIELD: "Nama Toko", TEXT: "Toko Maestro" }
 - tapOn: "Jenis Usaha.*"
 - tapOn: "Minimarket"
 - assertVisible: "Jenis Usaha.*Minimarket"
-- tapOn: "Lanjut"
-- extendedWaitUntil:
-    visible: "Buat Akun Pemilik"
-    timeout: 20000
-
-# Negatif: PIN terlalu pendek
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Nama pemilik", TEXT: "Budi Pemilik" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "123" }
-- tapOn: "Buat & Masuk"
-- assertVisible: "PIN minimal 6 digit"
-
-# Negatif: PIN tidak sama
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "123456" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Ulangi PIN", TEXT: "654321" }
-- tapOn: "Buat & Masuk"
-- assertVisible: "PIN tidak sama"
-
-# Positif
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Ulangi PIN", TEXT: "123456" }
-- tapOn: "Buat & Masuk"
+- tapOn:
+    text: "Buat toko"
+    index: 1
 - extendedWaitUntil:
     visible: "Beranda.*"
-    timeout: 30000
+    timeout: 45000
 - assertVisible: 'Omzet Rp0 0 transaksi'
 - assertVisible: 'Piutang \(kredit\) Rp0 0 nota'
+# Banner ajakan top-up Poin (himbauan, bisa ditutup)
+- assertVisible: "Top-up Poin agar bisa jualan.*"
 - takeScreenshot: 01_beranda
 
 # Versi app tampil di tab Lainnya

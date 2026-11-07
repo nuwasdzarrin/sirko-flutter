@@ -56,6 +56,22 @@ void main() {
     });
   });
 
+  testWidgets(
+      'mode karyawan tersimpan: buka ulang app → layar PIN karyawan, '
+      'bukan pemilik', (tester) async {
+    await tester.runAsync(() async {
+      await seedBusiness(db, name: 'Warung Berkah');
+      final storage = FakeSecureStorage.signedInOwner(name: 'Bu Sri');
+      await storage.write(key: 'session_staff_mode', value: '1');
+
+      await pumpFullApp(tester, db: db, secureStorage: storage);
+      await pumpUntilFound(tester, find.text('Masuk sebagai pemilik'));
+      expect(find.text('Masuk karyawan'), findsOneWidget);
+
+      await disposeTree(tester);
+    });
+  });
+
   testWidgets('sudah masuk tapi belum punya toko → layar Buat toko',
       (tester) async {
     await tester.runAsync(() async {

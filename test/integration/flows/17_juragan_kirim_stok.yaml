@@ -1,6 +1,6 @@
 # TC-17 Paket Juragan — salin produk & kirim stok ke cabang.
 # Prasyarat: TC-16b (Paket Juragan aktif, toko utama "Toko Maestro" sedang
-# dibuka, cabang "Cabang Pasar" sudah ada, pemilik PIN 123456).
+# dibuka, cabang "Cabang Pasar" sudah ada; pemilik masuk dengan akun).
 # Cakupan: buat 2 produk di toko utama → salin "Teh Pucuk" ke cabang (stok 0)
 # → kirim 3 "Kopi Kapal Api" ke cabang (stok utama 20→17) → buka cabang →
 # Kopi Kapal Api stok 3 & Teh Pucuk stok 0 tiba lewat sync.
@@ -104,20 +104,8 @@ tags: [juragan]
 - tapOn: "Cabang Pasar.*"
 - tapOn: "Buka"
 - extendedWaitUntil:
-    visible: "Pengguna.*"
-    timeout: 180000
-- runFlow:
-    file: ../subflows/pilih_pengguna.yaml
-    env: { USER: "Budi Pemilik \\(owner\\)" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "123456" }
-- tapOn:
-    text: "Masuk"
-    index: 1
-- extendedWaitUntil:
     visible: "Beranda.*"
-    timeout: 60000
+    timeout: 180000
 - tapOn: "Produk.*Tab 3.*"
 - extendedWaitUntil:
     visible: "Kopi Kapal Api.*Stok 3.*"

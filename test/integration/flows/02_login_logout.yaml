@@ -1,60 +1,92 @@
-# TC-02 Keluar, login PIN salah & benar, sesi tidak bertahan setelah restart.
-# Prasyarat: TC-01 (toko + pemilik PIN 123456).
+# TC-02 Sesi tersimpan, Keluar, password salah, masuk pakai nomor WA,
+# masuk OFFLINE (mode pesawat) dari hash lokal.
+# Prasyarat: TC-01 (akun e2e${RUN_ID}@toko.id / rahasia123).
 appId: com.sirko.app
-name: "02 Login, PIN salah & logout"
+name: "02 Login email-WA, password salah, offline & logout"
 tags: [smoke, auth]
+env:
+  RUN_ID: "0000000000"
 ---
 - startRecording: 02_login_logout
+- evalScript: ${output.email = 'e2e' + RUN_ID + '@toko.id'}
+- evalScript: ${output.phone = '0813' + RUN_ID.slice(-8)}
+
+# Sesi tersimpan: buka ulang app → langsung Beranda (tanpa PIN).
 - launchApp:
     stopApp: true
-# Sesi login tidak dipersist: buka ulang app → wajib PIN.
-- extendedWaitUntil:
-    visible: "Pengguna.*"
-    timeout: 60000
-- assertVisible: "Pengguna.*Budi Pemilik.*"
-
-# Negatif: PIN salah
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "000000" }
-- tapOn:
-    text: "Masuk"
-    index: 1
-- extendedWaitUntil:
-    visible: "PIN salah, coba lagi."
-    timeout: 10000
-- takeScreenshot: 02_pin_salah
-
-# Positif: PIN benar
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "123456" }
-- tapOn:
-    text: "Masuk"
-    index: 1
 - extendedWaitUntil:
     visible: "Beranda.*"
-    timeout: 20000
+    timeout: 60000
+- assertNotVisible: "Masuk ke Sirko"
 
-# Keluar dari tab Lainnya → kembali ke layar login
+# Keluar dari tab Lainnya → layar Masuk
 - tapOn: "Lainnya.*"
 - scrollUntilVisible:
     element: "Keluar"
     direction: DOWN
 - tapOn: "Keluar"
 - extendedWaitUntil:
-    visible: "Pengguna.*"
+    visible: "Masuk ke Sirko"
     timeout: 15000
-- assertNotVisible: "Beranda.*"
 
-# Login lagi untuk flow berikutnya
+# Negatif: password salah
 - runFlow:
     file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "123456" }
+    env: { FIELD: "Email atau nomor WA", TEXT: "${output.email}" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Password", TEXT: "salahsalah" }
+- tapOn:
+    text: "Masuk"
+    index: 1
+- extendedWaitUntil:
+    visible: ".*(salah|tidak cocok).*"
+    timeout: 20000
+- takeScreenshot: 02_password_salah
+
+# Positif: masuk pakai nomor WA
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Email atau nomor WA", TEXT: "${output.phone}" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Password", TEXT: "rahasia123" }
 - tapOn:
     text: "Masuk"
     index: 1
 - extendedWaitUntil:
     visible: "Beranda.*"
-    timeout: 20000
+    timeout: 30000
+
+# Offline: keluar → mode pesawat → masuk dari hash lokal (offlineAuth)
+- tapOn: "Lainnya.*"
+- scrollUntilVisible:
+    element: "Keluar"
+    direction: DOWN
+- tapOn: "Keluar"
+- extendedWaitUntil:
+    visible: "Masuk ke Sirko"
+    timeout: 15000
+- setAirplaneMode: enabled
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Email atau nomor WA", TEXT: "${output.email}" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Password", TEXT: "rahasia123" }
+- tapOn:
+    text: "Masuk"
+    index: 1
+- extendedWaitUntil:
+    visible: "Beranda.*"
+    timeout: 40000
+- takeScreenshot: 02_masuk_offline
+- setAirplaneMode: disabled
+
+# Buka ulang app → tetap masuk
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "Beranda.*"
+    timeout: 60000
 - stopRecording

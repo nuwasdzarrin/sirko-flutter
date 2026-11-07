@@ -54,14 +54,16 @@ tags: [rbac, shift]
     timeout: 10000
 - takeScreenshot: 10_daftar_karyawan
 
-# --- Login sebagai Kasir ---
-- tapOn: "Lainnya.*"
+# --- Login sebagai Kasir (pemilik: Pengaturan → Ganti pengguna) ---
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Pengaturan" }
 - scrollUntilVisible:
-    element: "Keluar"
+    element: "Ganti pengguna \\(karyawan\\)"
     direction: DOWN
-- tapOn: "Keluar"
+- tapOn: "Ganti pengguna \\(karyawan\\)"
 - extendedWaitUntil:
-    visible: "Pengguna.*"
+    visible: "Masuk karyawan"
     timeout: 10000
 - runFlow:
     file: ../subflows/pilih_pengguna.yaml

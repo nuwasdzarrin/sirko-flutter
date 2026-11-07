@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:cryptography/cryptography.dart';
 
@@ -76,16 +77,19 @@ class OfflineAuth {
   /// Perbandingan waktu-konstan. Algoritma tak dikenal → false.
   Future<bool> verify(String password) async {
     if (algo != 'pbkdf2-sha256') return false;
-    final pbkdf2 = Pbkdf2(
-      macAlgorithm: Hmac.sha256(),
-      iterations: iterations,
-      bits: keyLength * 8,
-    );
-    final key = await pbkdf2.deriveKeyFromPassword(
-      password: password,
-      nonce: base64Decode(salt),
-    );
-    final actual = await key.extractBytes();
+    // 100.000 iterasi PBKDF2 (Dart murni) ±1 dtk di HP → di isolate agar UI
+    // tidak macet.
+    final iterations = this.iterations;
+    final bits = keyLength * 8;
+    final nonce = base64Decode(salt);
+    final actual = await Isolate.run(() async {
+      final key = await Pbkdf2(
+        macAlgorithm: Hmac.sha256(),
+        iterations: iterations,
+        bits: bits,
+      ).deriveKeyFromPassword(password: password, nonce: nonce);
+      return key.extractBytes();
+    });
     final expected = base64Decode(hash);
     if (actual.length != expected.length) return false;
     var diff = 0;

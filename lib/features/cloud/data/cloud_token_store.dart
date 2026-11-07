@@ -22,6 +22,8 @@ class CloudTokenStore {
   static const _kVault = 'cloud_token_vault';
   static const _kAccount = 'cloud_account';
   static const _kOffline = 'cloud_offline_auth';
+  static const _kOfflineUnlocked = 'cloud_offline_unlocked';
+  static const _kStaffMode = 'session_staff_mode';
 
   Future<String?> accessToken() => _storage.read(key: _kAccess);
   Future<String?> refreshToken() => _storage.read(key: _kRefresh);
@@ -97,6 +99,22 @@ class CloudTokenStore {
   Future<void> saveOfflineAuthJson(String json) =>
       _storage.write(key: _kOffline, value: json);
 
+  /// Masuk lewat password **offline** (tanpa token). Bertahan setelah app
+  /// ditutup sampai "Keluar" atau masuk online lagi.
+  Future<bool> isOfflineUnlocked() async =>
+      (await _storage.read(key: _kOfflineUnlocked)) == '1';
+  Future<void> setOfflineUnlocked(bool value) => value
+      ? _storage.write(key: _kOfflineUnlocked, value: '1')
+      : _storage.delete(key: _kOfflineUnlocked);
+
+  /// Mode karyawan ("Ganti pengguna"): app dibuka ulang tetap ke layar PIN
+  /// karyawan, tidak otomatis masuk sebagai pemilik.
+  Future<bool> isStaffMode() async =>
+      (await _storage.read(key: _kStaffMode)) == '1';
+  Future<void> setStaffMode(bool value) => value
+      ? _storage.write(key: _kStaffMode, value: '1')
+      : _storage.delete(key: _kStaffMode);
+
   /// Toko token aktif (null = sesi akun, belum punya toko).
   Future<void> setActiveBusiness(String? businessId) => businessId == null
       ? _storage.delete(key: _kBusiness)
@@ -111,6 +129,7 @@ class CloudTokenStore {
     await _storage.delete(key: _kEmail);
     await _storage.delete(key: _kPlan);
     await _storage.delete(key: _kVault);
+    await _storage.delete(key: _kOfflineUnlocked);
   }
 
   /// Hapus semua termasuk akun & bahan login offline.

@@ -116,6 +116,7 @@ class CloudAuthRepository {
       email: p.account?['email'] as String?,
     );
     await _store.setActiveBusiness(p.businessId);
+    await _store.setOfflineUnlocked(false); // sudah online lagi
     if (p.plan != null) await _store.savePlanJson(jsonEncode(p.plan));
     if (p.account != null) await _store.saveAccountJson(jsonEncode(p.account));
     if (p.offlineAuth != null) {

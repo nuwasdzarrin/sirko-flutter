@@ -1,22 +1,42 @@
-# Buka ulang app (data tetap) dan login sebagai pemilik (PIN 123456).
-# Sesi login tidak dipersist, jadi setiap launch selalu ke layar PIN.
-# Pengguna dipilih eksplisit karena sejak TC-10 ada lebih dari satu user.
+# Buka ulang app (data tetap) sebagai PEMILIK. Sesi pemilik tersimpan →
+# biasanya langsung Beranda. Bila tertahan di:
+#  - layar PIN karyawan (setelah "Ganti pengguna") → "Masuk sebagai pemilik"
+#    + password;
+#  - layar Masuk (setelah Keluar) → email + password.
+# Akun: e2e${RUN_ID}@toko.id / rahasia123 (TC-01).
 appId: com.sirko.app
+env:
+  RUN_ID: "0000000000"
 ---
 - launchApp:
     stopApp: true
 - extendedWaitUntil:
-    visible: "Pengguna.*"
+    visible: "(Beranda.*|Masuk ke Sirko|Masuk karyawan)"
     timeout: 60000
 - runFlow:
-    file: pilih_pengguna.yaml
-    env: { USER: "Budi Pemilik \\(owner\\)" }
+    when:
+      visible: "Masuk karyawan"
+    commands:
+      - tapOn: "Masuk sebagai pemilik"
+      - runFlow:
+          file: isi_field.yaml
+          env: { FIELD: "Password", TEXT: "rahasia123" }
+      - tapOn:
+          text: "Masuk"
+          index: 1
 - runFlow:
-    file: isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "123456" }
-- tapOn:
-    text: "Masuk"
-    index: 1
+    when:
+      visible: "Masuk ke Sirko"
+    commands:
+      - runFlow:
+          file: isi_field.yaml
+          env: { FIELD: "Email atau nomor WA", TEXT: "e2e${RUN_ID}@toko.id" }
+      - runFlow:
+          file: isi_field.yaml
+          env: { FIELD: "Password", TEXT: "rahasia123" }
+      - tapOn:
+          text: "Masuk"
+          index: 1
 - extendedWaitUntil:
     visible: "Beranda.*"
-    timeout: 20000
+    timeout: 30000

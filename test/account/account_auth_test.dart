@@ -228,6 +228,22 @@ void main() {
     expect(await store.offlineAuthJson(), isNotNull);
   });
 
+  test('masuk offline bertahan setelah app ditutup; hilang saat Keluar '
+      'atau masuk online', () async {
+    final client = MockClient((req) async => http.Response(
+        jsonEncode({'data': _session(businessId: 'b')}), 200));
+    final storage = _MemoryStorage();
+    final store = CloudTokenStore(storage);
+    await store.setOfflineUnlocked(true);
+    expect(await CloudTokenStore(storage).isOfflineUnlocked(), isTrue);
+    await CloudAuthRepository(client, store)
+        .login(login: 'sri@contoh.id', password: 'rahasia123');
+    expect(await store.isOfflineUnlocked(), isFalse);
+    await store.setOfflineUnlocked(true);
+    await store.signOut();
+    expect(await store.isOfflineUnlocked(), isFalse);
+  });
+
   group('login offline (KONTRAK akun §5)', () {
     final offline = OfflineAuth.fromJson(_offlineAuth);
     final account = AccountInfo.fromJson(

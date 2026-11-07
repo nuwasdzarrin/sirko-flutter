@@ -1,6 +1,6 @@
 # TC-16b Paket Juragan — bagian 2 (setelah admin mengonfirmasi tagihan 16a).
 # Cakupan: status terkonfirmasi → paket aktif → ekspor terbuka → Toko Saya →
-# tambah cabang (buat owner cabang) → pindah kembali ke toko utama (PIN).
+# tambah cabang (pemilik = akun yang sama) → pindah kembali ke toko utama.
 appId: com.sirko.app
 name: "16b Juragan - aktif, tambah cabang & pindah toko"
 tags: [juragan]
@@ -52,23 +52,11 @@ tags: [juragan]
 - inputText: "Cabang Pasar"
 - tapOn: "Buat & buka"
 
-# Cabang baru: pemilik dibuat otomatis = orang yang sama (nama & PIN pemilik
-# yang sedang login) → langsung minta PIN.
-- extendedWaitUntil:
-    visible: "Pengguna.*"
-    timeout: 180000
-- runFlow:
-    file: ../subflows/pilih_pengguna.yaml
-    env: { USER: "Budi Pemilik \\(owner\\)" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "123456" }
-- tapOn:
-    text: "Masuk"
-    index: 1
+# Cabang baru: pemilik = akun yang sama (nama akun, tanpa PIN) → langsung
+# Beranda cabang.
 - extendedWaitUntil:
     visible: "Beranda.*"
-    timeout: 60000
+    timeout: 180000
 - takeScreenshot: 16b_cabang_baru
 
 # --- Pindah kembali ke toko utama ---
@@ -81,19 +69,8 @@ tags: [juragan]
 - tapOn: "Toko Maestro.*"
 - tapOn: "Buka"
 - extendedWaitUntil:
-    visible: "Pengguna.*"
-    timeout: 120000
-- runFlow:
-    file: ../subflows/pilih_pengguna.yaml
-    env: { USER: "Budi Pemilik \\(owner\\)" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "123456" }
-- tapOn:
-    text: "Masuk"
-    index: 1
-- extendedWaitUntil:
     visible: "Beranda.*"
-    timeout: 20000
+    timeout: 120000
+- assertNotVisible: "Masuk karyawan"
 - takeScreenshot: 16b_kembali_toko_utama
 - stopRecording

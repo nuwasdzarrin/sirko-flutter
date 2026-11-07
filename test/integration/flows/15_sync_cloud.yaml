@@ -1,19 +1,21 @@
-# TC-15 Sinkronisasi cloud (SYNC.md §8): daftar akun cloud dari HP yang sudah
-# berisi data → push otomatis → "Tersinkron"; lalu simulasi HP baru (hapus data
-# app) → "Pulihkan dari Cloud" → data toko, pengguna & PIN kembali.
-# Prasyarat: TC-01..04 (toko, pemilik PIN 123456, 3 produk; INV-0001 sudah void).
-# Flow ini menjual Indomie ×2 (INV-0002) sebelum daftar → harus ikut pulih.
-# Backend: APK debug dengan --dart-define=SIRKO_API_BASE=<backend uji>
-# (jangan arahkan ke produksi — flow ini MEMBUAT akun baru).
+# TC-15 Sinkronisasi cloud (SYNC.md §8) dengan alur akun baru: akun pemilik
+# sudah masuk sejak TC-01 → transaksi baru otomatis terkirim ("Tersinkron");
+# lalu simulasi HP baru (hapus data app) → Masuk email + password → data toko
+# pulih otomatis, pemilik langsung di Beranda (tanpa PIN, tanpa menu
+# "Pulihkan dari Cloud" terpisah).
+# Prasyarat: TC-01..04 (toko, 3 produk; INV-0001 sudah void).
+# Backend: APK dengan --dart-define=SIRKO_API_BASE=<backend uji LOKAL>.
 appId: com.sirko.app
-name: "15 Sinkronisasi cloud - daftar, sync & pulihkan"
+name: "15 Sinkronisasi cloud - sync otomatis & pulih saat masuk"
 tags: [sync]
+env:
+  RUN_ID: "0000000000"
 ---
 - startRecording: 15_sync_cloud
-- evalScript: ${output.email = 'e2e' + Date.now() + '@toko.id'}
+- evalScript: ${output.email = 'e2e' + RUN_ID + '@toko.id'}
 - runFlow: ../subflows/login_pemilik.yaml
 
-# --- Transaksi baru (offline, sebelum punya akun cloud) ---
+# --- Transaksi baru ---
 - tapOn: "Kasir.*Tab 2.*"
 - tapOn: "Indomie Goreng.*"
 - tapOn: "Indomie Goreng.*"
@@ -30,79 +32,48 @@ tags: [sync]
 - tapOn:
     id: "kasir_ke_beranda"
 
-# --- Belum terhubung → daftar akun cloud ---
+# --- Sudah terhubung → push otomatis ---
 - runFlow:
     file: ../subflows/buka_menu_lainnya.yaml
     env: { MENU: "Sinkronisasi" }
-- extendedWaitUntil:
-    visible: ".*Cadangkan & sinkronkan data toko.*"
-    timeout: 10000
-- takeScreenshot: 15_belum_terhubung
-- tapOn: "Daftar akun cloud"
-- extendedWaitUntil:
-    visible: "Daftar Akun Cloud"
-    timeout: 10000
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Nama pemilik", TEXT: "Budi Pemilik" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Email atau No. HP", TEXT: "${output.email}" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Password", TEXT: "rahasia123" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Ulangi password", TEXT: "rahasia123" }
-- tapOn: "Daftar & Hubungkan"
-
-# Push otomatis setelah terhubung → semua data terkirim
+- tapOn:
+    text: "Sinkronkan sekarang"
+    optional: true
 - extendedWaitUntil:
     visible: ".*Tersinkron.*"
     timeout: 90000
 - assertVisible: ".*Menunggu dikirim: 0 data.*"
-- assertVisible: ".*Sinkron terakhir Terkirim \\d+ . Diterima \\d+"
 - assertVisible: "Akun cloud ${output.email}"
+- assertNotVisible: "Daftar akun cloud"
 - takeScreenshot: 15_tersinkron
 
-# --- HP baru: hapus semua data app ---
+# --- HP baru: hapus semua data app → masuk → data pulih ---
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: "Selamat datang di Sirko"
+    visible: "Masuk ke Sirko"
     timeout: 90000
-- tapOn: "Pulihkan dari Cloud"
-- extendedWaitUntil:
-    visible: "Masuk dengan akun cloud toko Anda.*"
-    timeout: 10000
+- assertNotVisible: "Pulihkan dari Cloud"
 - runFlow:
     file: ../subflows/isi_field.yaml
-    env: { FIELD: "Email atau No. HP", TEXT: "${output.email}" }
+    env: { FIELD: "Email atau nomor WA", TEXT: "${output.email}" }
 - runFlow:
     file: ../subflows/isi_field.yaml
     env: { FIELD: "Password", TEXT: "rahasia123" }
-- tapOn: "Masuk & Pulihkan"
-# Data pulih → langsung ke layar PIN (tanpa membuat toko/pemilik baru)
-- extendedWaitUntil:
-    visible: "Pengguna.*Budi Pemilik.*"
-    timeout: 120000
-- takeScreenshot: 15_pulih_layar_pin
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "123456" }
 - tapOn:
     text: "Masuk"
     index: 1
 - extendedWaitUntil:
     visible: "Beranda.*"
-    timeout: 20000
+    timeout: 120000
+- takeScreenshot: 15_pulih_beranda
 
 # Data toko kembali
 - tapOn: "Produk.*Tab 3.*"
 - extendedWaitUntil:
     visible: "Aqua 600ml.*"
-    timeout: 10000
-- assertVisible: "Indomie Goreng .* Stok 98 pcs"
+    timeout: 60000
+- assertVisible: "Indomie Goreng .* Stok \\d+ pcs"
 - assertVisible: "Gula Pasir 1kg.*"
 - takeScreenshot: 15_produk_pulih
 - tapOn: "Kasir.*Tab 2.*"

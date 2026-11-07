@@ -1,5 +1,5 @@
 # TC-13 Katalog Umum: cache lokal dari seed (offline), cari nama & barcode,
-# tab Online & "Usulkan" butuh login cloud, validasi form login cloud.
+# tab Online aktif karena akun pemilik sudah masuk (alur akun baru).
 # Sengaja TIDAK mengirim kredensial ke backend produksi (tanpa akun uji);
 # login cloud/sync/kontribusi sukses perlu akun QA khusus.
 appId: com.sirko.app
@@ -35,25 +35,10 @@ tags: [katalog]
     visible: "3 In 1 Oats Vanilla Quacker . Makanan . 8997020180961"
     timeout: 10000
 
-# Online butuh cloud
+# Online: akun pemilik sudah masuk sejak daftar → tab Online langsung aktif
 - tapOn: "Online.*Tab 2 dari 2"
-- extendedWaitUntil:
-    visible: "Belum terhubung ke cloud.*"
-    timeout: 10000
-- assertVisible: "Hubungkan ke Cloud"
-- takeScreenshot: 13_online_belum_login
-
-# Usulkan tanpa login → diarahkan ke layar login cloud
-- tapOn: "Usulkan"
-- extendedWaitUntil:
-    visible: "Masuk dengan akun cloud Sirko.*"
-    timeout: 10000
-# Validasi klien: field kosong
-- tapOn: "Masuk"
-- extendedWaitUntil:
-    visible: "Isi email/HP dan password."
-    timeout: 5000
-- takeScreenshot: 13_login_cloud_validasi
-- tapOn: "Kembali"
+- waitForAnimationToEnd
+- assertNotVisible: "Belum terhubung ke cloud.*"
+- takeScreenshot: 13_online_terhubung
 - tapOn: "Kembali"
 - stopRecording

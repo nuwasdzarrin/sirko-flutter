@@ -2,7 +2,7 @@ name: sirko
 description: "Sirko — POS/kasir digital untuk ritel (kelontong, grosir, supermarket). Local-first."
 publish_to: 'none'
 
-version: 1.3.0+16
+version: 1.4.0+17
 
 environment:
   sdk: ^3.8.1
@@ -53,7 +53,6 @@ dependencies:
   permission_handler: ^11.3.1
   # Login offline: PBKDF2-HMAC-SHA256 atas offlineAuth dari server (native = cepat).
   cryptography: ^2.7.0
-  cryptography_flutter: ^2.3.2
   # Olah logo struk (resize + hitam-putih) untuk PDF & printer thermal.
   image: ^4.3.0
   image_picker: ^1.2.1
