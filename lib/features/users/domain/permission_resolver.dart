@@ -34,6 +34,8 @@ class PermissionResolver {
       Permission.notificationSetting,
       Permission.recycleBin,
       Permission.viewCostProfit,
+      Permission.ppobSell,
+      Permission.pointTopup,
     },
     // Cashier: operasi kasir + pelanggan + hutang; tanpa produk/laporan/setting.
     AppRole.cashier: {
@@ -42,6 +44,7 @@ class PermissionResolver {
       Permission.customerManagement,
       Permission.creditList,
       Permission.orderList,
+      Permission.ppobSell,
     },
     // Staff: pengurus stok/gudang; tanpa kasir & laporan.
     AppRole.staff: {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/ppob/presentation/ppob_notice_listener.dart';
 import '../features/sync/application/sync_controller.dart';
 import 'constants.dart';
 import 'router.dart';
@@ -22,6 +23,9 @@ class SirkoApp extends ConsumerWidget {
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       routerConfig: router,
+      scaffoldMessengerKey: rootMessengerKey,
+      builder: (context, child) =>
+          PpobNoticeListener(child: child ?? const SizedBox.shrink()),
       locale: const Locale('id', 'ID'),
       supportedLocales: const [
         Locale('id', 'ID'),

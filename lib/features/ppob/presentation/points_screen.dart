@@ -8,8 +8,11 @@ import '../../../core/money/money.dart';
 import '../../../core/utils/date_time_utils.dart';
 import '../../account/presentation/widgets/auth_layout.dart';
 import '../../products/presentation/widgets/rupiah_field.dart';
+import '../../users/application/user_providers.dart';
+import '../../users/domain/permission.dart';
 import '../application/ppob_providers.dart';
 import '../data/ppob_models.dart';
+import 'ppob_history_screen.dart';
 
 String _fmtTime(int ms) {
   final d = DateTimeUtils.toLocal(ms);
@@ -26,7 +29,8 @@ class PointsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = ref.watch(pointsSummaryProvider);
     final canTopup =
-        ref.watch(ppobStatusProvider).asData?.value.canTopup ?? true;
+        (ref.watch(ppobStatusProvider).asData?.value.canTopup ?? true) &&
+            ref.watch(canProvider(Permission.pointTopup));
     return Scaffold(
       appBar: AppBar(title: const Text('Poin Sirko')),
       body: summary.when(
@@ -83,9 +87,26 @@ class PointsScreen extends ConsumerWidget {
                         builder: (_) => TopupDetailScreen(initial: t))),
                   ),
               ],
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.history),
+                label: const Text('Riwayat PPOB'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const PpobHistoryScreen())),
+              ),
               const SizedBox(height: 16),
-              Text('Mutasi Poin',
-                  style: Theme.of(context).textTheme.titleSmall),
+              Row(children: [
+                Expanded(
+                  child: Text('Mutasi Poin',
+                      style: Theme.of(context).textTheme.titleSmall),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const PointsLedgerScreen())),
+                  child: const Text('Lihat semua'),
+                ),
+              ]),
               if (s.ledger.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(16),

@@ -14,3 +14,9 @@ final ppobStatusProvider = FutureProvider.autoDispose<PpobStatus>(
 /// Ringkasan Poin (saldo, 20 mutasi, top-up menunggu).
 final pointsSummaryProvider = FutureProvider.autoDispose<PointsSummary>(
     (ref) => ref.watch(ppobRemoteProvider).points());
+
+/// Produk PPOB per kategori (harga jual sudah dari server); `customerNo`
+/// menyaring operator pulsa/data.
+final ppobProductsProvider = FutureProvider.autoDispose
+    .family<List<PpobProduct>, (PpobCategory, String?)>((ref, key) =>
+        ref.watch(ppobRemoteProvider).products(key.$1, customerNo: key.$2));

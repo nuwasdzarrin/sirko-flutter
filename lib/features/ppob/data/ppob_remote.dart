@@ -23,6 +23,7 @@ abstract class PpobRemote {
     required String productId,
     required String customerNo,
     String? notifyEmail,
+    Duration? timeout,
   });
   Future<PpobOrder> order(String id);
   Future<({List<PpobOrder> items, String? nextCursor})> orders(
@@ -124,14 +125,18 @@ class HttpPpobRemote implements PpobRemote {
     required String productId,
     required String customerNo,
     String? notifyEmail,
+    Duration? timeout,
   }) async =>
-      PpobOrder.fromJson(_map(await _api.postJson('/v1/ppob/orders', {
-        'clientRef': clientRef,
-        'productId': productId,
-        'customerNo': customerNo,
-        if (notifyEmail != null && notifyEmail.isNotEmpty)
-          'notifyEmail': notifyEmail,
-      })));
+      PpobOrder.fromJson(_map(await _api.postJson(
+          '/v1/ppob/orders',
+          {
+            'clientRef': clientRef,
+            'productId': productId,
+            'customerNo': customerNo,
+            if (notifyEmail != null && notifyEmail.isNotEmpty)
+              'notifyEmail': notifyEmail,
+          },
+          timeout: timeout)));
 
   @override
   Future<PpobOrder> order(String id) async =>

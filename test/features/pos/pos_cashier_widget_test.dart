@@ -171,7 +171,7 @@ void main() {
             .read(checkoutControllerProvider.notifier)
             .submit(const [PaymentEntry(method: PaymentMethod.cash, amount: 11000)]);
 
-        expect(result.invoiceNo, startsWith('INV-')); // bagian 8
+        expect(result.commit!.invoiceNo, startsWith('INV-')); // bagian 8
 
         // Verifikasi DB: stok berkurang (bagian 5) & 1 transaksi paid tersimpan.
         final indomieRow = await (db.select(db.products)

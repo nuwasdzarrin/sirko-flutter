@@ -271,7 +271,7 @@ class _CartLineTile extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(line.nameSnapshot,
-                    maxLines: 1,
+                    maxLines: line.isPpob ? 3 : 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(fontWeight: FontWeight.w600)),
@@ -309,7 +309,14 @@ class _CartLineTile extends StatelessWidget {
                 ),
               ],
               const Spacer(),
-              _QtyStepper(qty: line.qty, onInc: onInc, onDec: onDec),
+              if (line.isPpob)
+                Chip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: const Icon(Icons.bolt, size: 16),
+                  label: Text(line.ppob!.done ? 'PPOB · berhasil' : 'PPOB'),
+                )
+              else
+                _QtyStepper(qty: line.qty, onInc: onInc, onDec: onDec),
             ],
           ),
           const SizedBox(height: 4),

@@ -6,17 +6,18 @@ import '../../../../core/money/money.dart';
 import '../../../../core/money/rupiah_input_formatter.dart';
 import '../../../customers/application/customer_providers.dart';
 import '../../../customers/presentation/widgets/customer_picker_sheet.dart';
+import '../../application/ppob_checkout.dart';
 import '../../application/pos_providers.dart';
 import '../../data/transaction_repository.dart';
 import '../../domain/payment_calculator.dart';
 
-/// Tampilkan sheet pembayaran. Mengembalikan [CommitResult] bila transaksi
-/// berhasil di-commit, atau null bila dibatalkan.
-Future<CommitResult?> showPaymentSheet(
+/// Tampilkan sheet pembayaran. Mengembalikan [CheckoutOutcome] setelah Bayar
+/// diproses (nota + hasil item PPOB), atau null bila dibatalkan.
+Future<CheckoutOutcome?> showPaymentSheet(
   BuildContext context, {
   required int grandTotal,
 }) {
-  return showModalBottomSheet<CommitResult>(
+  return showModalBottomSheet<CheckoutOutcome>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -207,12 +208,30 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   Widget _actionArea(PaymentResult result) {
     final theme = Theme.of(context);
     if (_submitting) {
-      return const FilledButton(
-        onPressed: null,
-        child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2)),
+      final ppobCount = ref
+          .read(cartControllerProvider)
+          .lines
+          .where((l) => l.isPpob && !(l.ppob!.done))
+          .length;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const FilledButton(
+            onPressed: null,
+            child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+          if (ppobCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                  'Mengirim $ppobCount item PPOB… (maks 15 detik per item)',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall),
+            ),
+        ],
       );
     }
 

@@ -1,6 +1,8 @@
 import '../../../core/money/money.dart';
+import '../../ppob/data/ppob_models.dart';
 import '../../products/domain/wholesale_tier.dart';
 import 'pos_enums.dart';
+import 'ppob_line.dart';
 
 /// Satu baris keranjang kasir. Immutable; ubah lewat [copyWith].
 ///
@@ -38,6 +40,10 @@ class CartLine {
   /// Satuan untuk tampilan (pcs/box/…), opsional.
   final String? unitName;
 
+  /// Item PPOB (pulsa/data/token) — **tanpa stok**, qty selalu 1. Null =
+  /// barang fisik biasa.
+  final PpobLine? ppob;
+
   const CartLine({
     required this.productId,
     this.variantId,
@@ -50,10 +56,17 @@ class CartLine {
     this.discountValue = 0,
     this.availableStock = 0,
     this.unitName,
+    this.ppob,
   });
 
-  /// Kunci unik baris keranjang (produk + varian).
-  String get key => variantId == null ? productId : '$productId::$variantId';
+  bool get isPpob => ppob != null;
+
+  /// Kunci unik baris keranjang (produk + varian; PPOB per pembelian).
+  String get key => ppob != null
+      ? 'ppob:${ppob!.clientRef}'
+      : variantId == null
+          ? productId
+          : '$productId::$variantId';
 
   Money get unitPriceMoney => Money(unitPrice);
 
@@ -62,6 +75,7 @@ class CartLine {
     DiscountType? discountType,
     int? discountValue,
     int? unitPrice,
+    PpobLine? ppob,
   }) {
     return CartLine(
       productId: productId,
@@ -75,6 +89,22 @@ class CartLine {
       discountValue: discountValue ?? this.discountValue,
       availableStock: availableStock,
       unitName: unitName,
+      ppob: ppob ?? this.ppob,
+    );
+  }
+
+  /// Baris PPOB yang sudah berhasil: nama & modal mengikuti order.
+  CartLine withPpobOrder(PpobOrder order) {
+    final p = ppob!.withOrder(order);
+    return CartLine(
+      productId: productId,
+      nameSnapshot: p.receiptName,
+      unitPrice: unitPrice,
+      costPriceSnapshot: p.cost,
+      qty: 1,
+      discountType: discountType,
+      discountValue: discountValue,
+      ppob: p,
     );
   }
 }

@@ -1,10 +1,14 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
 import '../../bills/application/bill_providers.dart';
 import '../../onboarding/application/onboarding_providers.dart';
 import '../../users/application/user_providers.dart';
+import '../../ppob/application/ppob_pending_watcher.dart';
+import '../../ppob/application/ppob_providers.dart';
+import '../../ppob/data/ppob_models.dart';
 import '../../wallets/application/wallet_providers.dart';
 import '../data/app_settings_repository.dart';
 import '../data/receipt_thermal_printer.dart';
@@ -12,10 +16,12 @@ import '../data/transaction_repository.dart';
 import '../domain/cart_line.dart';
 import '../domain/cart_state.dart';
 import '../domain/pos_config.dart';
+import '../domain/ppob_line.dart';
 import '../domain/pos_enums.dart';
 import '../domain/payment_calculator.dart';
 import '../domain/transaction_calculator.dart';
 import '../../products/domain/wholesale_tier.dart';
+import 'ppob_checkout.dart';
 
 part 'pos_providers.g.dart';
 
@@ -115,8 +121,65 @@ class CartController extends _$CartController {
     state = state.copyWith(lines: lines);
   }
 
+  /// Tambah item PPOB (pulsa/data/token) — tanpa stok, qty 1. `clientRef`
+  /// dibuat **sekali** di sini & dipakai ulang sampai order final (§5).
+  /// Harga jual = `sellPrice` server (aturan untung pemilik), modal = `price`.
+  void addPpob(PpobProduct product, String customerNo) {
+    final ppob = PpobLine(
+      clientRef: const Uuid().v4(),
+      productId: product.id,
+      category: product.category,
+      productName: product.name,
+      customerNo: customerNo,
+      cost: product.price,
+    );
+    state = state.copyWith(lines: [
+      ...state.lines,
+      CartLine(
+        productId: '',
+        nameSnapshot: ppob.receiptName,
+        unitPrice: product.sellPrice,
+        costPriceSnapshot: product.price,
+        qty: 1,
+        ppob: ppob,
+      ),
+    ]);
+  }
+
+  /// Masukkan order PPOB yang **sudah berhasil** (mis. sukses belakangan dari
+  /// Riwayat PPOB) agar penjualannya tercatat — tak dikirim ulang ke server.
+  /// Return false bila order itu sudah ada di keranjang.
+  bool addPpobDone(PpobOrder order, int sellPrice) {
+    final ppob = PpobLine(
+      clientRef: order.clientRef.isEmpty ? order.id : order.clientRef,
+      productId: '',
+      category: order.category,
+      productName: order.productName,
+      customerNo: order.customerNo,
+      cost: order.price,
+    ).withOrder(order);
+    if (state.lines.any((l) => l.ppob?.orderId == order.id)) return false;
+    state = state.copyWith(lines: [
+      ...state.lines,
+      CartLine(
+        productId: '',
+        nameSnapshot: ppob.receiptName,
+        unitPrice: sellPrice,
+        costPriceSnapshot: order.price,
+        qty: 1,
+        ppob: ppob,
+      ),
+    ]);
+    return true;
+  }
+
+  /// Ganti seluruh baris (dipakai checkout setelah memproses item PPOB).
+  void replaceLines(List<CartLine> lines) =>
+      state = state.copyWith(lines: lines);
+
   void setQty(String key, int qty) {
     if (qty <= 0) return removeLine(key);
+    if (key.startsWith('ppob:')) return; // PPOB selalu 1 per pembelian
     state = state.copyWith(
       lines: [
         for (final l in state.lines)
@@ -175,9 +238,11 @@ class CartController extends _$CartController {
 /// Total transaksi **reaktif** dari keranjang + konfigurasi toko (§1,§4).
 /// Mengembalikan [TransactionTotals] (plain) → aman code-gen.
 @riverpod
-TransactionTotals cartTotals(Ref ref) {
-  final cart = ref.watch(cartControllerProvider);
-  final config = ref.watch(posConfigProvider).value ?? const PosConfig.none();
+TransactionTotals cartTotals(Ref ref) => _totalsFor(
+    ref.watch(cartControllerProvider),
+    ref.watch(posConfigProvider).value ?? const PosConfig.none());
+
+TransactionTotals _totalsFor(CartState cart, PosConfig config) {
   return TransactionCalculator.calculate(
     lines: cart.lines,
     txDiscountType: cart.txDiscountType,
@@ -200,7 +265,11 @@ class CheckoutController extends _$CheckoutController {
   /// - Lunas (paidTotal ≥ grandTotal) → status `paid`.
   /// - [allowCredit] true → izinkan `partial`/`credit`; sisa jadi hutang (§7),
   ///   maka pelanggan **wajib** dipilih. Bila false & belum lunas → ditolak.
-  Future<CommitResult> submit(
+  /// - Item PPOB dikirim dulu ke server (maks 15 dtk per item, SPEC §5).
+  ///   Sukses → tetap di nota (SN/token di nama item); gagal / belum ada
+  ///   jawaban → keluar dari nota, total & kembalian dihitung ulang; yang
+  ///   belum jelas dicek di latar belakang. Barang fisik selalu tersimpan.
+  Future<CheckoutOutcome> submit(
     List<PaymentEntry> payments, {
     bool allowCredit = false,
   }) async {
@@ -208,21 +277,26 @@ class CheckoutController extends _$CheckoutController {
     // ini autoDispose; bila `ref` disentuh setelah async gap & provider sudah
     // ter-dispose → "Cannot use Ref after it has been disposed". Cache di lokal.
     final totals = ref.read(cartTotalsProvider);
+    final config = ref.read(posConfigProvider).value ?? const PosConfig.none();
     final cart = ref.read(cartControllerProvider);
     final cartNotifier = ref.read(cartControllerProvider.notifier);
     final cashierId = ref.read(currentUserProvider)?.id;
     final billRepo = ref.read(billRepositoryProvider);
     final settings = ref.read(appSettingsRepositoryProvider);
     final repo = ref.read(transactionRepositoryProvider);
+    final hasPpob = cart.lines.any((l) => l.isPpob);
+    final ppob = hasPpob ? PpobCheckout(ref.read(ppobRemoteProvider)) : null;
+    final watcher =
+        hasPpob ? ref.read(ppobPendingWatcherProvider.notifier) : null;
 
-    final payment = PaymentCalculator.resolve(
+    final initial = PaymentCalculator.resolve(
       grandTotal: totals.grandTotal,
       payments: payments,
     );
-    if (!payment.isPaid && !allowCredit) {
+    if (!initial.isPaid && !allowCredit) {
       throw const _CheckoutException('Pembayaran kurang dari total.');
     }
-    if (!payment.isPaid && cart.customerId == null) {
+    if (!initial.isPaid && cart.customerId == null) {
       throw const _CheckoutException(
           'Transaksi kredit/partial wajib memilih pelanggan.');
     }
@@ -232,7 +306,7 @@ class CheckoutController extends _$CheckoutController {
     final keepAlive = ref.keepAlive();
     try {
       // Fase 6: kaitkan kasir & bill/shift. Bila setting wajib-bill aktif,
-      // tolak transaksi tanpa bill open (§10).
+      // tolak transaksi tanpa bill open (§10). Dicek SEBELUM PPOB dikirim.
       final openBill =
           cashierId == null ? null : await billRepo.getOpenBillFor(cashierId);
       final requireOpenBill = await settings.requireOpenBill();
@@ -242,20 +316,71 @@ class CheckoutController extends _$CheckoutController {
       }
 
       state = const AsyncLoading();
+
+      // PPOB dulu, satu per satu.
+      final outcomes = <PpobOutcome>[];
+      final kept = <CartLine>[];
+      for (final line in cart.lines) {
+        if (!line.isPpob) {
+          kept.add(line);
+          continue;
+        }
+        final o = await ppob!.process(line);
+        outcomes.add(o);
+        if (o.success) {
+          kept.add(o.line);
+        } else if (o.pending) {
+          watcher!.add(PendingPpob(
+            clientRef: line.ppob!.clientRef,
+            productName: line.ppob!.productName,
+            customerNo: line.ppob!.customerNo,
+            sellPrice: line.unitPrice,
+            orderId: o.orderId,
+            status: o.status ?? 'pending',
+            since: DateTime.now(),
+          ));
+        }
+      }
+      // Keranjang memakai hasil PPOB: bila commit gagal (mis. stok kurang),
+      // item PPOB yang sudah berhasil tidak dibeli ulang saat Bayar diulang.
+      final keptCart = cart.copyWith(lines: kept);
+      if (hasPpob) cartNotifier.replaceLines(kept);
+      if (kept.isEmpty) {
+        state = const AsyncData(null);
+        cartNotifier.clear();
+        return CheckoutOutcome(null, outcomes);
+      }
+
+      final finalTotals = hasPpob ? _totalsFor(keptCart, config) : totals;
+      final payment = PaymentCalculator.resolve(
+        grandTotal: finalTotals.grandTotal,
+        payments: payments,
+      );
+      final ppobTags = [
+        for (final l in kept)
+          if (l.ppob?.orderId != null)
+            TransactionRepository.ppobNoteTag(l.ppob!.orderId!),
+      ];
+      final note = [
+        if (cart.note != null && cart.note!.isNotEmpty) cart.note!,
+        ...ppobTags,
+      ].join(' · ');
+
       final result = await AsyncValue.guard(() => repo.commit(CommitRequest(
-            totals: totals,
+            totals: finalTotals,
             payments: payments,
             payment: payment,
             customerId: cart.customerId,
             cashierId: cashierId,
             billId: openBill?.id,
-            note: cart.note,
+            note: note.isEmpty ? null : note,
           )));
       state = result;
       return result.when(
         data: (r) {
           cartNotifier.clear();
-          return r;
+          return CheckoutOutcome(
+              r, outcomes, finalTotals.grandTotal, payment.change);
         },
         error: (e, st) => throw e,
         loading: () => throw StateError('unreachable'),

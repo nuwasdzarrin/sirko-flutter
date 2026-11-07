@@ -9,9 +9,12 @@ import '../../products/application/inventory_providers.dart';
 import '../../products/application/product_providers.dart';
 import '../../products/domain/product_list_item.dart';
 import '../../products/presentation/product_form_screen.dart';
+import '../../ppob/presentation/ppob_sell_panel.dart';
+import '../../users/application/user_providers.dart';
+import '../../users/domain/permission.dart';
 import '../application/held_sale_providers.dart';
+import '../application/ppob_checkout.dart';
 import '../application/pos_providers.dart';
-import '../data/transaction_repository.dart';
 import 'held_sales_screen.dart';
 import 'pos_scan_screen.dart';
 import 'transaction_history_screen.dart';
@@ -48,25 +51,62 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     }
   }
 
-  Future<void> _showReceiptDialog(CommitResult result) async {
+  Future<void> _showReceiptDialog(CheckoutOutcome outcome) async {
+    final result = outcome.commit;
+    final dropped = outcome.dropped;
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.check_circle,
-                color: Theme.of(ctx).colorScheme.primary),
+            Icon(result != null ? Icons.check_circle : Icons.info_outline,
+                color: result != null
+                    ? Theme.of(ctx).colorScheme.primary
+                    : Theme.of(ctx).colorScheme.error),
             const SizedBox(width: 8),
-            const Expanded(child: Text('Transaksi berhasil')),
+            Expanded(
+                child: Text(result != null
+                    ? 'Transaksi berhasil'
+                    : 'Tidak ada yang tersimpan')),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Invoice: ${result.invoiceNo}'),
-            const SizedBox(height: 16),
-            ReceiptActions(transactionId: result.transactionId),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (result != null) Text('Invoice: ${result.invoiceNo}'),
+              if (result != null && dropped.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text('Total jadi ${Money(outcome.grandTotal).format()} · '
+                    'kembalian ${Money(outcome.change).format()}',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+              ],
+              for (final o in dropped)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(o.pending ? Icons.hourglass_top : Icons.cancel,
+                          size: 18,
+                          color: o.pending
+                              ? Theme.of(ctx).colorScheme.tertiary
+                              : Theme.of(ctx).colorScheme.error),
+                      const SizedBox(width: 6),
+                      Expanded(
+                          child: Text('${o.line.ppob!.productName} → '
+                              '${o.line.ppob!.customerNo}: ${o.message} '
+                              '(keluar dari nota)')),
+                    ],
+                  ),
+                ),
+              if (result != null) ...[
+                const SizedBox(height: 16),
+                ReceiptActions(transactionId: result.transactionId),
+              ],
+            ],
+          ),
         ),
         actions: [
           FilledButton(
@@ -112,6 +152,12 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   /// keranjang dikosongkan (oleh controller). Stok tak berubah.
   Future<void> _holdCart() async {
     if (ref.read(cartControllerProvider).isEmpty) return;
+    if (ref.read(cartControllerProvider).lines.any((l) => l.isPpob)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Item PPOB tak bisa ditunda. Hapus dulu atau '
+              'selesaikan pembayarannya.')));
+      return;
+    }
     final label = await showDialog<String>(
       context: context,
       builder: (dialogCtx) {
@@ -306,13 +352,32 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 800;
-          final productArea = _ProductArea(
+          final physical = _ProductArea(
             searchController: _searchController,
             onOpenHistory: _openHistory,
             onOpenScanner: _openScanner,
             onOpenHeldSales: _openHeldSales,
             onTapProduct: _onTapProduct,
           );
+          // Tab Fisik | PPOB (SPEC §5). Tanpa izin jual PPOB → hanya Fisik.
+          final canPpob = ref.watch(canProvider(Permission.ppobSell));
+          final productArea = !canPpob
+              ? physical
+              : DefaultTabController(
+                  length: 2,
+                  child: Column(children: [
+                    const TabBar(tabs: [
+                      Tab(text: 'Fisik'),
+                      Tab(text: 'PPOB'),
+                    ]),
+                    Expanded(
+                      child: TabBarView(
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [physical, const PpobSellPanel()],
+                      ),
+                    ),
+                  ]),
+                );
 
           if (wide) {
             return Row(

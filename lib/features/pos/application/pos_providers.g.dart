@@ -244,7 +244,7 @@ final class CartControllerProvider
   }
 }
 
-String _$cartControllerHash() => r'91bdcdba1fe526e770a7963c853ffd27973e220f';
+String _$cartControllerHash() => r'de386cc1f6b7d6accbff9095f76c6f89de7d8dff';
 
 /// Keranjang kasir aktif. Sumber kebenaran item + diskon transaksi + pelanggan.
 ///
@@ -324,7 +324,7 @@ final class CartTotalsProvider
   }
 }
 
-String _$cartTotalsHash() => r'c36b42dd033602be7ab8b9679d3980a36cb32ae3';
+String _$cartTotalsHash() => r'17889f5b406d63b74f0b972b6928f9dc708b9cbd';
 
 /// Controller checkout: commit transaksi & simpan hasil terakhir untuk struk.
 
@@ -355,7 +355,7 @@ final class CheckoutControllerProvider
 }
 
 String _$checkoutControllerHash() =>
-    r'37f123ae88f0712280ea6c2d7425d48a5fdaad9d';
+    r'1a5b7ac7c4b4f5cbf8cc6c229d94011315f7290b';
 
 /// Controller checkout: commit transaksi & simpan hasil terakhir untuk struk.
 

@@ -92,6 +92,7 @@ class TransactionRepository {
       final variants = <String, ProductVariant>{};
       for (final r in req.totals.lineResults) {
         final line = r.line;
+        if (line.isPpob) continue; // PPOB: item tanpa stok (KONTRAK PPOB §8)
         final int available;
         if (line.variantId != null) {
           final variant = await (_db.select(_db.productVariants)
@@ -160,7 +161,7 @@ class TransactionRepository {
             TransactionItemsCompanion.insert(
               id: _uuid.v4(),
               transactionId: txId,
-              productId: Value(line.productId),
+              productId: Value(line.isPpob ? null : line.productId),
               variantId: Value(line.variantId),
               nameSnapshot: line.nameSnapshot,
               qty: line.qty,
@@ -197,6 +198,7 @@ class TransactionRepository {
       //    bervarian mengurangi stok varian; selainnya stok produk.
       for (final r in req.totals.lineResults) {
         final line = r.line;
+        if (line.isPpob) continue;
         final int stockAfter;
         if (line.variantId != null) {
           final variant = variants[line.variantId]!;
@@ -309,6 +311,25 @@ class TransactionRepository {
     final m = local.month.toString().padLeft(2, '0');
     final d = local.day.toString().padLeft(2, '0');
     return '$y$m$d';
+  }
+
+  /// Penanda order PPOB di catatan nota (KONTRAK PPOB §8): `PPOB <order.id>`.
+  static String ppobNoteTag(String orderId) => 'PPOB $orderId';
+
+  /// Id order PPOB yang sudah tercatat di nota lokal (dari catatan nota) —
+  /// dipakai Riwayat PPOB agar order sukses tak dicatat dua kali.
+  Future<Set<String>> recordedPpobOrderIds() async {
+    final rows = await _db.customSelect(
+      "SELECT note FROM transactions WHERE deleted_at IS NULL "
+      "AND note LIKE '%PPOB %'",
+      readsFrom: {_db.transactions},
+    ).get();
+    final re = RegExp(r'PPOB (\S+)');
+    return {
+      for (final r in rows)
+        for (final m in re.allMatches(r.read<String?>('note') ?? ''))
+          m.group(1)!,
+    };
   }
 
   /// Riwayat transaksi (terbaru dulu), non-void tersaring soft-delete.
