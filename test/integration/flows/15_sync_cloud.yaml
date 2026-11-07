@@ -8,8 +8,6 @@
 appId: com.sirko.app
 name: "15 Sinkronisasi cloud - sync otomatis & pulih saat masuk"
 tags: [sync]
-env:
-  RUN_ID: "0000000000"
 ---
 - startRecording: 15_sync_cloud
 - evalScript: ${output.email = 'e2e' + RUN_ID + '@toko.id'}
@@ -55,14 +53,12 @@ env:
     timeout: 90000
 - assertNotVisible: "Pulihkan dari Cloud"
 - runFlow:
-    file: ../subflows/isi_field.yaml
+    file: ../subflows/isi_field_terisi.yaml
     env: { FIELD: "Email atau nomor WA", TEXT: "${output.email}" }
 - runFlow:
     file: ../subflows/isi_field.yaml
     env: { FIELD: "Password", TEXT: "rahasia123" }
-- tapOn:
-    text: "Masuk"
-    index: 1
+- tapOn: "Masuk"
 - extendedWaitUntil:
     visible: "Beranda.*"
     timeout: 120000

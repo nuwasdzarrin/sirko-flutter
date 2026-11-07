@@ -1,0 +1,13 @@
+# Ganti isi field yang MUNGKIN sudah terisi (mis. email terakhir di layar
+# Masuk): long-press → "Pilih semua" → hapus → ketik. Param env: FIELD, TEXT.
+appId: com.sirko.app
+---
+- longPressOn: ${FIELD}
+- runFlow:
+    when:
+      visible: "Pilih semua"
+    commands:
+      - tapOn: "Pilih semua"
+- eraseText: 60
+- inputText: ${TEXT}
+- hideKeyboard

@@ -4,13 +4,13 @@
 appId: com.sirko.app
 name: "02 Login email-WA, password salah, offline & logout"
 tags: [smoke, auth]
-env:
-  RUN_ID: "0000000000"
 ---
 - startRecording: 02_login_logout
 - evalScript: ${output.email = 'e2e' + RUN_ID + '@toko.id'}
 - evalScript: ${output.phone = '0813' + RUN_ID.slice(-8)}
 
+# Pastikan sudah masuk (run sebelumnya bisa berhenti setelah Keluar).
+- runFlow: ../subflows/login_pemilik.yaml
 # Sesi tersimpan: buka ulang app → langsung Beranda (tanpa PIN).
 - launchApp:
     stopApp: true
@@ -31,14 +31,12 @@ env:
 
 # Negatif: password salah
 - runFlow:
-    file: ../subflows/isi_field.yaml
+    file: ../subflows/isi_field_terisi.yaml
     env: { FIELD: "Email atau nomor WA", TEXT: "${output.email}" }
 - runFlow:
     file: ../subflows/isi_field.yaml
     env: { FIELD: "Password", TEXT: "salahsalah" }
-- tapOn:
-    text: "Masuk"
-    index: 1
+- tapOn: "Masuk"
 - extendedWaitUntil:
     visible: ".*(salah|tidak cocok).*"
     timeout: 20000
@@ -46,14 +44,12 @@ env:
 
 # Positif: masuk pakai nomor WA
 - runFlow:
-    file: ../subflows/isi_field.yaml
+    file: ../subflows/isi_field_terisi.yaml
     env: { FIELD: "Email atau nomor WA", TEXT: "${output.phone}" }
 - runFlow:
     file: ../subflows/isi_field.yaml
     env: { FIELD: "Password", TEXT: "rahasia123" }
-- tapOn:
-    text: "Masuk"
-    index: 1
+- tapOn: "Masuk"
 - extendedWaitUntil:
     visible: "Beranda.*"
     timeout: 30000
@@ -69,14 +65,12 @@ env:
     timeout: 15000
 - setAirplaneMode: enabled
 - runFlow:
-    file: ../subflows/isi_field.yaml
+    file: ../subflows/isi_field_terisi.yaml
     env: { FIELD: "Email atau nomor WA", TEXT: "${output.email}" }
 - runFlow:
     file: ../subflows/isi_field.yaml
     env: { FIELD: "Password", TEXT: "rahasia123" }
-- tapOn:
-    text: "Masuk"
-    index: 1
+- tapOn: "Masuk"
 - extendedWaitUntil:
     visible: "Beranda.*"
     timeout: 40000

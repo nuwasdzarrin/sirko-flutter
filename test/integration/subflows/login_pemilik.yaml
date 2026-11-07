@@ -5,8 +5,6 @@
 #  - layar Masuk (setelah Keluar) → email + password.
 # Akun: e2e${RUN_ID}@toko.id / rahasia123 (TC-01).
 appId: com.sirko.app
-env:
-  RUN_ID: "0000000000"
 ---
 - launchApp:
     stopApp: true
@@ -21,22 +19,18 @@ env:
       - runFlow:
           file: isi_field.yaml
           env: { FIELD: "Password", TEXT: "rahasia123" }
-      - tapOn:
-          text: "Masuk"
-          index: 1
+      - tapOn: "Masuk"
 - runFlow:
     when:
       visible: "Masuk ke Sirko"
     commands:
       - runFlow:
-          file: isi_field.yaml
+          file: isi_field_terisi.yaml
           env: { FIELD: "Email atau nomor WA", TEXT: "e2e${RUN_ID}@toko.id" }
       - runFlow:
           file: isi_field.yaml
           env: { FIELD: "Password", TEXT: "rahasia123" }
-      - tapOn:
-          text: "Masuk"
-          index: 1
+      - tapOn: "Masuk"
 - extendedWaitUntil:
     visible: "Beranda.*"
     timeout: 30000

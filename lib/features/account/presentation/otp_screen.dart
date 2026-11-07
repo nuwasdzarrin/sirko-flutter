@@ -33,6 +33,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   Timer? _timer;
   String? _sentTo;
   String? _devCode;
+  String? _error;
 
   @override
   void initState() {
@@ -61,15 +62,18 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   Future<void> _verify() async {
     if (_code.text.length != 6) return;
-    setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       await ref
           .read(accountControllerProvider)
           .verifyEmail(widget.email, _code.text);
       // Router berpindah ke "Buat toko"; layar ini ikut tertutup.
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+      // Pesan tetap terlihat di bawah kolom (bukan snackbar yang cepat hilang).
+      if (mounted) setState(() => _error = errorText(e));
       _code.clear();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -114,10 +118,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 28, letterSpacing: 12),
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Kode verifikasi',
             counterText: '',
-            border: OutlineInputBorder(),
+            errorText: _error,
+            errorMaxLines: 3,
+            border: const OutlineInputBorder(),
           ),
           onChanged: (v) {
             if (v.length == 6) _verify();
