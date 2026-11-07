@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sirko/features/auth/data/pin_hasher.dart';
 import 'package:sirko/features/auth/data/pin_repository.dart';
 import 'package:sirko/features/customers/data/contact_import_service.dart';
@@ -98,4 +101,67 @@ class FakePinRepository extends PinRepository {
 
   @override
   Future<void> clear() async => _credential = null;
+}
+
+/// Secure storage palsu (memori) untuk [CloudTokenStore] di host test.
+class FakeSecureStorage extends FlutterSecureStorage {
+  final Map<String, String> data;
+  FakeSecureStorage([Map<String, String>? initial]) : data = {...?initial};
+
+  /// Sudah masuk sebagai pemilik akun cloud (token + akun tersimpan) — keadaan
+  /// normal aplikasi setelah daftar/masuk (KONTRAK akun §4).
+  factory FakeSecureStorage.signedInOwner(
+          {String name = 'Pemilik Uji', String businessId = 'biz-uji'}) =>
+      FakeSecureStorage({
+        'cloud_access_token': 'acc-uji',
+        'cloud_refresh_token': 'ref-uji',
+        'cloud_business_id': businessId,
+        'cloud_account': jsonEncode({
+          'id': 'akun-uji',
+          'name': name,
+          'email': 'uji@contoh.id',
+          'phone': '6281200000000',
+          'emailVerified': true,
+        }),
+      });
+
+  @override
+  Future<String?> read(
+          {required String key,
+          IOSOptions? iOptions,
+          AndroidOptions? aOptions,
+          LinuxOptions? lOptions,
+          WebOptions? webOptions,
+          MacOsOptions? mOptions,
+          WindowsOptions? wOptions}) async =>
+      data[key];
+
+  @override
+  Future<void> write(
+      {required String key,
+      required String? value,
+      IOSOptions? iOptions,
+      AndroidOptions? aOptions,
+      LinuxOptions? lOptions,
+      WebOptions? webOptions,
+      MacOsOptions? mOptions,
+      WindowsOptions? wOptions}) async {
+    if (value == null) {
+      data.remove(key);
+    } else {
+      data[key] = value;
+    }
+  }
+
+  @override
+  Future<void> delete(
+      {required String key,
+      IOSOptions? iOptions,
+      AndroidOptions? aOptions,
+      LinuxOptions? lOptions,
+      WebOptions? webOptions,
+      MacOsOptions? mOptions,
+      WindowsOptions? wOptions}) async {
+    data.remove(key);
+  }
 }

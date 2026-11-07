@@ -24,6 +24,8 @@ import 'package:sirko/features/sync/data/sync_remote.dart';
 import 'package:sirko/features/sync/domain/sync_registry.dart';
 import 'package:sirko/features/wallets/data/wallet_repository.dart';
 
+import '../helpers/cloud_owner.dart';
+
 class _MemoryStorage extends FlutterSecureStorage {
   final data = <String, String>{};
   @override
@@ -79,7 +81,8 @@ class _Device {
   final AppDatabase db;
   final SyncEngine engine;
   final CloudAuthRepository auth;
-  _Device(this.db, this.engine, this.auth);
+  final CloudApiClient api;
+  _Device(this.db, this.engine, this.auth, this.api);
 
   static _Device create() {
     final db = AppDatabase(NativeDatabase.memory());
@@ -93,7 +96,7 @@ class _Device {
       businessId: store.businessId,
       appVersion: 'contract-test',
     );
-    return _Device(db, engine, auth);
+    return _Device(db, engine, auth, api);
   }
 }
 
@@ -254,12 +257,8 @@ void main() {
     const password = 'rahasia123';
 
     final a = _Device.create();
-    await a.auth.register(
-      businessName: 'Toko Kontrak',
-      ownerName: 'Budi',
-      emailOrPhone: email,
-      password: password,
-    );
+    await registerOwnerWithStore(a.auth, a.api,
+        email: email, storeName: 'Toko Kontrak', password: password);
     final ids = await _seedAllTables(a.db);
 
     final pushA = await a.engine.syncNow();
@@ -267,7 +266,7 @@ void main() {
     expect(await SyncLocalStore(a.db).pendingCount(), 0);
 
     final b = _Device.create();
-    await b.auth.login(emailOrPhone: email, password: password);
+    await b.auth.login(login: email, password: password);
     final pullB = await b.engine.syncNow();
     expect(pullB.conflictDetails, isEmpty);
 
@@ -308,12 +307,8 @@ void main() {
     final email = 'kasir2-${_uuid().substring(0, 8)}@toko.id';
     const password = 'rahasia123';
     final a = _Device.create();
-    await a.auth.register(
-      businessName: 'Toko Dua Kasir',
-      ownerName: 'Budi',
-      emailOrPhone: email,
-      password: password,
-    );
+    await registerOwnerWithStore(a.auth, a.api,
+        email: email, storeName: 'Toko Dua Kasir', password: password);
     WalletRepository wallets(AppDatabase db) =>
         WalletRepository(db, AppSettingsRepository(db));
     final pid =
@@ -323,7 +318,7 @@ void main() {
     await a.engine.syncNow();
 
     final b = _Device.create();
-    await b.auth.login(emailOrPhone: email, password: password);
+    await b.auth.login(login: email, password: password);
     await b.engine.syncNow();
 
     // Offline bersamaan: A −2 & +7000; B −3 & +3000.

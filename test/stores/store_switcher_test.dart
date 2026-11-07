@@ -83,7 +83,8 @@ class _FakeSession extends SessionController {
   @override
   SessionState build() => const SessionState();
   @override
-  void logout() => _log.add('logout:${ref.read(activeDbNameProvider)}');
+  void clearForSwitch() =>
+      _log.add('clear:${ref.read(activeDbNameProvider)}');
   @override
   Future<void> reload() async =>
       _log.add('reload:${ref.read(activeDbNameProvider)}');
@@ -220,7 +221,7 @@ void main() {
     expect(_log, [
       'sync:sirko', // antrean toko lama terkirim lebih dulu
       'server-switch',
-      'logout:sirko', // user toko lama keluar SEBELUM DB diganti
+      'clear:sirko', // user toko lama dilepas SEBELUM DB diganti
       'sync:sirko_biz-b', // tarik data di DB toko tujuan
       'reload:sirko_biz-b',
     ]);
@@ -255,7 +256,7 @@ void main() {
       throwsA(isA<CloudException>().having((e) => e.isPlanError, 'plan', true)),
     );
     expect(c.read(storeRegistryProvider).active.businessId, 'biz-a');
-    expect(_log, isNot(contains(startsWith('logout'))));
+    expect(_log, isNot(contains(startsWith('clear'))));
   });
 
   test('toko yang sudah aktif → tidak melakukan apa pun', () async {
@@ -324,30 +325,37 @@ void main() {
     expect(remote.sentLines, isNull);
   });
 
-  test('cabang baru: pemilik dibuat dengan NAMA ORANG yang sedang login & '
-      'PIN yang sama (bukan nama toko)', () async {
-    await c.read(storeSwitcherProvider).createStore('Cabang Pasar');
-    final db = dbs['sirko_biz-new']!;
-    final owner = await db.select(db.users).getSingle();
-    expect(owner.name, 'Budi Pemilik');
-    expect(owner.role, AppRole.owner);
-    expect(owner.pinHash,
-        await c.read(pinRepositoryProvider).exportLegacyCredential());
-  });
+  test('masuk di HP baru: file toko pertama (belum terikat) dipakai untuk toko '
+      'akun; baris toko lokal dibuat bila tarik data belum memberi',
+      () async {
+    final fresh = ProviderContainer(overrides: [
+      storeRemoteProvider.overrideWithValue(remote),
+      cloudTokenStoreProvider.overrideWithValue(CloudTokenStore(storage)),
+      syncControllerProvider.overrideWith(_FakeSync.new),
+      sessionControllerProvider.overrideWith(_FakeSession.new),
+      appDatabaseProvider.overrideWith((ref) => dbs.putIfAbsent(
+          ref.watch(activeDbNameProvider),
+          () => AppDatabase(NativeDatabase.memory()))),
+    ]);
+    addTearDown(fresh.dispose);
 
-  test('toko tujuan yang sudah punya pengguna (dari cloud) tidak ditambah '
-      'pemilik baru', () async {
-    final db = dbs.putIfAbsent(
-        'sirko_biz-b', () => AppDatabase(NativeDatabase.memory()));
-    await db.into(db.users).insert(UsersCompanion.insert(
-        id: 'kasir-b',
-        name: 'Kasir B',
-        username: 'kasirb',
-        pinHash: 'x',
-        role: AppRole.cashier,
-        createdAt: 1,
-        updatedAt: 1));
-    await c.read(storeSwitcherProvider).switchTo('biz-b');
-    expect((await db.select(db.users).get()).map((u) => u.name), ['Kasir B']);
+    await fresh.read(storeSwitcherProvider).openFromSession(const SessionPayload(
+          accessToken: 'acc-x',
+          refreshToken: 'ref-x',
+          businessId: 'biz-x',
+          businessName: 'Warung Bu Sri',
+          businessType: 'Kelontong',
+          businesses: [],
+        ));
+
+    final reg = fresh.read(storeRegistryProvider);
+    expect(reg.stores, hasLength(1)); // tidak membuat file kedua
+    expect(reg.active.dbName, 'sirko');
+    expect(reg.active.businessId, 'biz-x');
+    final db = dbs['sirko']!;
+    final biz = await db.select(db.businesses).getSingle();
+    expect(biz.name, 'Warung Bu Sri');
+    expect(await CloudTokenStore(storage).accessToken(), 'acc-x');
+    expect(_log.last, 'reload:sirko');
   });
 }

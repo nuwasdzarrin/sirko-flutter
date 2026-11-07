@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/date_time_utils.dart';
 import '../../cloud/application/cloud_providers.dart';
-import '../../cloud/presentation/cloud_connect_screen.dart';
+import '../../account/presentation/login_screen.dart';
 import '../application/sync_controller.dart';
 
 /// **Sinkronisasi Cloud** — status sync, jumlah data menunggu, sinkron manual,
@@ -48,30 +48,19 @@ class SyncScreen extends ConsumerWidget {
                   title: const Text('Akun cloud'),
                   subtitle: Text(session?.email ?? '-'),
                 ),
-                TextButton.icon(
-                  onPressed: () => _confirmDisconnect(context, ref),
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Putuskan akun cloud'),
-                ),
                 const _InfoText(),
               ]
             : [
                 const _DisconnectedIntro(),
                 const SizedBox(height: 20),
+                // Masuk offline / sesi kedaluwarsa → masuk lagi agar sync jalan.
                 FilledButton.icon(
-                  onPressed: () => _connect(context, CloudConnectMode.login),
+                  onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const LoginScreen(relogin: true))),
                   icon: const Icon(Icons.login),
-                  label: const Text('Masuk akun cloud'),
+                  label: const Text('Masuk ulang'),
                   style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14)),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      _connect(context, CloudConnectMode.register),
-                  icon: const Icon(Icons.person_add_alt),
-                  label: const Text('Daftar akun cloud'),
-                  style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14)),
                 ),
                 if (status.message != null) ...[
@@ -81,33 +70,6 @@ class SyncScreen extends ConsumerWidget {
               ],
       ),
     );
-  }
-
-  Future<void> _connect(BuildContext context, CloudConnectMode mode) =>
-      Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => CloudConnectScreen(mode: mode)));
-
-  Future<void> _confirmDisconnect(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Putuskan akun cloud?'),
-        content: const Text(
-            'Sinkronisasi berhenti. Data di HP ini tetap ada. Perubahan '
-            'berikutnya dikirim setelah Anda masuk lagi.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Batal')),
-          FilledButton(
-              onPressed: () => Navigator.pop(dialogCtx, true),
-              child: const Text('Putuskan')),
-        ],
-      ),
-    );
-    if (ok == true) {
-      await ref.read(syncControllerProvider.notifier).disconnect();
-    }
   }
 }
 
@@ -190,12 +152,12 @@ class _DisconnectedIntro extends StatelessWidget {
       Icon(Icons.cloud_sync_outlined,
           size: 72, color: theme.colorScheme.primary),
       const SizedBox(height: 12),
-      Text('Cadangkan & sinkronkan data toko',
+      Text('Sinkronisasi berhenti sementara',
           style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
       const SizedBox(height: 8),
       Text(
-        'Aplikasi tetap bisa dipakai tanpa internet. Dengan akun cloud, data '
-        'toko dicadangkan otomatis & bisa dipulihkan / dipakai di HP lain.',
+        'Kasir tetap bisa dipakai tanpa internet. Masuk lagi dengan akun Anda '
+        'agar data toko kembali dicadangkan otomatis.',
         textAlign: TextAlign.center,
         style: theme.textTheme.bodyMedium
             ?.copyWith(color: theme.colorScheme.outline),

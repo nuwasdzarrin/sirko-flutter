@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../core/database/database_provider.dart';
-import '../features/auth/application/auth_providers.dart';
+import '../features/account/domain/offline_auth.dart';
+import '../features/cloud/application/cloud_providers.dart';
 import '../features/onboarding/application/onboarding_providers.dart';
 import '../features/products/application/catalog_providers.dart';
 import '../features/products/data/catalog_seed_bootstrap.dart';
@@ -11,13 +14,17 @@ import '../features/wallets/application/wallet_providers.dart';
 
 part 'session_controller.g.dart';
 
-/// State bootstrap + sesi login (Fase 6: multi-user).
+/// State bootstrap + sesi (KONTRAK akun, SPEC-warung-akun-ppob §3).
 ///
-/// Alur router: onboarding (belum ada toko) → buat owner (belum ada user) →
-/// login user+PIN (belum login) → shell. `authenticated` diturunkan dari
-/// keberadaan [currentUser].
+/// Alur router: belum masuk akun → Masuk/Daftar; sudah masuk tapi belum ada
+/// toko → Buat toko; ada toko → pemilik **otomatis masuk** (tanpa PIN).
+/// Layar PIN hanya untuk karyawan (Juragan) setelah "Ganti pengguna".
 class SessionState {
   final bool ready;
+
+  /// Sudah masuk akun pemilik (token cloud tersimpan, atau masuk offline
+  /// dengan password pada sesi app ini).
+  final bool signedIn;
   final bool hasBusiness;
 
   /// Sudah ada minimal satu user aktif (owner/karyawan) di DB.
@@ -26,11 +33,12 @@ class SessionState {
   /// Sedang meng-import seed katalog (first-run) → splash tampilkan pesan khusus.
   final bool seedingCatalog;
 
-  /// User yang login pada sesi ini (null = belum login).
+  /// User yang login pada sesi ini (null = belum login / layar PIN karyawan).
   final CurrentUser? currentUser;
 
   const SessionState({
     this.ready = false,
+    this.signedIn = false,
     this.hasBusiness = false,
     this.hasUsers = false,
     this.seedingCatalog = false,
@@ -41,6 +49,7 @@ class SessionState {
 
   SessionState copyWith({
     bool? ready,
+    bool? signedIn,
     bool? hasBusiness,
     bool? hasUsers,
     bool? seedingCatalog,
@@ -49,6 +58,7 @@ class SessionState {
   }) {
     return SessionState(
       ready: ready ?? this.ready,
+      signedIn: signedIn ?? this.signedIn,
       hasBusiness: hasBusiness ?? this.hasBusiness,
       hasUsers: hasUsers ?? this.hasUsers,
       seedingCatalog: seedingCatalog ?? this.seedingCatalog,
@@ -59,6 +69,15 @@ class SessionState {
 
 @Riverpod(keepAlive: true)
 class SessionController extends _$SessionController {
+  /// Masuk offline (password dicocokkan dengan `offlineAuth`) pada sesi app
+  /// ini — tanpa token cloud. Tidak dipersist: buka app lagi tanpa token =
+  /// masuk lagi.
+  bool _offlineUnlocked = false;
+
+  /// "Ganti pengguna": pemilik keluar ke layar PIN karyawan; jangan otomatis
+  /// masuk sebagai pemilik lagi sampai pemilik memasukkan password.
+  bool _staffMode = false;
+
   @override
   SessionState build() {
     _load();
@@ -67,18 +86,30 @@ class SessionController extends _$SessionController {
 
   UserRepository get _users => UserRepository(ref.read(appDatabaseProvider));
 
+  Future<AccountInfo?> _account() async {
+    final raw = await ref.read(cloudTokenStoreProvider).accountJson();
+    if (raw == null) return null;
+    try {
+      return AccountInfo.fromJson(
+          (jsonDecode(raw) as Map).cast<String, Object?>());
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _load() async {
+    final hasToken = await ref.read(cloudTokenStoreProvider).isConnected();
+    final signedIn = hasToken || _offlineUnlocked;
     final business = await ref.read(businessRepositoryProvider).getBusiness();
 
-    // Migrasi mulus: bila ada PIN owner lama (Fase 0) tapi belum ada user,
-    // seed user owner dari kredensial legacy agar PIN pemilik tetap berlaku.
-    final legacy =
-        await ref.read(pinRepositoryProvider).exportLegacyCredential();
-    await _users.seedOwnerFromLegacy(
-      legacyCredential: legacy,
-      ownerName: business?.name ?? 'Pemilik',
-    );
-
+    CurrentUser? owner;
+    if (signedIn && business != null) {
+      // Pemilik akun cloud = baris owner lokal tanpa PIN.
+      final account = await _account();
+      final row =
+          await _users.ensureCloudOwner(name: account?.name ?? business.name);
+      owner = CurrentUser.fromRow(row);
+    }
     final hasUsers = await _users.hasAnyActiveUser();
 
     // Fase 7: pastikan ada wallet kas default (penerima penjualan tunai) hanya
@@ -100,26 +131,64 @@ class SessionController extends _$SessionController {
       }
     }
 
-    state = state.copyWith(
+    final keepUser = signedIn && business != null;
+    state = SessionState(
       ready: true,
+      signedIn: signedIn,
       hasBusiness: business != null,
       hasUsers: hasUsers,
       seedingCatalog: false,
+      currentUser: !keepUser
+          ? null
+          : (state.currentUser ?? (_staffMode ? null : owner)),
     );
   }
 
-  /// Muat ulang status toko/pengguna dari DB — mis. setelah data dipulihkan
-  /// dari cloud di HP baru (SYNC.md §8.5).
+  /// Muat ulang status akun/toko/pengguna — mis. setelah masuk, membuat toko,
+  /// pindah toko, atau data dipulihkan dari cloud.
   Future<void> reload() => _load();
 
-  void onBusinessCreated() => state = state.copyWith(hasBusiness: true);
+  /// Masuk offline berhasil (password cocok dengan `offlineAuth`).
+  Future<void> unlockOffline() async {
+    _offlineUnlocked = true;
+    _staffMode = false;
+    await _load();
+  }
 
-  /// Owner baru dibuat pada layar setup → langsung login.
-  void onOwnerCreated(CurrentUser owner) =>
-      state = state.copyWith(hasUsers: true, currentUser: owner);
+  /// Keluar dari akun pemilik (token dihapus oleh `AccountController`).
+  Future<void> signOut() async {
+    _offlineUnlocked = false;
+    _staffMode = false;
+    state = state.copyWith(clearCurrentUser: true);
+    await _load();
+  }
 
-  /// Login user (setelah PIN terverifikasi).
+  /// "Ganti pengguna" → layar PIN karyawan.
+  void switchToStaff() {
+    _staffMode = true;
+    state = state.copyWith(clearCurrentUser: true);
+  }
+
+  /// Pemilik kembali dari layar PIN (password terverifikasi).
+  Future<void> resumeOwner() async {
+    _staffMode = false;
+    state = state.copyWith(clearCurrentUser: true);
+    await _load();
+  }
+
+  /// Sebelum pindah file DB toko: lepas user aktif; setelah [reload] pemilik
+  /// otomatis masuk lagi di toko tujuan.
+  void clearForSwitch() {
+    _staffMode = false;
+    state = state.copyWith(clearCurrentUser: true);
+  }
+
+  /// Login karyawan (setelah PIN terverifikasi).
   void login(CurrentUser user) => state = state.copyWith(currentUser: user);
 
-  void logout() => state = state.copyWith(clearCurrentUser: true);
+  /// Karyawan keluar → kembali ke layar PIN.
+  void logout() {
+    _staffMode = true;
+    state = state.copyWith(clearCurrentUser: true);
+  }
 }

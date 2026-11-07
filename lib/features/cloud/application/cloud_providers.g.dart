@@ -209,7 +209,7 @@ final class CloudSessionProvider
   CloudSession create() => CloudSession();
 }
 
-String _$cloudSessionHash() => r'01222a9d02b54d5e067ed5a242c14ea0b16e6484';
+String _$cloudSessionHash() => r'2395521ccc994ef60d5819d0920bc4bf437dc7fa';
 
 /// Status koneksi cloud (login) — dipakai UI Katalog Umum tab Online.
 

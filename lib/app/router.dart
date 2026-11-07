@@ -4,9 +4,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../core/widgets/permission_gate.dart';
 import '../features/auth/presentation/pin_login_screen.dart';
-import '../features/auth/presentation/set_pin_screen.dart';
+import '../features/account/presentation/create_store_screen.dart';
+import '../features/account/presentation/login_screen.dart';
 import '../features/bills/presentation/shifts_page.dart';
-import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/reports/presentation/employee_summary_page.dart';
 import '../features/shell/presentation/app_shell.dart';
 import '../features/shell/presentation/pages/customers_page.dart';
@@ -54,23 +54,23 @@ GoRouter router(Ref ref) {
       if (!session.ready) {
         return loc == Routes.splash ? null : Routes.splash;
       }
-      // Belum ada toko → onboarding.
+      // Belum masuk akun pemilik → Masuk / Daftar.
+      if (!session.signedIn) {
+        return loc == Routes.login ? null : Routes.login;
+      }
+      // Sudah masuk tapi belum punya toko → Buat toko.
       if (!session.hasBusiness) {
-        return loc == Routes.onboarding ? null : Routes.onboarding;
+        return loc == Routes.createStore ? null : Routes.createStore;
       }
-      // Belum ada user → buat owner.
-      if (!session.hasUsers) {
-        return loc == Routes.setPin ? null : Routes.setPin;
-      }
-      // Ada user tapi belum login sesi ini → login user + PIN.
+      // Pemilik otomatis masuk; tak ada user aktif = mode karyawan (PIN).
       if (!session.authenticated) {
         return loc == Routes.pin ? null : Routes.pin;
       }
       // Sudah terotentikasi: jauhkan dari halaman gerbang.
       const gates = {
         Routes.splash,
-        Routes.onboarding,
-        Routes.setPin,
+        Routes.login,
+        Routes.createStore,
         Routes.pin,
       };
       if (gates.contains(loc)) return Routes.dashboard;
@@ -82,12 +82,12 @@ GoRouter router(Ref ref) {
         builder: (_, __) => const SplashScreen(),
       ),
       GoRoute(
-        path: Routes.onboarding,
-        builder: (_, __) => const OnboardingScreen(),
+        path: Routes.login,
+        builder: (_, __) => const LoginScreen(),
       ),
       GoRoute(
-        path: Routes.setPin,
-        builder: (_, __) => const SetPinScreen(),
+        path: Routes.createStore,
+        builder: (_, __) => const CreateStoreScreen(),
       ),
       GoRoute(
         path: Routes.pin,

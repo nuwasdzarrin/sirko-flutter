@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../cloud/application/cloud_providers.dart';
-import '../../cloud/presentation/cloud_connect_screen.dart';
+import '../../account/presentation/login_screen.dart';
 import '../../products/presentation/barcode_scanner_screen.dart';
 import '../../products/presentation/widgets/catalog_thumb.dart';
 import '../application/catalog_umum_providers.dart';
@@ -81,7 +81,7 @@ class _KatalogUmumScreenState extends ConsumerState<KatalogUmumScreen>
 
   Future<void> _connect() async {
     final ok = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const CloudConnectScreen()),
+      MaterialPageRoute(builder: (_) => const LoginScreen(relogin: true)),
     );
     if (ok == true && mounted) {
       _onlineLoadedOnce = true;

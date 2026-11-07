@@ -19,36 +19,54 @@ class CloudBusiness {
 class SessionPayload {
   final String accessToken;
   final String refreshToken;
-  final String businessId;
+
+  /// Toko sesi ini; null = **sesi akun** (belum punya toko, KONTRAK akun §2).
+  final String? businessId;
   final String? businessName;
+  final String? businessType;
   final List<CloudBusiness> businesses;
   final Map<String, Object?>? plan;
+
+  /// `account` & `offlineAuth` (KONTRAK akun §2) — mentah, diurai di fitur akun.
+  final Map<String, Object?>? account;
+  final Map<String, Object?>? offlineAuth;
 
   const SessionPayload({
     required this.accessToken,
     required this.refreshToken,
-    required this.businessId,
+    this.businessId,
     this.businessName,
+    this.businessType,
     required this.businesses,
     this.plan,
+    this.account,
+    this.offlineAuth,
   });
+
+  bool get hasStore => businessId != null;
 
   factory SessionPayload.fromJson(Map<String, Object?> d) => SessionPayload(
         accessToken: d['accessToken'] as String,
         refreshToken: d['refreshToken'] as String,
         businessId: ((d['user'] as Map?)?['businessId'] ??
-            (d['business'] as Map?)?['id']) as String,
+            (d['business'] as Map?)?['id']) as String?,
         businessName: (d['business'] as Map?)?['name'] as String?,
+        businessType: (d['business'] as Map?)?['businessType'] as String?,
         businesses: _businesses(d['businesses']),
         plan: (d['plan'] as Map?)?.cast<String, Object?>(),
+        account: (d['account'] as Map?)?.cast<String, Object?>(),
+        offlineAuth: (d['offlineAuth'] as Map?)?.cast<String, Object?>(),
       );
 }
 
-/// `GET /v1/me` / `GET /v1/me/businesses`.
+/// `GET /v1/me` (KONTRAK akun §3.8).
 class MeInfo {
   final List<CloudBusiness> businesses;
   final Map<String, Object?>? plan;
-  const MeInfo({required this.businesses, this.plan});
+  final Map<String, Object?>? account;
+  final Map<String, Object?>? offlineAuth;
+  const MeInfo(
+      {required this.businesses, this.plan, this.account, this.offlineAuth});
 }
 
 List<CloudBusiness> _businesses(Object? v) => [
@@ -132,10 +150,12 @@ class HttpStoreRemote implements StoreRemote {
 
   @override
   Future<MeInfo> me() async {
-    final d = _data(await _api.getJson('/v1/me/businesses'));
+    final d = _data(await _api.getJson('/v1/me'));
     return MeInfo(
       businesses: _businesses(d['businesses']),
       plan: (d['plan'] as Map?)?.cast<String, Object?>(),
+      account: (d['account'] as Map?)?.cast<String, Object?>(),
+      offlineAuth: (d['offlineAuth'] as Map?)?.cast<String, Object?>(),
     );
   }
 

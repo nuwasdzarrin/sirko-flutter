@@ -11,6 +11,8 @@ import 'package:sirko/app/app.dart';
 import 'package:sirko/core/database/app_database.dart';
 import 'package:sirko/core/database/database_provider.dart';
 import 'package:sirko/features/auth/application/auth_providers.dart';
+import 'package:sirko/features/cloud/application/cloud_providers.dart';
+import 'package:sirko/features/cloud/data/cloud_token_store.dart';
 import 'package:sirko/features/customers/application/customer_providers.dart';
 import 'package:sirko/features/pos/application/pos_providers.dart';
 
@@ -40,9 +42,13 @@ List<Override> defaultTestOverrides({
   FakeReceiptThermalPrinter? printer,
   FakeContactImportService? contacts,
   bool biometricAvailable = false,
+  FakeSecureStorage? secureStorage,
 }) {
   return [
     appDatabaseProvider.overrideWithValue(db),
+    // Default: pemilik sudah masuk akun (keadaan normal setelah daftar/masuk).
+    cloudTokenStoreProvider.overrideWithValue(CloudTokenStore(
+        secureStorage ?? FakeSecureStorage.signedInOwner())),
     pinRepositoryProvider.overrideWithValue(pinRepository ?? FakePinRepository()),
     receiptThermalPrinterProvider
         .overrideWithValue(printer ?? FakeReceiptThermalPrinter()),
@@ -86,11 +92,15 @@ Future<void> pumpFullApp(
   WidgetTester tester, {
   required AppDatabase db,
   List<Override> overrides = const [],
+  FakeSecureStorage? secureStorage,
 }) async {
   await ensureIdLocale();
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [...defaultTestOverrides(db: db), ...overrides],
+      overrides: [
+        ...defaultTestOverrides(db: db, secureStorage: secureStorage),
+        ...overrides
+      ],
       child: const SirkoApp(),
     ),
   );

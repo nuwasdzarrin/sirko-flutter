@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
 /// Konfigurasi & error dasar integrasi cloud (backend Hono `sirko-hono`).
 class CloudConfig {
   const CloudConfig._();
@@ -18,7 +22,15 @@ class CloudException implements Exception {
 
   /// `error.code` dari server (mis. `PLAN_REQUIRED`, `PLAN_LIMIT`), bila ada.
   final String? code;
-  const CloudException(this.message, {this.statusCode, this.code});
+
+  /// `error.details` dari server (mis. `retryAfterSeconds`, `email`).
+  final Map<String, Object?>? details;
+  const CloudException(this.message,
+      {this.statusCode, this.code, this.details});
+
+  /// Detik tunggu dari `details.retryAfterSeconds` (kunci / jeda kirim ulang).
+  int? get retryAfterSeconds =>
+      (details?['retryAfterSeconds'] as num?)?.toInt();
 
   /// Ditolak karena paket (Juragan) — UI arahkan ke layar berlangganan.
   bool get isPlanError => code == 'PLAN_REQUIRED' || code == 'PLAN_LIMIT';
@@ -35,4 +47,30 @@ class NotConnectedException extends CloudException {
   const NotConnectedException()
       : super('Belum terhubung ke cloud. Silakan login dulu.',
             statusCode: 401);
+}
+
+/// Amplop error server `{error:{code,message,details}}` → [CloudException]
+/// dengan pesan siap tampil (bahasa Indonesia dari server).
+CloudException cloudErrorFrom(http.Response res, {String? fallback}) {
+  String? message;
+  String? code;
+  Map<String, Object?>? details;
+  try {
+    final b = jsonDecode(res.body);
+    if (b is Map && b['error'] is Map) {
+      final e = b['error'] as Map;
+      if (e['message'] is String && (e['message'] as String).isNotEmpty) {
+        message = e['message'] as String;
+      }
+      if (e['code'] is String) code = e['code'] as String;
+      if (e['details'] is Map) {
+        details = (e['details'] as Map).cast<String, Object?>();
+      }
+    }
+  } catch (_) {}
+  return CloudException(
+      message ?? '${fallback ?? 'Gagal'} (${res.statusCode})',
+      statusCode: res.statusCode,
+      code: code,
+      details: details);
 }

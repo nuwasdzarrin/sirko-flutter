@@ -20,6 +20,8 @@ class CloudTokenStore {
   static const _kEmail = 'cloud_email';
   static const _kPlan = 'cloud_plan';
   static const _kVault = 'cloud_token_vault';
+  static const _kAccount = 'cloud_account';
+  static const _kOffline = 'cloud_offline_auth';
 
   Future<String?> accessToken() => _storage.read(key: _kAccess);
   Future<String?> refreshToken() => _storage.read(key: _kRefresh);
@@ -86,12 +88,35 @@ class CloudTokenStore {
     await _storage.write(key: _kVault, value: jsonEncode(vault));
   }
 
-  Future<void> clear() async {
+  /// Akun pemilik (`account`, JSON) & bahan login offline (`offlineAuth`,
+  /// JSON) — KONTRAK akun §4. Bertahan setelah [signOut].
+  Future<String?> accountJson() => _storage.read(key: _kAccount);
+  Future<void> saveAccountJson(String json) =>
+      _storage.write(key: _kAccount, value: json);
+  Future<String?> offlineAuthJson() => _storage.read(key: _kOffline);
+  Future<void> saveOfflineAuthJson(String json) =>
+      _storage.write(key: _kOffline, value: json);
+
+  /// Toko token aktif (null = sesi akun, belum punya toko).
+  Future<void> setActiveBusiness(String? businessId) => businessId == null
+      ? _storage.delete(key: _kBusiness)
+      : _storage.write(key: _kBusiness, value: businessId);
+
+  /// "Keluar": hapus semua token & cache sesi, tetapi **simpan** akun &
+  /// `offlineAuth` agar bisa masuk lagi saat offline (KONTRAK akun §4–§5).
+  Future<void> signOut() async {
     await _storage.delete(key: _kAccess);
     await _storage.delete(key: _kRefresh);
     await _storage.delete(key: _kBusiness);
     await _storage.delete(key: _kEmail);
     await _storage.delete(key: _kPlan);
     await _storage.delete(key: _kVault);
+  }
+
+  /// Hapus semua termasuk akun & bahan login offline.
+  Future<void> clear() async {
+    await signOut();
+    await _storage.delete(key: _kAccount);
+    await _storage.delete(key: _kOffline);
   }
 }

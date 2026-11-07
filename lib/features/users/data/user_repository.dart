@@ -29,9 +29,17 @@ class UserRepository {
   }
 
   /// User aktif untuk layar login (isActive & non-terhapus).
+  /// Penanda `pinHash` pemilik akun cloud: tidak punya PIN (masuk dengan
+  /// email/WA + password, KONTRAK akun) → tak pernah lolos verifikasi PIN.
+  static const noPin = '!';
+
+  /// User yang bisa masuk dengan PIN (karyawan); pemilik tanpa PIN tidak ikut.
   Stream<List<User>> watchLoginableUsers() {
     return (_db.select(_db.users)
-          ..where((t) => t.deletedAt.isNull() & t.isActive.equals(true))
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.isActive.equals(true) &
+              t.pinHash.equals(noPin).not())
           ..orderBy([(t) => OrderingTerm(expression: t.name)]))
         .watch();
   }
@@ -55,6 +63,56 @@ class UserRepository {
     if (user == null || user.deletedAt != null || !user.isActive) return null;
     return PinHasher.verify(pin, user.pinHash) ? user : null;
   }
+
+  /// Pastikan toko ini punya baris **pemilik** untuk akun cloud yang sedang
+  /// masuk (tanpa PIN). Sudah ada pemilik aktif → dipakai (nama diselaraskan
+  /// bila pemilik tanpa PIN). Return baris pemilik.
+  Future<User> ensureCloudOwner({required String name}) async {
+    final owners = await (_db.select(_db.users)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.isActive.equals(true) &
+              t.role.equalsValue(AppRole.owner))
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
+        .get();
+    if (owners.isNotEmpty) {
+      final o = owners.first;
+      if (o.pinHash == noPin && o.name != name && name.trim().isNotEmpty) {
+        await (_db.update(_db.users)..where((t) => t.id.equals(o.id))).write(
+          UsersCompanion(
+            name: Value(name.trim()),
+            updatedAt: Value(DateTimeUtils.nowEpochMs()),
+            isDirty: const Value(true),
+          ),
+        );
+        return (await getById(o.id))!;
+      }
+      return o;
+    }
+    var username = 'pemilik';
+    for (var i = 2; await _usernameTaken(username); i++) {
+      username = 'pemilik$i';
+    }
+    final now = DateTimeUtils.nowEpochMs();
+    final id = _uuid.v4();
+    await _db.into(_db.users).insert(UsersCompanion.insert(
+          id: id,
+          name: name.trim().isEmpty ? 'Pemilik' : name.trim(),
+          username: username,
+          pinHash: noPin,
+          role: AppRole.owner,
+          createdAt: now,
+          updatedAt: now,
+        ));
+    return (await getById(id))!;
+  }
+
+  Future<bool> _usernameTaken(String username) async =>
+      (await (_db.select(_db.users)
+                ..where((t) =>
+                    t.username.equals(username) & t.deletedAt.isNull()))
+              .getSingleOrNull()) !=
+      null;
 
   /// Buat user baru. [permissions] dipakai hanya bila `role == custom`.
   Future<String> create({

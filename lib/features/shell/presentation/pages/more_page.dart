@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_version.dart';
 import '../../../../app/constants.dart';
 import '../../../../app/session_controller.dart';
+import '../../../account/application/account_controller.dart';
 import '../../../catalog/presentation/katalog_umum_screen.dart';
 import '../../../cloud/application/cloud_providers.dart';
 import '../../../stores/presentation/stores_screen.dart';
@@ -104,9 +105,11 @@ class MorePage extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 12),
+        // Pemilik: keluar akun (→ Masuk). Karyawan: kembali ke layar PIN.
         FilledButton.tonalIcon(
-          onPressed: () =>
-              ref.read(sessionControllerProvider.notifier).logout(),
+          onPressed: () => (user?.isOwner ?? false)
+              ? ref.read(accountControllerProvider).signOut()
+              : ref.read(sessionControllerProvider.notifier).logout(),
           icon: const Icon(Icons.logout),
           label: const Text('Keluar'),
         ),

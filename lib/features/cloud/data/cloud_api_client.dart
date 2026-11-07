@@ -77,18 +77,6 @@ class CloudApiClient {
   /// Amplop error server `{error:{code,message}}` → [CloudException] dengan
   /// pesan siap tampil (bahasa Indonesia dari server) + kode.
   CloudException _error(http.Response res) {
-    String? message;
-    String? code;
-    try {
-      final b = jsonDecode(res.body);
-      if (b is Map && b['error'] is Map) {
-        final m = b['error']['message'];
-        final c = b['error']['code'];
-        if (m is String && m.isNotEmpty) message = m;
-        if (c is String) code = c;
-      }
-    } catch (_) {}
-    return CloudException(message ?? 'Gagal (${res.statusCode})',
-        statusCode: res.statusCode, code: code);
+    return cloudErrorFrom(res);
   }
 }

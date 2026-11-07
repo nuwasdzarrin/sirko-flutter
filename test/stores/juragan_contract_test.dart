@@ -18,6 +18,8 @@ import 'package:sirko/features/stores/data/store_remote.dart';
 import 'package:sirko/features/subscription/data/subscription_remote.dart';
 import 'package:sirko/features/subscription/domain/plan.dart';
 
+import '../helpers/cloud_owner.dart';
+
 class _MemoryStorage extends FlutterSecureStorage {
   final data = <String, String>{};
   @override
@@ -98,13 +100,9 @@ void main() {
     final subs = HttpSubscriptionRemote(api);
     final email = 'juragan-${Random().nextInt(1 << 30)}@toko.id';
 
-    await auth.register(
-      businessName: 'Toko Utama',
-      ownerName: 'Bu Sri',
-      emailOrPhone: email,
-      password: 'rahasia123',
-    );
-    // Daftar → plan warung tersimpan (dari respons register).
+    await registerOwnerWithStore(auth, api,
+        email: email, storeName: 'Toko Utama', name: 'Bu Sri');
+    // Daftar + toko pertama → plan warung tersimpan (dari sesi toko).
     expect(await store.planJson(), contains('"warung"'));
     final mainBiz = (await store.businessId())!;
 

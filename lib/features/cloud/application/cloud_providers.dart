@@ -37,32 +37,9 @@ class CloudSession extends _$CloudSession {
   Future<CloudSessionInfo> build() =>
       ref.watch(cloudAuthRepositoryProvider).sessionInfo();
 
-  Future<void> login({
-    required String emailOrPhone,
-    required String password,
-  }) async {
-    await ref
-        .read(cloudAuthRepositoryProvider)
-        .login(emailOrPhone: emailOrPhone, password: password);
-    ref.invalidateSelf();
-    await future;
-  }
-
-  /// Daftar akun cloud untuk toko ini lalu terhubung (SYNC.md §8.5).
-  Future<void> register({
-    required String businessName,
-    String? businessType,
-    required String ownerName,
-    required String emailOrPhone,
-    required String password,
-  }) async {
-    await ref.read(cloudAuthRepositoryProvider).register(
-          businessName: businessName,
-          businessType: businessType,
-          ownerName: ownerName,
-          emailOrPhone: emailOrPhone,
-          password: password,
-        );
+  /// Baca ulang status setelah sesi berubah (login/daftar/keluar lewat
+  /// `AccountController`).
+  Future<void> reloadInfo() async {
     ref.invalidateSelf();
     await future;
   }

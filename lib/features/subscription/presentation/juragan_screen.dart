@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/money/money.dart';
 import '../../../core/utils/date_time_utils.dart';
 import '../../cloud/application/cloud_providers.dart';
-import '../../cloud/presentation/cloud_connect_screen.dart';
+import '../../account/presentation/login_screen.dart';
 import '../../users/application/user_providers.dart';
 import '../application/plan_providers.dart';
 import '../data/subscription_remote.dart';
@@ -139,10 +139,9 @@ class _JuraganScreenState extends ConsumerState<JuraganScreen> {
             else if (!connected)
               FilledButton.icon(
                 icon: const Icon(Icons.cloud_outlined),
-                label: const Text('Hubungkan akun cloud dulu'),
+                label: const Text('Masuk ulang dulu (butuh internet)'),
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const CloudConnectScreen(
-                        mode: CloudConnectMode.register))),
+                    builder: (_) => const LoginScreen(relogin: true))),
               )
             else
               FilledButton.icon(

@@ -14,9 +14,9 @@ class AppInfo {
 class Routes {
   const Routes._();
   static const String splash = '/splash';
-  static const String onboarding = '/onboarding';
-  static const String setPin = '/set-pin'; // buat owner (Fase 6)
-  static const String pin = '/pin'; // login user + PIN
+  static const String login = '/masuk'; // masuk / daftar akun pemilik
+  static const String createStore = '/buat-toko'; // toko pertama
+  static const String pin = '/pin'; // masuk karyawan (PIN, Juragan)
 
   static const String dashboard = '/dashboard';
   static const String products = '/products';

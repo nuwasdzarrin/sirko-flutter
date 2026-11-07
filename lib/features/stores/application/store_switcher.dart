@@ -1,13 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/session_controller.dart';
 import '../../../core/database/store_registry.dart';
 import '../../../core/network/cloud_api.dart';
-import '../../auth/application/auth_providers.dart';
 import '../../cloud/application/cloud_providers.dart';
 import '../../subscription/application/plan_providers.dart';
 import '../../sync/application/sync_controller.dart';
-import '../../users/application/user_providers.dart';
+import '../../onboarding/application/onboarding_providers.dart';
 import '../data/store_remote.dart';
 import '../domain/cross_store.dart';
 
@@ -46,6 +47,14 @@ class StoreSwitcher {
     _ref.read(cloudBusinessesProvider.notifier).set(me.businesses);
     if (me.plan != null) {
       await _ref.read(planProvider.notifier).apply(me.plan!);
+    }
+    // Akun & bahan login offline terbaru (password diganti di HP lain, §3.8).
+    final store = _ref.read(cloudTokenStoreProvider);
+    if (me.account != null) {
+      await store.saveAccountJson(jsonEncode(me.account));
+    }
+    if (me.offlineAuth != null) {
+      await store.saveOfflineAuthJson(jsonEncode(me.offlineAuth));
     }
   }
 
@@ -132,46 +141,53 @@ class StoreSwitcher {
     }
   }
 
+  /// Masuk / buat toko dari sesi toko (login, verifikasi + buat toko):
+  /// tanpa mengirim antrean toko lain dulu.
+  Future<void> openFromSession(SessionPayload p,
+          {void Function(SwitchStep)? onStep}) =>
+      _open(p, onStep);
+
   Future<void> _open(
       SessionPayload p, void Function(SwitchStep)? onStep) async {
+    final businessId = p.businessId;
+    if (businessId == null) {
+      throw const CloudException('Sesi ini belum punya toko.');
+    }
     onStep?.call(SwitchStep.opening);
-    await _ref.read(cloudTokenStoreProvider).saveTokens(
-          access: p.accessToken,
-          refresh: p.refreshToken,
-          businessId: p.businessId,
-        );
+    await _ref.read(cloudAuthRepositoryProvider).applySession(p);
     if (p.plan != null) await _ref.read(planProvider.notifier).apply(p.plan!);
     if (p.businesses.isNotEmpty) {
       _ref.read(cloudBusinessesProvider.notifier).set(p.businesses);
     }
 
     final stores = _ref.read(storeRegistryProvider.notifier);
-    var entry = _ref.read(storeRegistryProvider).byBusinessId(p.businessId);
+    final registry = _ref.read(storeRegistryProvider);
+    var entry = registry.byBusinessId(businessId);
+    if (entry == null && registry.active.businessId == null) {
+      // HP baru: file toko pertama belum terikat → pakai untuk toko ini.
+      await stores.linkActive(businessId: businessId, name: p.businessName);
+      entry = _ref.read(storeRegistryProvider).active;
+    }
     if (entry == null) {
       await stores.addStore(
-          key: p.businessId, businessId: p.businessId, name: p.businessName);
-      entry = _ref.read(storeRegistryProvider).byBusinessId(p.businessId)!;
+          key: businessId, businessId: businessId, name: p.businessName);
+      entry = _ref.read(storeRegistryProvider).byBusinessId(businessId)!;
     }
 
-    // Pemilik yang sedang login = orang yang sama di toko tujuan.
-    final me = _ref.read(currentUserProvider);
-    final ownerName = (me != null && me.isOwner) ? me.name : null;
-
-    // Ganti file DB: user toko lama keluar dulu (user PIN berbeda per toko).
-    _ref.read(sessionControllerProvider.notifier).logout();
+    // Ganti file DB; pemilik otomatis masuk lagi setelah reload.
+    _ref.read(sessionControllerProvider.notifier).clearForSwitch();
     await stores.activate(entry.key);
 
     onStep?.call(SwitchStep.pulling);
     // syncControllerProvider dibangun ulang untuk DB baru → tarik data toko.
     await _ref.read(syncControllerProvider.notifier).syncNow();
-    // Toko tanpa pengguna (cabang baru): pemilik = orang yang sama, PIN sama,
-    // NAMA orangnya (bukan nama toko). Toko yang sudah punya pengguna dari
-    // cloud tidak diubah (seed hanya bila belum ada user aktif).
-    await _ref.read(userRepositoryProvider).seedOwnerFromLegacy(
-          legacyCredential:
-              await _ref.read(pinRepositoryProvider).exportLegacyCredential(),
-          ownerName: ownerName ?? p.businessName ?? 'Pemilik',
-        );
+    // Toko baru / tarik data gagal (offline) → buat baris toko lokal; sync
+    // menyatukannya dengan toko di server (singleton business, SYNC.md §8.3).
+    final businesses = _ref.read(businessRepositoryProvider);
+    if (await businesses.getBusiness() == null) {
+      await businesses.createBusiness(
+          name: p.businessName ?? 'Toko', businessType: p.businessType);
+    }
     await _ref.read(sessionControllerProvider.notifier).reload();
     onStep?.call(SwitchStep.done);
   }

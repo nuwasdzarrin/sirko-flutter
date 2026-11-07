@@ -51,6 +51,9 @@ dependencies:
   mobile_scanner: ^7.4.0
   # Izin runtime kamera untuk scan di kasir (R2): penjelasan + buka pengaturan.
   permission_handler: ^11.3.1
+  # Login offline: PBKDF2-HMAC-SHA256 atas offlineAuth dari server (native = cepat).
+  cryptography: ^2.7.0
+  cryptography_flutter: ^2.3.2
   # Olah logo struk (resize + hitam-putih) untuk PDF & printer thermal.
   image: ^4.3.0
   image_picker: ^1.2.1

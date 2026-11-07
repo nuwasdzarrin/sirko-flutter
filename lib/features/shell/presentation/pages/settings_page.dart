@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/session_controller.dart';
+import '../../../account/application/account_controller.dart';
+import '../../../account/presentation/change_password_screen.dart';
+import '../../../users/application/user_providers.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../onboarding/application/onboarding_providers.dart';
 import '../../../pos/application/pos_providers.dart';
@@ -32,9 +35,25 @@ class SettingsPage extends ConsumerWidget {
         const _RequireOpenBillTile(),
         const Divider(),
         ListTile(
+          leading: const Icon(Icons.password),
+          title: const Text('Ganti password'),
+          subtitle: const Text('Password untuk masuk akun (butuh internet)'),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const ChangePasswordScreen())),
+        ),
+        // Karyawan (paket Juragan) masuk dengan PIN di HP ini.
+        if (ref.watch(loginableUsersProvider).asData?.value.isNotEmpty ??
+            false)
+          ListTile(
+            leading: const Icon(Icons.switch_account_outlined),
+            title: const Text('Ganti pengguna (karyawan)'),
+            onTap: () =>
+                ref.read(sessionControllerProvider.notifier).switchToStaff(),
+          ),
+        ListTile(
           leading: const Icon(Icons.logout),
-          title: const Text('Keluar (kunci dengan PIN)'),
-          onTap: () => ref.read(sessionControllerProvider.notifier).logout(),
+          title: const Text('Keluar dari akun'),
+          onTap: () => ref.read(accountControllerProvider).signOut(),
         ),
       ],
     );
