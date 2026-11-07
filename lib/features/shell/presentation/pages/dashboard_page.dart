@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../ppob/presentation/topup_banner.dart';
 import '../../../../app/constants.dart';
 import '../../../customers/presentation/kas_bon_list_screen.dart';
 import '../../../products/presentation/stock_in_screen.dart';
@@ -79,6 +80,7 @@ class DashboardPage extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const TopupBanner(),
         if (shortcuts.isNotEmpty) _ShortcutCard(shortcuts: shortcuts),
         const Expanded(child: DashboardView()),
       ],

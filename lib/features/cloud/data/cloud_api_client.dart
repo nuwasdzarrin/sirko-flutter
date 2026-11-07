@@ -32,16 +32,34 @@ class CloudApiClient {
   }
 
   /// POST JSON ber-otorisasi (Bearer). 401 → refresh → ulangi sekali.
+  /// [timeout] → `TimeoutException` bila server tak menjawab (mis. order
+  /// PPOB 15 dtk, SPEC-warung-akun-ppob §5).
   Future<Map<String, dynamic>> postJson(
     String path,
     Map<String, dynamic> body, {
     Map<String, String> headers = const {},
-  }) async {
-    var res = await _sendPost(path, body, headers);
+    Duration? timeout,
+  }) =>
+      _withBody('POST', path, body, headers, timeout);
+
+  /// PUT JSON ber-otorisasi (Bearer). 401 → refresh → ulangi sekali.
+  Future<Map<String, dynamic>> putJson(
+          String path, Map<String, dynamic> body) =>
+      _withBody('PUT', path, body, const {}, null);
+
+  Future<Map<String, dynamic>> _withBody(String method, String path,
+      Map<String, dynamic> body, Map<String, String> headers,
+      Duration? timeout) async {
+    Future<http.Response> send() {
+      final f = _sendPost(path, body, headers, method);
+      return timeout == null ? f : f.timeout(timeout);
+    }
+
+    var res = await send();
     if (res.statusCode == 401) {
       final refreshed = await _auth.refresh();
       if (!refreshed) throw const NotConnectedException();
-      res = await _sendPost(path, body, headers);
+      res = await send();
       if (res.statusCode == 401) throw const NotConnectedException();
     }
     if (res.statusCode >= 400) throw _error(res);
@@ -56,16 +74,17 @@ class CloudApiClient {
   }
 
   Future<http.Response> _sendPost(String path, Map<String, dynamic> body,
-      [Map<String, String> extra = const {}]) async {
+      [Map<String, String> extra = const {}, String method = 'POST']) async {
     final token = await _requireToken();
     final uri = Uri.parse('${CloudConfig.baseUrl}$path');
-    return _http.post(uri,
-        headers: {
-          ...extra,
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(body));
+    final headers = {
+      ...extra,
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    return method == 'PUT'
+        ? _http.put(uri, headers: headers, body: jsonEncode(body))
+        : _http.post(uri, headers: headers, body: jsonEncode(body));
   }
 
   Future<String> _requireToken() async {

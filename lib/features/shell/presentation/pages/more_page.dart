@@ -8,6 +8,7 @@ import '../../../../app/session_controller.dart';
 import '../../../account/application/account_controller.dart';
 import '../../../catalog/presentation/katalog_umum_screen.dart';
 import '../../../cloud/application/cloud_providers.dart';
+import '../../../ppob/presentation/points_screen.dart';
 import '../../../stores/presentation/stores_screen.dart';
 import '../../../subscription/application/plan_providers.dart';
 import '../../../subscription/presentation/juragan_screen.dart';
@@ -59,6 +60,18 @@ class MorePage extends ConsumerWidget {
                   : 'Multi-cabang, karyawan, laporan Excel/PDF, logo struk'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => openJuraganScreen(context),
+            ),
+          ),
+        // Poin Sirko (modal PPOB): pemilik.
+        if (user?.isOwner ?? false)
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.bolt),
+              title: const Text('Poin Sirko'),
+              subtitle: const Text('Saldo, top-up & mutasi Poin untuk PPOB'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PointsScreen())),
             ),
           ),
         // Toko Saya (multi-cabang): pemilik yang terhubung ke cloud.
