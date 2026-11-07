@@ -67,6 +67,17 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
         payments: _entries,
       );
 
+  /// Non-tunai tak boleh melebihi total: kelebihannya tak bisa dikembalikan
+  /// (mis. total 76.000, QRIS 50.000 + transfer 50.000 → lebih 24.000 hilang).
+  bool get _nonCashOver => _result.nonCashTotal > widget.grandTotal;
+
+  // Opsi pemilik (Pengaturan → Metode pembayaran). Belum termuat = semua.
+  Set<PaymentMethod> get _methods =>
+      ref.watch(paymentOptionsProvider).asData?.value.methods ??
+      PaymentMethod.values.toSet();
+  bool get _allowSplit =>
+      ref.watch(paymentOptionsProvider).asData?.value.allowSplit ?? true;
+
   void _setCash(int amount) {
     // Set/replace baris tunai pertama.
     final idx = _rows.indexWhere((r) => r.method == PaymentMethod.cash);
@@ -133,7 +144,10 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
         left: 16,
         right: 16,
         top: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        // Keyboard + bar navigasi Android (edge-to-edge) → tombol tak tertutup.
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).viewPadding.bottom +
+            16,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -179,20 +193,32 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
             ),
             const SizedBox(height: 16),
             ..._rows.asMap().entries.map((e) => _buildRow(e.key, e.value)),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => setState(
-                    () => _rows.add(_PayRow(PaymentMethod.qris, 0))),
-                icon: const Icon(Icons.add),
-                label: const Text('Tambah metode (split)'),
+            if (_allowSplit && _methods.length > 1)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _rows.add(_PayRow(
+                      _methods.firstWhere((m) => m != PaymentMethod.cash,
+                          orElse: () => PaymentMethod.cash),
+                      0))),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Tambah metode (split)'),
+                ),
               ),
-            ),
             const Divider(),
             _kv('Total bayar', Money(result.paidTotal).format()),
             if (result.remaining > 0)
               _kv('Kurang', Money(result.remaining).format(),
                   color: theme.colorScheme.error),
+            if (_nonCashOver)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                    'Non-tunai (${Money(result.nonCashTotal).format()}) '
+                    'melebihi total. Kembalian hanya bisa dari tunai — '
+                    'kurangi nominal QRIS/transfer/lainnya.',
+                    style: TextStyle(color: theme.colorScheme.error)),
+              ),
             _kv('Kembalian', Money(result.change).format(),
                 color: theme.colorScheme.primary, bold: true),
             const SizedBox(height: 16),
@@ -267,14 +293,14 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
       children: [
         if (result.isPaid) ...[
           FilledButton(
-            onPressed: _submit,
+            onPressed: _nonCashOver ? null : _submit,
             style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14)),
             child: const Text('Selesaikan & Cetak Struk'),
           ),
           const SizedBox(height: 8),
         ],
-        kasBonBtn,
+        if (!_nonCashOver) kasBonBtn,
         if (customer != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -297,9 +323,9 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
               value: row.method,
               decoration: const InputDecoration(
                   isDense: true, border: OutlineInputBorder()),
-              items: PaymentMethod.values
+              items: {..._methods, row.method}
                   .map((m) => DropdownMenuItem(
-                      value: m, child: Text(_methodLabel(m))))
+                      value: m, child: Text(paymentMethodLabel(m))))
                   .toList(),
               onChanged: (m) => setState(() => row.method = m ?? row.method),
             ),
@@ -310,7 +336,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
             // Label aksesibilitas per baris (mis. "Nominal QRIS") — field ini
             // tak punya label visual.
             child: Semantics(
-              label: 'Nominal ${_methodLabel(row.method)}',
+              label: 'Nominal ${paymentMethodLabel(row.method)}',
               child: TextField(
                 controller: row.controller,
                 keyboardType: TextInputType.number,
@@ -349,7 +375,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   }
 }
 
-String _methodLabel(PaymentMethod m) => switch (m) {
+String paymentMethodLabel(PaymentMethod m) => switch (m) {
       PaymentMethod.cash => 'Tunai',
       PaymentMethod.qris => 'QRIS',
       PaymentMethod.transfer => 'Transfer',

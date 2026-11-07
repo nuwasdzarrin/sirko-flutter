@@ -109,7 +109,8 @@ class _InstallmentPlanSheetState
         left: 16,
         right: 16,
         top: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).viewPadding.bottom + 16,
       ),
       child: SingleChildScrollView(
         child: Column(

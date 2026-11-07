@@ -11,6 +11,7 @@ import '../../../cloud/application/cloud_providers.dart';
 import '../../../ppob/presentation/points_screen.dart';
 import '../../../stores/presentation/stores_screen.dart';
 import '../../../subscription/application/plan_providers.dart';
+import '../../../support/support_contact.dart';
 import '../../../subscription/presentation/juragan_screen.dart';
 import '../../../sync/presentation/sync_screen.dart';
 import '../../../users/application/user_providers.dart';
@@ -117,6 +118,8 @@ class MorePage extends ConsumerWidget {
               ),
           ],
         ),
+        const SizedBox(height: 12),
+        const SupportTile(),
         const SizedBox(height: 12),
         // Pemilik: keluar akun (→ Masuk). Karyawan: kembali ke layar PIN.
         FilledButton.tonalIcon(

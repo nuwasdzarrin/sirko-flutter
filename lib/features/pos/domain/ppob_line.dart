@@ -20,6 +20,10 @@ class PpobLine {
   final String? sn;
   final String? plnName;
 
+  /// Status order saat dicatat (success | pending | processing |
+  /// waiting_admin). Null = belum dikirim.
+  final String? status;
+
   const PpobLine({
     required this.clientRef,
     required this.productId,
@@ -30,9 +34,15 @@ class PpobLine {
     this.orderId,
     this.sn,
     this.plnName,
+    this.status,
   });
 
+  /// Sudah tercatat di server (berhasil atau sedang diproses) → jangan
+  /// dikirim ulang.
   bool get done => orderId != null;
+
+  /// Order diterima tapi hasilnya menyusul (mis. token PLN diproses admin).
+  bool get processing => orderId != null && status != 'success';
 
   PpobLine withOrder(PpobOrder o) => PpobLine(
         clientRef: clientRef,
@@ -44,6 +54,7 @@ class PpobLine {
         orderId: o.id,
         sn: o.sn,
         plnName: o.plnName,
+        status: o.status,
       );
 
   /// Nama di nota & struk: produk, nomor tujuan, nama pelanggan PLN, SN/token,
@@ -53,6 +64,10 @@ class PpobLine {
     if (plnName != null && plnName!.isNotEmpty) parts.add('a.n. $plnName');
     if (sn != null && sn!.isNotEmpty) {
       parts.add(category == PpobCategory.pln ? 'Token $sn' : 'SN $sn');
+    } else if (processing) {
+      parts.add(category == PpobCategory.pln
+          ? 'DIPROSES, token menyusul'
+          : 'DIPROSES');
     }
     if (orderId != null) {
       parts.add('#${orderId!.length > 8 ? orderId!.substring(0, 8) : orderId}');

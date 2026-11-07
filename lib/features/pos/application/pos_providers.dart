@@ -1,8 +1,10 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart' show FutureProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/database/tables/payments.dart';
 import '../../bills/application/bill_providers.dart';
 import '../../onboarding/application/onboarding_providers.dart';
 import '../../users/application/user_providers.dart';
@@ -35,6 +37,16 @@ TransactionRepository transactionRepository(Ref ref) => TransactionRepository(
       ref.watch(appSettingsRepositoryProvider),
       ref.watch(walletRepositoryProvider),
     );
+
+/// Opsi bayar dari pengaturan pemilik: metode yang tampil & boleh split.
+final paymentOptionsProvider = FutureProvider.autoDispose<
+    ({Set<PaymentMethod> methods, bool allowSplit})>((ref) async {
+  final repo = ref.watch(appSettingsRepositoryProvider);
+  return (
+    methods: await repo.paymentMethods(),
+    allowSplit: await repo.allowSplitPayment(),
+  );
+});
 
 @riverpod
 ReceiptThermalPrinter receiptThermalPrinter(Ref ref) =>
@@ -293,6 +305,10 @@ class CheckoutController extends _$CheckoutController {
       grandTotal: totals.grandTotal,
       payments: payments,
     );
+    if (initial.nonCashTotal > totals.grandTotal) {
+      throw const _CheckoutException('Pembayaran non-tunai melebihi total. '
+          'Kembalian hanya bisa dari tunai.');
+    }
     if (!initial.isPaid && !allowCredit) {
       throw const _CheckoutException('Pembayaran kurang dari total.');
     }
@@ -329,6 +345,22 @@ class CheckoutController extends _$CheckoutController {
         outcomes.add(o);
         if (o.success) {
           kept.add(o.line);
+        } else if (o.accepted) {
+          // Tetap di nota (pembeli bayar); hasil dipantau → token ditambahkan
+          // ke nota saat terbit, atau pengingat refund bila gagal.
+          kept.add(o.line);
+          if (!line.ppob!.done) {
+            watcher!.add(PendingPpob(
+              clientRef: line.ppob!.clientRef,
+              productName: line.ppob!.productName,
+              customerNo: line.ppob!.customerNo,
+              sellPrice: line.unitPrice,
+              orderId: o.orderId,
+              status: o.status ?? 'pending',
+              since: DateTime.now(),
+              line: o.line.ppob,
+            ));
+          }
         } else if (o.pending) {
           watcher!.add(PendingPpob(
             clientRef: line.ppob!.clientRef,

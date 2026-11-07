@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/tables/payments.dart';
 import '../../../core/utils/date_time_utils.dart';
 import '../../purchasing/domain/costing_policy.dart';
 
@@ -79,6 +80,34 @@ class AppSettingsRepository {
 
   Future<void> setRequireOpenBill(bool value) =>
       setBool(keyRequireOpenBill, value);
+
+  /// Metode bayar yang ditampilkan ke kasir (diatur pemilik). Kosong/belum
+  /// diatur = semua. Tunai selalu tersedia (kembalian dari tunai).
+  static const keyPaymentMethods = 'payment_methods';
+
+  /// Boleh membagi pembayaran ke beberapa metode (split), default: ya.
+  static const keyAllowSplitPayment = 'allow_split_payment';
+
+  Future<Set<PaymentMethod>> paymentMethods() async {
+    final raw = await getValue(keyPaymentMethods);
+    if (raw == null || raw.trim().isEmpty) return PaymentMethod.values.toSet();
+    final byName = {for (final m in PaymentMethod.values) m.name: m};
+    return {
+      PaymentMethod.cash,
+      for (final n in raw.split(','))
+        if (byName.containsKey(n.trim())) byName[n.trim()]!,
+    };
+  }
+
+  Future<void> setPaymentMethods(Set<PaymentMethod> methods) => setValue(
+      keyPaymentMethods,
+      {PaymentMethod.cash, ...methods}.map((m) => m.name).join(','));
+
+  Future<bool> allowSplitPayment() =>
+      getBool(keyAllowSplitPayment, orElse: true);
+
+  Future<void> setAllowSplitPayment(bool value) =>
+      setBool(keyAllowSplitPayment, value);
 
   /// Metode harga modal saat pembelian (§15, default: last-cost).
   Future<CostingMethod> costingMethod() async =>

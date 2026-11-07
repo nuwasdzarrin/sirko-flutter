@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/money/money.dart';
+import '../../pos/application/pos_providers.dart';
+import '../../pos/domain/ppob_line.dart';
 import '../data/ppob_models.dart';
 import '../data/ppob_remote.dart';
 import 'ppob_providers.dart';
@@ -19,6 +22,12 @@ class PendingPpob {
   final DateTime since;
   final DateTime? lastCheck;
 
+  /// Terisi bila item SUDAH masuk nota (pembeli sudah bayar) — hasilnya
+  /// memperbarui nota / mengingatkan refund. Null = keluar dari nota.
+  final PpobLine? line;
+
+  bool get inNota => line != null;
+
   const PendingPpob({
     required this.clientRef,
     required this.productName,
@@ -28,6 +37,7 @@ class PendingPpob {
     this.status = 'pending',
     required this.since,
     this.lastCheck,
+    this.line,
   });
 
   PendingPpob copyWith({String? orderId, String? status, DateTime? lastCheck}) =>
@@ -40,6 +50,7 @@ class PendingPpob {
         status: status ?? this.status,
         since: since,
         lastCheck: lastCheck ?? this.lastCheck,
+        line: line,
       );
 
   /// Jeda cek (KONTRAK PPOB §4): 10 dtk pending/processing, 30 dtk admin.
@@ -59,6 +70,9 @@ class PpobNotice {
   const PpobNotice(this.pending, this.order, this.message);
 
   bool get success => order?.success ?? false;
+
+  /// Tombol "Catat" hanya untuk order sukses yang belum ada di nota.
+  bool get canRecord => success && !pending.inNota;
 }
 
 /// Cek status order PPOB tertunda di latar belakang (selama app terbuka).
@@ -133,13 +147,33 @@ class PpobPendingWatcher extends Notifier<List<PendingPpob>> {
             }
           }
           if (order.success) {
-            _finish(p, order,
-                '${order.productName} ke ${order.customerNo} BERHASIL. '
-                'Tagih pembeli & catat penjualannya.');
+            if (p.inNota) {
+              final inv = await ref
+                  .read(transactionRepositoryProvider)
+                  .updatePpobItemName(
+                      order.id, p.line!.withOrder(order).receiptName);
+              _finish(
+                  p,
+                  order,
+                  '${order.productName} ke ${order.customerNo} BERHASIL'
+                  '${order.sn != null ? ': ${order.sn}' : ''}. '
+                  '${inv != null ? 'Nota $inv sudah diperbarui — cetak ulang '
+                      'dari Riwayat transaksi.' : 'Cek Riwayat PPOB.'}');
+            } else {
+              _finish(p, order,
+                  '${order.productName} ke ${order.customerNo} BERHASIL. '
+                  'Tagih pembeli & catat penjualannya.');
+            }
           } else if (order.failed) {
-            _finish(p, order,
-                '${order.productName} ke ${order.customerNo} gagal. '
-                'Poin sudah dikembalikan.');
+            _finish(
+                p,
+                order,
+                p.inNota
+                    ? '${order.productName} ke ${order.customerNo} GAGAL. '
+                        'Poin sudah kembali — kembalikan uang pembeli '
+                        '${Money(p.sellPrice).format()}.'
+                    : '${order.productName} ke ${order.customerNo} gagal. '
+                        'Poin sudah dikembalikan.');
           } else if (now.difference(p.since) >= giveUpAfter) {
             _finish(p, order,
                 '${order.productName} ke ${order.customerNo} masih diproses. '

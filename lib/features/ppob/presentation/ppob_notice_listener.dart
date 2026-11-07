@@ -43,7 +43,7 @@ class _PpobNoticeListenerState extends ConsumerState<PpobNoticeListener> {
     rootMessengerKey.currentState?.showSnackBar(SnackBar(
       duration: const Duration(seconds: 12),
       content: Text(n.message),
-      action: n.success && order != null
+      action: n.canRecord && order != null
           ? SnackBarAction(
               label: 'Catat',
               onPressed: () => ref

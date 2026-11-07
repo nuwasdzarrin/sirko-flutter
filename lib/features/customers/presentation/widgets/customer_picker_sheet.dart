@@ -111,7 +111,8 @@ class _CustomerPickerSheetState extends ConsumerState<_CustomerPickerSheet> {
       maxChildSize: 0.95,
       builder: (context, scrollController) => Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
+          bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).viewPadding.bottom,
         ),
         child: Column(
           children: [

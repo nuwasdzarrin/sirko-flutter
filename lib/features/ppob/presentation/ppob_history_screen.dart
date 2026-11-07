@@ -6,6 +6,7 @@ import '../../../core/money/money.dart';
 import '../../../core/utils/date_time_utils.dart';
 import '../../account/presentation/widgets/auth_layout.dart';
 import '../../pos/application/pos_providers.dart';
+import '../../pos/domain/ppob_line.dart';
 import '../application/ppob_providers.dart';
 import '../data/ppob_models.dart';
 
@@ -127,6 +128,20 @@ class _PpobHistoryScreenState
     final repo = ref.read(transactionRepositoryProvider);
     final page = await ref.read(ppobRemoteProvider).orders(cursor: cursor);
     _recorded = await repo.recordedPpobOrderIds();
+    // Nota yang tadinya "DIPROSES" (token menyusul) → isi SN/token terbaru.
+    for (final o in page.items) {
+      if (o.success && _recorded.contains(o.id)) {
+        final name = PpobLine(
+          clientRef: o.clientRef,
+          productId: '',
+          category: o.category,
+          productName: o.productName,
+          customerNo: o.customerNo,
+          cost: o.price,
+        ).withOrder(o).receiptName;
+        await repo.updatePpobItemName(o.id, name, onlyIfProcessing: true);
+      }
+    }
     return page;
   }
 

@@ -101,6 +101,23 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     ],
                   ),
                 ),
+              for (final o in outcome.processing)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.hourglass_top,
+                          size: 18,
+                          color: Theme.of(ctx).colorScheme.tertiary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                          child: Text('${o.line.ppob!.productName} → '
+                              '${o.line.ppob!.customerNo}: ${o.message} '
+                              'Sudah masuk nota.')),
+                    ],
+                  ),
+                ),
               if (result != null) ...[
                 const SizedBox(height: 16),
                 ReceiptActions(transactionId: result.transactionId),

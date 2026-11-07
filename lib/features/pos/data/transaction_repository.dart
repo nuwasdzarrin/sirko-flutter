@@ -332,6 +332,35 @@ class TransactionRepository {
     };
   }
 
+  /// Order PPOB yang tadinya "diproses" di nota kini selesai → ganti nama
+  /// item (berisi SN/token). Return nomor invoice nota itu, atau null.
+  Future<String?> updatePpobItemName(String orderId, String newName,
+      {bool onlyIfProcessing = false}) async {
+    if (orderId.length < 8) return null;
+    final tag = '#${orderId.substring(0, 8)}';
+    final rows = await _db.customSelect(
+      'SELECT i.id AS id, t.invoice_no AS inv FROM transaction_items i '
+      'JOIN transactions t ON t.id = i.transaction_id '
+      'WHERE t.note LIKE ? AND i.name_snapshot LIKE ? '
+      '${onlyIfProcessing ? "AND i.name_snapshot LIKE '%DIPROSES%' " : ''}'
+      'LIMIT 1',
+      variables: [
+        Variable.withString('%${ppobNoteTag(orderId)}%'),
+        Variable.withString('%$tag%'),
+      ],
+      readsFrom: {_db.transactions, _db.transactionItems},
+    ).get();
+    if (rows.isEmpty) return null;
+    await (_db.update(_db.transactionItems)
+          ..where((t) => t.id.equals(rows.first.read<String>('id'))))
+        .write(TransactionItemsCompanion(
+      nameSnapshot: Value(newName),
+      updatedAt: Value(DateTimeUtils.nowEpochMs()),
+      isDirty: const Value(true),
+    ));
+    return rows.first.read<String>('inv');
+  }
+
   /// Riwayat transaksi (terbaru dulu), non-void tersaring soft-delete.
   Stream<List<Transaction>> watchHistory() {
     return (_db.select(_db.transactions)

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/constants.dart';
 import '../../../core/network/cloud_api.dart';
+import '../../support/support_contact.dart';
 import '../application/account_controller.dart';
 import 'forgot_password_screen.dart';
 import 'otp_screen.dart';
@@ -147,6 +148,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall),
         ],
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: () => openSupportChat(context, ref),
+          icon: const Icon(Icons.support_agent, size: 18),
+          label: const Text('Butuh bantuan? Hubungi kami'),
+        ),
       ],
     );
   }

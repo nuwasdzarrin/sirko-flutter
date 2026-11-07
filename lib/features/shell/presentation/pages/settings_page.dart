@@ -8,6 +8,7 @@ import '../../../users/application/user_providers.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../onboarding/application/onboarding_providers.dart';
 import '../../../pos/application/pos_providers.dart';
+import '../../../pos/presentation/payment_options_screen.dart';
 import '../../../settings/presentation/store_logo_tile.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -33,6 +34,14 @@ class SettingsPage extends ConsumerWidget {
         const StoreLogoTile(),
         const Divider(),
         const _RequireOpenBillTile(),
+        ListTile(
+          leading: const Icon(Icons.payments_outlined),
+          title: const Text('Metode pembayaran'),
+          subtitle: const Text('Pilih metode bayar di kasir & izin split'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const PaymentOptionsScreen())),
+        ),
         const Divider(),
         ListTile(
           leading: const Icon(Icons.password),

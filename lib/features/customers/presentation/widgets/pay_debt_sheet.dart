@@ -102,7 +102,8 @@ class _PayDebtSheetState extends ConsumerState<_PayDebtSheet> {
         left: 16,
         right: 16,
         top: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).viewPadding.bottom + 16,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
