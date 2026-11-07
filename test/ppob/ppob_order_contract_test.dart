@@ -93,19 +93,25 @@ void main() {
     final total = container.read(cartTotalsProvider).grandTotal;
     expect(total, 15000 + token20.sellPrice);
 
-    // 1. Bayar: token PLN manual → waiting_admin → keluar dari nota.
+    // 1. Bayar: token PLN manual → waiting_admin → TETAP di nota (pembeli
+    //    bayar), item bertanda "DIPROSES, token menyusul".
     final sw = Stopwatch()..start();
     final out = await container
         .read(checkoutControllerProvider.notifier)
         .submit([PaymentEntry(method: PaymentMethod.cash, amount: total)]);
     expect(sw.elapsed, lessThan(const Duration(seconds: 16)));
-    expect(out.commit, isNotNull, reason: 'barang fisik tetap tersimpan');
-    expect(out.dropped.single.pending, isTrue);
-    expect(out.grandTotal, 15000);
-    expect(out.change, token20.sellPrice);
-    final orderId = out.dropped.single.orderId!;
-    expect(container.read(ppobPendingWatcherProvider).single.orderId, orderId);
+    expect(out.commit, isNotNull);
+    expect(out.dropped, isEmpty);
+    expect(out.grandTotal, total);
+    expect(out.change, 0);
+    final orderId = out.processing.single.orderId!;
+    expect(container.read(ppobPendingWatcherProvider).single.inNota, isTrue);
     expect((await remote.points()).balance, before - token20.price);
+    Future<TransactionItem> ppobItem(String id) async =>
+        (await db.select(db.transactionItems).get()).firstWhere((i) =>
+            i.productId == null && i.nameSnapshot.contains(id.substring(0, 8)));
+    expect((await ppobItem(orderId)).nameSnapshot,
+        contains('DIPROSES, token menyusul'));
 
     // 2. Nomor sama selagi masih diproses → PENDING_SAME_TARGET.
     await expectLater(
@@ -118,7 +124,7 @@ void main() {
           .having((e) => e.details?['orderId'], 'orderId', orderId)),
     );
 
-    // 3. Admin isi token → pengecek latar menerima sukses + token.
+    // 3. Admin isi token → pengecek latar: sukses + nota diperbarui (token).
     final w = container.read(ppobPendingWatcherProvider.notifier);
     final notices = <PpobNotice>[];
     w.notices.listen(notices.add);
@@ -127,37 +133,32 @@ void main() {
     await w.checkNow(force: true);
     await Future<void>.delayed(Duration.zero);
     expect(notices.single.success, isTrue);
-    expect(notices.single.order!.sn, contains('1234'));
-
-    // 4. Catat → nota PPOB tersendiri, tanpa beli ulang.
-    expect(cart.addPpobDone(notices.single.order!, token20.sellPrice), isTrue);
-    final out2 = await container
-        .read(checkoutControllerProvider.notifier)
-        .submit([PaymentEntry(method: PaymentMethod.cash, amount: token20.sellPrice)]);
-    expect(out2.commit, isNotNull);
-    expect(await container.read(transactionRepositoryProvider)
-        .recordedPpobOrderIds(), contains(orderId));
-    final item = (await db.select(db.transactionItems).get())
-        .firstWhere((i) => i.productId == null);
-    expect(item.nameSnapshot, contains('Token'));
+    expect(notices.single.canRecord, isFalse, reason: 'sudah di nota');
+    final item = await ppobItem(orderId);
+    expect(item.nameSnapshot, contains('Token 1234'));
     expect(item.nameSnapshot, contains('a.n. BUDI UJI'));
+    expect(item.nameSnapshot, isNot(contains('DIPROSES')));
     expect(item.costPriceSnapshot, token20.price);
     expect(item.unitPrice, token20.sellPrice);
+    expect(await container.read(transactionRepositoryProvider)
+        .recordedPpobOrderIds(), contains(orderId));
 
-    // 5. Order lain digagalkan admin → refunded, Poin kembali.
+    // 4. Order lain digagalkan admin → refunded, Poin kembali, pengingat
+    //    kembalikan uang pembeli.
     final afterOk = (await remote.points()).balance;
     cart.addPpob(token20, '59876543210');
     final out3 = await container
         .read(checkoutControllerProvider.notifier)
         .submit([PaymentEntry(method: PaymentMethod.cash, amount: token20.sellPrice)]);
-    expect(out3.commit, isNull);
-    final id3 = out3.dropped.single.orderId!;
+    expect(out3.commit, isNotNull);
+    final id3 = out3.processing.single.orderId!;
     expect((await _admin(['fail', id3, 'Meter salah (uji)']))['ok'], isTrue);
     notices.clear();
     await w.checkNow(force: true);
     await Future<void>.delayed(Duration.zero);
     expect(notices.single.success, isFalse);
     expect(notices.single.order!.refunded, isTrue);
+    expect(notices.single.message, contains('kembalikan uang pembeli'));
     expect((await remote.points()).balance, afterOk);
 
     // 6. Riwayat (cursor) memuat kedua order.

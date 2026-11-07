@@ -1,7 +1,7 @@
 # TC-18b Kasir PPOB — nota campuran (SPEC §5). Hook sebelum flow: admin
 # mengonfirmasi top-up 18a + produk Token PLN 20.000 tersedia.
-# Token PLN = diproses admin (waiting_admin) → di kasir "Belum ada jawaban":
-# item PPOB keluar dari nota, barang fisik tetap tersimpan, total disesuaikan.
+# Token PLN = diproses admin (waiting_admin) → tetap di nota bertanda
+# "DIPROSES, token menyusul"; pembeli membayar penuh.
 appId: com.sirko.app
 name: "18b PPOB - kasir nota campuran"
 tags: [ppob]
@@ -64,8 +64,9 @@ tags: [ppob]
 - extendedWaitUntil:
     visible: "Transaksi berhasil"
     timeout: 30000
-- assertVisible: ".*Belum ada jawaban.*keluar dari nota.*"
-- assertVisible: "Total jadi Rp.* kembalian Rp.*"
+# Token PLN diproses admin → TETAP di nota (pembeli bayar penuh).
+- assertVisible: ".*token menyusul.*Sudah masuk nota.*"
+- assertNotVisible: ".*keluar dari nota.*"
 - takeScreenshot: 18b_ppob_tertunda
 - tapOn: "Transaksi Baru"
 - stopRecording

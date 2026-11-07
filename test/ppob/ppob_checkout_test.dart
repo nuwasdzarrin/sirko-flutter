@@ -83,6 +83,16 @@ const tsel = PpobProduct(
   margin: 2300,
 );
 
+const pln20 = PpobProduct(
+  id: 'p-pln20',
+  category: PpobCategory.pln,
+  brand: 'PLN',
+  name: 'Token PLN 20.000',
+  price: 20500,
+  sellPrice: 13000,
+  margin: -7500,
+);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -262,6 +272,102 @@ void main() {
         .submit(const [PaymentEntry(method: PaymentMethod.cash, amount: 13000)]);
     expect(out.commit, isNotNull);
     expect(remote.created, hasLength(1), reason: 'tidak dibeli dua kali');
+  });
+
+  test('token PLN diproses admin → TETAP di nota (pembeli bayar); token '
+      'terbit → nama item di nota berisi token', () async {
+    await addPhysical();
+    container.read(cartControllerProvider.notifier)
+        .addPpob(pln20, '86300988184');
+    remote.answers['86300988184'] = (ref) async => PpobOrder(
+          id: 'ord-pln-1234',
+          clientRef: ref,
+          category: PpobCategory.pln,
+          productName: 'Token PLN 20.000',
+          customerNo: '86300988184',
+          price: 20500,
+          status: 'waiting_admin',
+          plnName: 'BUDI',
+          createdAt: 1,
+        );
+
+    final out = await container
+        .read(checkoutControllerProvider.notifier)
+        .submit(const [PaymentEntry(method: PaymentMethod.cash, amount: 28000)]);
+
+    expect(out.commit, isNotNull);
+    expect(out.dropped, isEmpty);
+    expect(out.processing.single.message, contains('token menyusul'));
+    expect(out.grandTotal, 28000, reason: 'pembeli tetap bayar');
+    final tx = (await db.select(db.transactions).get()).single;
+    expect(tx.note, 'PPOB ord-pln-1234');
+    final item = (await db.select(db.transactionItems).get())
+        .firstWhere((i) => i.productId == null);
+    expect(item.nameSnapshot, contains('DIPROSES, token menyusul'));
+    expect(item.costPriceSnapshot, 20500);
+
+    final pending = container.read(ppobPendingWatcherProvider).single;
+    expect(pending.inNota, isTrue);
+
+    // Admin mengisi token → pengecek latar memperbarui nota.
+    final w = container.read(ppobPendingWatcherProvider.notifier);
+    final notices = <PpobNotice>[];
+    w.notices.listen(notices.add);
+    remote.ordersById['ord-pln-1234'] = PpobOrder(
+      id: 'ord-pln-1234',
+      clientRef: pending.clientRef,
+      category: PpobCategory.pln,
+      productName: 'Token PLN 20.000',
+      customerNo: '86300988184',
+      price: 20500,
+      status: 'success',
+      sn: '1234-5678-9012-3456-7890',
+      plnName: 'BUDI',
+      createdAt: 1,
+    );
+    await w.checkNow(force: true);
+    await Future<void>.delayed(Duration.zero);
+    expect(notices.single.message, contains(tx.invoiceNo));
+    expect(notices.single.canRecord, isFalse, reason: 'sudah di nota');
+    final updated = (await db.select(db.transactionItems).get())
+        .firstWhere((i) => i.productId == null);
+    expect(updated.nameSnapshot, contains('Token 1234-5678-9012-3456-7890'));
+    expect(updated.nameSnapshot, isNot(contains('DIPROSES')));
+  });
+
+  test('token diproses lalu GAGAL → pengingat kembalikan uang pembeli',
+      () async {
+    await seedBusiness(db);
+    container.read(cartControllerProvider.notifier)
+        .addPpob(tsel, '86300988184');
+    remote.answers['86300988184'] = (ref) async =>
+        order('waiting_admin', id: 'ord-pln-gagal', clientRef: ref);
+    await container
+        .read(checkoutControllerProvider.notifier)
+        .submit(const [PaymentEntry(method: PaymentMethod.cash, amount: 13000)]);
+
+    final w = container.read(ppobPendingWatcherProvider.notifier);
+    final notices = <PpobNotice>[];
+    w.notices.listen(notices.add);
+    remote.ordersById['ord-pln-gagal'] =
+        order('failed', id: 'ord-pln-gagal');
+    await w.checkNow(force: true);
+    await Future<void>.delayed(Duration.zero);
+    expect(notices.single.message, contains('kembalikan uang pembeli'));
+    expect(notices.single.message, contains('Rp13.000'));
+  });
+
+  test('non-tunai melebihi total ditolak (kembalian hanya dari tunai)',
+      () async {
+    await addPhysical(); // total 15.000
+    await expectLater(
+      container.read(checkoutControllerProvider.notifier).submit(const [
+        PaymentEntry(method: PaymentMethod.qris, amount: 10000),
+        PaymentEntry(method: PaymentMethod.transfer, amount: 10000),
+      ]),
+      throwsA(predicate((e) => '$e'.contains('non-tunai melebihi total'))),
+    );
+    expect(await db.select(db.transactions).get(), isEmpty);
   });
 
   group('cek latar belakang', () {

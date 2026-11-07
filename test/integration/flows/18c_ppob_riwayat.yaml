@@ -1,8 +1,9 @@
-# TC-18c Riwayat PPOB — order token yang tadi tertunda kini SUKSES (hook
-# sebelum flow: admin mengisi token). Token tampil + bisa disalin, lalu
-# "Catat ke kasir" → nota PPOB tanpa beli ulang → "Tercatat di nota".
+# TC-18c Riwayat PPOB — token yang tadi "DIPROSES" kini SUKSES (hook sebelum
+# flow: admin mengisi token). Token tampil di Riwayat PPOB, order sudah
+# "Tercatat di nota" (tak perlu dicatat ulang), dan item di nota kasir
+# otomatis berisi token (dibuka dari Riwayat transaksi).
 appId: com.sirko.app
-name: "18c PPOB - riwayat, token & catat ke kasir"
+name: "18c PPOB - riwayat, token mengisi nota"
 tags: [ppob]
 ---
 - startRecording: 18c_ppob_riwayat
@@ -18,36 +19,23 @@ tags: [ppob]
 - extendedWaitUntil:
     visible: "Token: 1234-5678-9012-3456-7890"
     timeout: 20000
-- assertVisible: ".*51234567890.*a.n. BUDI UJI.*Berhasil.*"
+- assertVisible: ".*51234567890.*a.n. BUDI UJI.*Berhasil.*Tercatat di nota.*"
+- assertNotVisible: "Catat ke kasir"
 - takeScreenshot: 18c_riwayat_token
-- tapOn: "Catat ke kasir"
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Harga jual ke pembeli", TEXT: "25000" }
-- tapOn: "Masukkan keranjang"
-- extendedWaitUntil:
-    visible: "Masuk keranjang.*"
-    timeout: 5000
 - back
-# Snackbar "Masuk keranjang" menutupi tombol Bayar → tunggu hilang.
-- extendedWaitUntil:
-    notVisible: "Masuk keranjang.*"
-    timeout: 10000
-- tapOn: "Bayar"
-- extendedWaitUntil:
-    visible: "Pembayaran"
-    timeout: 5000
-- assertVisible: "Rp25.000"
-- tapOn: "Uang pas"
-- tapOn: "Selesaikan & Cetak Struk"
-- extendedWaitUntil:
-    visible: "Transaksi berhasil"
-    timeout: 20000
-- takeScreenshot: 18c_nota_ppob
-- tapOn: "Transaksi Baru"
+
+# Nota terakhir: item token berisi token (diperbarui otomatis)
 - tapOn:
-    id: "ppob_riwayat"
+    id: "kasir_riwayat"
 - extendedWaitUntil:
-    visible: ".*Berhasil.*Tercatat di nota.*"
-    timeout: 20000
+    visible: ".*INV-.*"
+    timeout: 10000
+- tapOn:
+    text: ".*INV-.*"
+    index: 0
+- extendedWaitUntil:
+    visible: ".*Token PLN 20.000.*Token 1234-5678-9012-3456-7890.*"
+    timeout: 15000
+- assertNotVisible: ".*DIPROSES.*"
+- takeScreenshot: 18c_nota_berisi_token
 - stopRecording
