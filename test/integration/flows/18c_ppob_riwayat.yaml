@@ -10,9 +10,11 @@ tags: [ppob]
 - tapOn: "Kasir.*Tab 2.*"
 - tapOn: "PPOB.*Tab 2 dari 2"
 - extendedWaitUntil:
-    visible: "Riwayat PPOB"
+    visible:
+      id: "ppob_riwayat"
     timeout: 20000
-- tapOn: "Riwayat PPOB"
+- tapOn:
+    id: "ppob_riwayat"
 - extendedWaitUntil:
     visible: "Token: 1234-5678-9012-3456-7890"
     timeout: 20000
@@ -27,6 +29,10 @@ tags: [ppob]
     visible: "Masuk keranjang.*"
     timeout: 5000
 - back
+# Snackbar "Masuk keranjang" menutupi tombol Bayar → tunggu hilang.
+- extendedWaitUntil:
+    notVisible: "Masuk keranjang.*"
+    timeout: 10000
 - tapOn: "Bayar"
 - extendedWaitUntil:
     visible: "Pembayaran"
@@ -39,8 +45,9 @@ tags: [ppob]
     timeout: 20000
 - takeScreenshot: 18c_nota_ppob
 - tapOn: "Transaksi Baru"
-- tapOn: "Riwayat PPOB"
+- tapOn:
+    id: "ppob_riwayat"
 - extendedWaitUntil:
-    visible: "Tercatat di nota"
+    visible: ".*Berhasil.*Tercatat di nota.*"
     timeout: 20000
 - stopRecording

@@ -3,7 +3,27 @@ appId: com.sirko.app
 ---
 - tapOn: "Lainnya.*"
 - extendedWaitUntil:
-    visible: ${MENU}
+    visible: "Lainnya"
     timeout: 10000
+# Kartu akun/paket/Poin/Toko Saya mendorong ubin menu ke bawah → gulir.
+# Halaman bisa masih tergulir dari kunjungan sebelumnya → cari ke bawah,
+# lalu ke atas.
+- runFlow:
+    when:
+      notVisible: ${MENU}
+    commands:
+      - scrollUntilVisible:
+          element: ${MENU}
+          direction: DOWN
+          timeout: 10000
+          optional: true
+- runFlow:
+    when:
+      notVisible: ${MENU}
+    commands:
+      - scrollUntilVisible:
+          element: ${MENU}
+          direction: UP
+          timeout: 10000
 - tapOn: ${MENU}
 - waitForAnimationToEnd

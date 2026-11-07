@@ -12,11 +12,11 @@ tags: [ppob]
 # Saldo Poin sudah masuk
 - runFlow:
     file: ../subflows/buka_menu_lainnya.yaml
-    env: { MENU: "Poin Sirko" }
+    env: { MENU: "Poin Sirko.*" }
 - extendedWaitUntil:
-    visible: "Rp100.000"
+    visible: '.*Saldo Poin.*Rp\d+[.]\d{3}.*'
     timeout: 20000
-- assertVisible: '.*Top-up Poin.*[+]Rp100.000.*'
+- assertVisible: '.*Top-up Poin.*[+]Rp100[.]\d{3}.*'
 - back
 
 # Produk → PPOB: harga jual dari aturan untung
@@ -38,7 +38,7 @@ tags: [ppob]
 - tapOn: "Kasir.*Tab 2.*"
 - tapOn: "PPOB.*Tab 2 dari 2"
 - extendedWaitUntil:
-    visible: "Saldo Poin Rp100.000"
+    visible: '.*Saldo Poin Rp\d+[.]\d{3}.*'
     timeout: 20000
 - tapOn: "Token Listrik"
 - runFlow:

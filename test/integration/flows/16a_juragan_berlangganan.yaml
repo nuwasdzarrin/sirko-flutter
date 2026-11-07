@@ -35,7 +35,7 @@ tags: [juragan]
     timeout: 10000
 - tapOn: "Bayar dengan QRIS"
 - extendedWaitUntil:
-    visible: "Bayar PERSIS"
+    visible: ".*Bayar PERSIS.*"
     timeout: 90000
 - assertVisible: "Rp49.\\d{3}"
 - assertVisible: ".*kode unik.*"

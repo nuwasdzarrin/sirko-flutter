@@ -37,25 +37,30 @@ tags: [rbac, shift]
     file: ../subflows/buka_menu_lainnya.yaml
     env: { MENU: "Karyawan" }
 - assertVisible: "B Budi Pemilik @pemilik . Pemilik"
-- tapOn: "Tambah"
-- extendedWaitUntil:
-    visible: "Tambah Karyawan"
-    timeout: 5000
-- assertVisible: "Peran Kasir"
+# Tambah hanya bila belum ada (run ulang aman).
 - runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Nama", TEXT: "Rina Kasir" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Username.*", TEXT: "rina" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "PIN", TEXT: "111111" }
-- runFlow:
-    file: ../subflows/isi_field.yaml
-    env: { FIELD: "Ulangi PIN", TEXT: "111111" }
-- tapOn:
-    id: "karyawan_simpan"
+    when:
+      notVisible: "R Rina Kasir @rina . Kasir"
+    commands:
+      - tapOn: "Tambah"
+      - extendedWaitUntil:
+          visible: "Tambah Karyawan"
+          timeout: 5000
+      - assertVisible: "Peran Kasir"
+      - runFlow:
+          file: ../subflows/isi_field.yaml
+          env: { FIELD: "Nama", TEXT: "Rina Kasir" }
+      - runFlow:
+          file: ../subflows/isi_field.yaml
+          env: { FIELD: "Username.*", TEXT: "rina" }
+      - runFlow:
+          file: ../subflows/isi_field.yaml
+          env: { FIELD: "PIN", TEXT: "111111" }
+      - runFlow:
+          file: ../subflows/isi_field.yaml
+          env: { FIELD: "Ulangi PIN", TEXT: "111111" }
+      - tapOn:
+          id: "karyawan_simpan"
 - extendedWaitUntil:
     visible: "R Rina Kasir @rina . Kasir"
     timeout: 10000
@@ -78,9 +83,7 @@ tags: [rbac, shift]
 - runFlow:
     file: ../subflows/isi_field.yaml
     env: { FIELD: "PIN", TEXT: "111111" }
-- tapOn:
-    text: "Masuk"
-    index: 1
+- tapOn: "Masuk"
 - extendedWaitUntil:
     visible: "Beranda Tab 1 dari 3"
     timeout: 15000

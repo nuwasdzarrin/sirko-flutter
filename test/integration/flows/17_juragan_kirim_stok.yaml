@@ -67,7 +67,7 @@ tags: [juragan]
     timeout: 20000
 - tapOn: "Salin produk ke cabang"
 - tapOn: "Toko tujuan"
-- tapOn: "Cabang Pasar"
+- tapOn: "C+abang Pasar"
 - tapOn: "Teh Pucuk"
 - tapOn: "Salin 1 produk"
 - extendedWaitUntil:
@@ -78,7 +78,7 @@ tags: [juragan]
 # --- Kirim 3 "Kopi Kapal Api" ke cabang ---
 - tapOn: "Kirim stok ke cabang"
 - tapOn: "Toko tujuan"
-- tapOn: "Cabang Pasar"
+- tapOn: "C+abang Pasar"
 - tapOn: "Tambah Kopi Kapal Api"
 - tapOn: "Tambah Kopi Kapal Api"
 - tapOn: "Tambah Kopi Kapal Api"
@@ -99,9 +99,9 @@ tags: [juragan]
 - tapOn: "Lainnya.*"
 - tapOn: "Toko Saya.*"
 - extendedWaitUntil:
-    visible: "Cabang Pasar.*Ketuk untuk membuka.*"
+    visible: "C+abang Pasar.*Ketuk untuk membuka.*"
     timeout: 20000
-- tapOn: "Cabang Pasar.*"
+- tapOn: "C+abang Pasar.*"
 - tapOn: "Buka"
 - extendedWaitUntil:
     visible: "Beranda.*"

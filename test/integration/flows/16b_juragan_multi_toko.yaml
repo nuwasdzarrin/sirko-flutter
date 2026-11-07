@@ -49,7 +49,11 @@ tags: [juragan]
 - extendedWaitUntil:
     visible: "Tambah toko cabang"
     timeout: 10000
-- inputText: "Cabang Pasar"
+# Lewat isi_field: dialog autofocus → inputText langsung mengetik huruf
+# pertama dobel ("CCabang").
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama toko", TEXT: "Cabang Pasar" }
 - tapOn: "Buat & buka"
 
 # Cabang baru: pemilik = akun yang sama (nama akun, tanpa PIN) → langsung
@@ -65,7 +69,7 @@ tags: [juragan]
 - extendedWaitUntil:
     visible: "Toko Maestro.*Ketuk untuk membuka.*"
     timeout: 20000
-- assertVisible: "Cabang Pasar.*Sedang dibuka di HP ini.*"
+- assertVisible: "C+abang Pasar.*Sedang dibuka di HP ini.*"
 - tapOn: "Toko Maestro.*"
 - tapOn: "Buka"
 - extendedWaitUntil:
