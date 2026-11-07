@@ -53,7 +53,7 @@ tags: [juragan]
 # pertama dobel ("CCabang").
 - runFlow:
     file: ../subflows/isi_field.yaml
-    env: { FIELD: "Nama toko", TEXT: "Cabang Pasar" }
+    env: { FIELD: "Nama toko.*", TEXT: "Cabang Pasar" }
 - tapOn: "Buat & buka"
 
 # Cabang baru: pemilik = akun yang sama (nama akun, tanpa PIN) → langsung

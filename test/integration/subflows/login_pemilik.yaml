@@ -6,6 +6,13 @@
 # Akun: e2e${RUN_ID}@toko.id / rahasia123 (TC-01).
 appId: com.sirko.app
 ---
+# Lembar berbagi sistem (ekspor XLSX/PDF) tak ikut tertutup saat app
+# dihentikan → tutup dulu.
+- runFlow:
+    when:
+      visible: "Sharing.*"
+    commands:
+      - pressKey: Back
 - launchApp:
     stopApp: true
 - extendedWaitUntil:

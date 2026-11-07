@@ -30,6 +30,8 @@ bash test/integration/scripts/run_all.sh 01 02 04   # sebagian (pola awalan nama
 
 > ⚠️ **TC-01 menghapus data aplikasi** (`clearState`). Jalankan di emulator/HP uji, bukan HP toko.
 > Flow saling bergantung data (urut 01 → 14); menjalankan satu flow di tengah butuh state dari flow sebelumnya.
+>
+> **Urutan suite sejak alur akun baru (1.4.0):** `01–09` → `16a 16b` (Paket Juragan; karyawan di TC-10 butuh Juragan) → `10–14` → `90–98` → `15` → `18` → `17` (berakhir di toko cabang). Flow 92/97 meng-assert angka hari ini, jadi wajib sebelum `15` (yang menambah penjualan). Akun uji per run: `e2e<RUN_ID>@toko.id` / `rahasia123` (backend LOKAL dengan `AUTH_DEV_OTP_ECHO=true PPOB_ENABLED=true`); hook admin di `hooks/`.
 
 ### Hasil run → `record/<YYYY-MM-DD_HHMMSS>/` (di-*gitignore*)
 

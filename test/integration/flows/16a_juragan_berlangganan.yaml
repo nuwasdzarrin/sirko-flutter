@@ -37,7 +37,7 @@ tags: [juragan]
 - extendedWaitUntil:
     visible: ".*Bayar PERSIS.*"
     timeout: 90000
-- assertVisible: "Rp49.\\d{3}"
+- assertVisible: '.*Rp49[.]\d{3}.*'
 - assertVisible: ".*kode unik.*"
 - takeScreenshot: 16a_tagihan_qris
 - stopRecording
