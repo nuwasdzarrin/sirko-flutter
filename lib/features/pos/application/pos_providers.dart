@@ -386,6 +386,8 @@ class CheckoutController extends _$CheckoutController {
         loading: () => throw StateError('unreachable'),
       );
     } finally {
+      // Poin berubah setelah jualan PPOB → saldo di AppBar disegarkan.
+      if (hasPpob && ref.mounted) ref.invalidate(ppobStatusProvider);
       keepAlive.close();
     }
   }
