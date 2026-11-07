@@ -24,7 +24,9 @@ tags: [ppob]
 - takeScreenshot: 18c_riwayat_token
 - back
 
-# Nota terakhir: item token berisi token (diperbarui otomatis)
+# Nota terakhir: item token berisi token (diperbarui otomatis). Ikon
+# riwayat transaksi ada di tab Fisik.
+- tapOn: "Fisik.*Tab 1 dari 2"
 - tapOn:
     id: "kasir_riwayat"
 - extendedWaitUntil:
