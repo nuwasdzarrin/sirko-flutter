@@ -20,7 +20,14 @@ tags: [rbac, shift]
 - extendedWaitUntil:
     visible: "Toko Maestro Minimarket"
     timeout: 10000
-- tapOn: "Wajib buka shift sebelum transaksi.*"
+# Nyalakan hanya bila belum menyala (run ulang aman).
+- runFlow:
+    when:
+      notVisible:
+        text: "Wajib buka shift sebelum transaksi.*"
+        checked: true
+    commands:
+      - tapOn: "Wajib buka shift sebelum transaksi.*"
 - assertVisible:
     text: "Wajib buka shift sebelum transaksi.*"
     checked: true
@@ -29,7 +36,7 @@ tags: [rbac, shift]
 - runFlow:
     file: ../subflows/buka_menu_lainnya.yaml
     env: { MENU: "Karyawan" }
-- assertVisible: "B Budi Pemilik @owner . Pemilik"
+- assertVisible: "B Budi Pemilik @pemilik . Pemilik"
 - tapOn: "Tambah"
 - extendedWaitUntil:
     visible: "Tambah Karyawan"

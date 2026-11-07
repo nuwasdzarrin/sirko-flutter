@@ -49,7 +49,7 @@ tags: [smoke, navigasi]
     env: { MENU: "Ringkasan Karyawan", EXPECT: "R Rina Kasir.*" }
 - runFlow:
     file: ../subflows/cek_menu_lainnya.yaml
-    env: { MENU: "Karyawan", EXPECT: "B Budi Pemilik @owner.*" }
+    env: { MENU: "Karyawan", EXPECT: "B Budi Pemilik @pemilik.*" }
 - runFlow:
     file: ../subflows/cek_menu_lainnya.yaml
     env: { MENU: "Pengaturan", EXPECT: "Wajib buka shift sebelum transaksi.*" }

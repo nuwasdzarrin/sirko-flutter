@@ -77,6 +77,16 @@ tags: [smoke, auth]
 - takeScreenshot: 02_masuk_offline
 - setAirplaneMode: disabled
 
+# Sinyal kembali → app masuk online sendiri (tanpa ketik ulang password)
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Sinkronisasi" }
+- extendedWaitUntil:
+    visible: ".*Tersinkron.*"
+    timeout: 120000
+- assertNotVisible: "Masuk ulang"
+- takeScreenshot: 02_online_lagi
+
 # Buka ulang app → tetap masuk
 - launchApp:
     stopApp: true

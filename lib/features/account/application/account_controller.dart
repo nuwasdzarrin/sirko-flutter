@@ -18,7 +18,19 @@ import '../domain/offline_auth.dart';
 /// offline dengan `offlineAuth`); lupa / ganti password; keluar.
 class AccountController {
   final Ref _ref;
-  AccountController(this._ref);
+  AccountController(this._ref) {
+    _ref.onDispose(() => _reconnect?.cancel());
+  }
+
+  /// Setelah masuk OFFLINE: coba masuk online lagi berkala agar sync, PPOB &
+  /// paket kembali jalan begitu sinyal ada. Password hanya di memori selama
+  /// app terbuka (tidak disimpan).
+  static const reconnectEvery = Duration(seconds: 20);
+  Timer? _reconnect;
+  ({String login, String password})? _pending;
+  bool _reconnecting = false;
+
+  bool get waitingReconnect => _pending != null;
 
   CloudAuthRepository get _auth => _ref.read(cloudAuthRepositoryProvider);
 
@@ -85,6 +97,44 @@ class AccountController {
           'pernah masuk di HP ini, dengan password yang benar.');
     }
     await _ref.read(sessionControllerProvider.notifier).unlockOffline();
+    _pending = (login: login, password: password);
+    _reconnect?.cancel();
+    _reconnect = Timer.periodic(reconnectEvery, (_) => reconnectNow());
+  }
+
+  /// Satu percobaan masuk online untuk sesi offline. True bila berhasil.
+  Future<bool> reconnectNow() async {
+    final cred = _pending;
+    if (cred == null || _reconnecting) return false;
+    _reconnecting = true;
+    try {
+      final p = await _auth.login(login: cred.login, password: cred.password);
+      _stopReconnect();
+      // Toko yang sama sudah terbuka → cukup pasang token & segarkan sesi.
+      await _auth.applySession(p);
+      await _ref.read(cloudSessionProvider.notifier).reloadInfo();
+      await _ref.read(sessionControllerProvider.notifier).reload();
+      return true;
+    } on SocketException {
+      return false;
+    } on http.ClientException {
+      return false;
+    } on TimeoutException {
+      return false;
+    } on CloudException {
+      // Password diganti di HP lain / akun dikunci → berhenti; pengguna masuk
+      // ulang manual dari Sinkronisasi.
+      _stopReconnect();
+      return false;
+    } finally {
+      _reconnecting = false;
+    }
+  }
+
+  void _stopReconnect() {
+    _reconnect?.cancel();
+    _reconnect = null;
+    _pending = null;
   }
 
   /// Cocokkan password pemilik secara offline (layar PIN karyawan → kembali
@@ -126,6 +176,7 @@ class AccountController {
 
   /// Hapus token (akun & bahan login offline tetap disimpan) → layar Masuk.
   Future<void> signOut() async {
+    _stopReconnect();
     await _auth.logout();
     await _ref.read(cloudSessionProvider.notifier).reloadInfo();
     await _ref.read(sessionControllerProvider.notifier).signOut();
@@ -134,6 +185,7 @@ class AccountController {
   // ── internal ──────────────────────────────────────────────────────────────
 
   Future<void> _afterSession(SessionPayload p) async {
+    _stopReconnect();
     await _auth.applySession(p);
     await _ref.read(cloudSessionProvider.notifier).reloadInfo();
     if (p.hasStore) {

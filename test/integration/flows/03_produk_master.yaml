@@ -14,7 +14,7 @@ tags: [produk]
 - runFlow: ../subflows/login_pemilik.yaml
 - tapOn: "Produk.*Tab 3.*"
 - extendedWaitUntil:
-    visible: "Belum ada produk"
+    visible: "Belum ada produk.*"
     timeout: 10000
 - tapOn:
     text: "Produk"
