@@ -1,0 +1,25 @@
+# PRODUKSI: akun sudah daftar tapi email belum diverifikasi → Masuk dengan
+# email+password → EMAIL_NOT_VERIFIED → layar OTP (server kirim kode baru).
+appId: com.sirko.app
+name: "P01c Produksi - masuk akun belum verifikasi"
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "(Masuk ke Sirko|Masukkan kode)"
+    timeout: 60000
+- runFlow:
+    when:
+      visible: "Masuk ke Sirko"
+    commands:
+      - runFlow:
+          file: ../subflows/isi_field_terisi.yaml
+          env: { FIELD: "Email atau nomor WA", TEXT: "${EMAIL}" }
+      - runFlow:
+          file: ../subflows/isi_field.yaml
+          env: { FIELD: "Password", TEXT: "${PASSWORD}" }
+      - tapOn: "Masuk"
+- extendedWaitUntil:
+    visible: "Masukkan kode"
+    timeout: 30000
+- takeScreenshot: p01c_otp

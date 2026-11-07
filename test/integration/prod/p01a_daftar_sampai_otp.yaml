@@ -1,0 +1,42 @@
+# PRODUKSI (sirko.produkdesa.com) bagian 1: instal bersih → daftar akun →
+# layar OTP. Email OTP SUNGGUHAN terkirim ke ${EMAIL}; kode dimasukkan di p01b.
+# Jalankan: maestro test -e EMAIL=.. -e PHONE=.. -e PASSWORD=.. -e NAME=..
+appId: com.sirko.app
+name: "P01a Produksi - daftar sampai OTP"
+---
+- startRecording: p01a_daftar_sampai_otp
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Masuk ke Sirko"
+    timeout: 90000
+- tapOn: "Daftar akun baru"
+- extendedWaitUntil:
+    visible: "Daftar akun"
+    timeout: 10000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama Anda", TEXT: "${NAME}" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Email", TEXT: "${EMAIL}" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nomor WA", TEXT: "${PHONE}" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Password", TEXT: "${PASSWORD}" }
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Ulangi password", TEXT: "${PASSWORD}" }
+- scrollUntilVisible:
+    element: "Daftar"
+    direction: DOWN
+- tapOn: "Daftar"
+- extendedWaitUntil:
+    visible: "Masukkan kode"
+    timeout: 30000
+# Produksi: kode uji TIDAK boleh tampil.
+- assertNotVisible: "Kode uji.*"
+- takeScreenshot: p01a_otp
+- stopRecording

@@ -1,0 +1,49 @@
+# PRODUKSI bagian 2: masukkan kode OTP dari email (env OTP) → buat toko →
+# Beranda; PPOB di produksi masih nonaktif → tab PPOB kasir tampil rapi.
+appId: com.sirko.app
+name: "P01b Produksi - OTP, buat toko, Beranda"
+---
+- startRecording: p01b_otp_buat_toko
+- extendedWaitUntil:
+    visible: "Masukkan kode"
+    timeout: 10000
+- tapOn: "Kode verifikasi"
+- waitForAnimationToEnd
+- inputText: ${OTP}
+- extendedWaitUntil:
+    visible: "Buat toko"
+    timeout: 30000
+- runFlow:
+    file: ../subflows/isi_field.yaml
+    env: { FIELD: "Nama Toko", TEXT: "${STORE}" }
+- tapOn: "Jenis Usaha.*"
+- tapOn: "Minimarket"
+- tapOn:
+    text: "Buat toko"
+    index: 1
+- extendedWaitUntil:
+    visible: "Beranda.*"
+    timeout: 60000
+- assertVisible: 'Omzet Rp0 0 transaksi'
+- takeScreenshot: p01b_beranda
+
+# Kasir → PPOB: produksi belum aktif → pesan rapi, bukan error
+- tapOn: "Kasir.*Tab 2.*"
+- tapOn: "PPOB.*Tab 2 dari 2"
+- extendedWaitUntil:
+    visible: ".*PPOB belum aktif.*"
+    timeout: 20000
+- takeScreenshot: p01b_ppob_nonaktif
+- tapOn:
+    id: "kasir_ke_beranda"
+
+# Sinkronisasi tersambung ke akun
+- runFlow:
+    file: ../subflows/buka_menu_lainnya.yaml
+    env: { MENU: "Sinkronisasi" }
+- extendedWaitUntil:
+    visible: ".*Tersinkron.*"
+    timeout: 90000
+- assertVisible: "Akun cloud ${EMAIL}"
+- takeScreenshot: p01b_sinkron
+- stopRecording
