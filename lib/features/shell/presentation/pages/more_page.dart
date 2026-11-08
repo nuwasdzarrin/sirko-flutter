@@ -8,6 +8,7 @@ import '../../../../app/session_controller.dart';
 import '../../../account/application/account_controller.dart';
 import '../../../catalog/presentation/katalog_umum_screen.dart';
 import '../../../cloud/application/cloud_providers.dart';
+import '../../../pos/presentation/transaction_history_screen.dart';
 import '../../../ppob/presentation/points_screen.dart';
 import '../../../stores/presentation/stores_screen.dart';
 import '../../../subscription/application/plan_providers.dart';
@@ -106,6 +107,10 @@ class MorePage extends ConsumerWidget {
                   if (d.path == Routes.catalog) {
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const KatalogUmumScreen(),
+                    ));
+                  } else if (d.path == Routes.transactions) {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const TransactionHistoryScreen(),
                     ));
                   } else if (d.path == Routes.sync) {
                     Navigator.of(context).push(MaterialPageRoute(

@@ -35,6 +35,8 @@ class Routes {
   static const String more = '/more'; // tab "Lainnya" (hub fitur sekunder)
   static const String catalog = '/catalog'; // Katalog Umum (dibuka via push)
   static const String sync = '/sync'; // Sinkronisasi Cloud (dibuka via push)
+  static const String transactions =
+      '/transactions'; // Riwayat transaksi (dibuka via push)
 
   /// Tab utama **bottom navbar** (urutan = urutan tab). Tab "Lainnya" (→[more])
   /// ditambahkan terpisah sebagai tab terakhir yang selalu tampil.
@@ -78,6 +80,11 @@ class Routes {
   /// Catatan: [catalog] dibuka via push (punya AppBar/Tab sendiri), bukan
   /// `context.go` — ditangani khusus di MorePage.
   static const List<NavDestinationItem> secondaryDestinations = [
+    NavDestinationItem(
+        label: 'Riwayat Transaksi',
+        icon: Icons.receipt_long_outlined,
+        path: transactions,
+        permission: Permission.transactionList),
     NavDestinationItem(
         label: 'Katalog Umum',
         icon: Icons.menu_book_outlined,

@@ -5,14 +5,18 @@ import 'package:go_router/go_router.dart';
 import '../../../ppob/presentation/topup_banner.dart';
 import '../../../../app/constants.dart';
 import '../../../customers/presentation/kas_bon_list_screen.dart';
+import '../../../pos/presentation/transaction_history_screen.dart';
+import '../../../ppob/presentation/ppob_history_screen.dart';
+import '../../../products/presentation/product_form_screen.dart';
 import '../../../products/presentation/stock_in_screen.dart';
 import '../../../reports/presentation/dashboard_view.dart';
 import '../../../users/application/user_providers.dart';
 import '../../../users/domain/permission.dart';
 
 /// Halaman Beranda (tab pertama). Dua blok jelas:
-/// 1. Card **Pintasan** — grid tombol cepat ke fitur penting yang tak ada di
-///    bottom navbar (Buka Shift, Kas Bon, Stok Masuk, dll), difilter izin.
+/// 1. Card **Pintasan** — grid tombol cepat ke pekerjaan harian (Riwayat
+///    Transaksi, Stok Masuk, Kas Bon, …), difilter izin & peran (Buka Shift
+///    hanya karyawan).
 /// 2. **Laporan** ([DashboardView]) — ringkasan omzet/laba + grafik.
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -21,35 +25,43 @@ class DashboardPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final permissions = ref.watch(permissionsProvider);
     bool can(Permission p) => permissions.contains(p);
+    final isOwner = ref.watch(currentUserProvider)?.isOwner ?? false;
+    void push(Widget page) => Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => page));
 
+    // Pintasan = pekerjaan HARIAN. Pemilik tak perlu buka shift; Stok Opname
+    // (±sebulan sekali) & Supplier cukup di "Lainnya". Maks 8 (2 baris).
     final shortcuts = <_Shortcut>[
-      if (can(Permission.transactionList))
+      // Shift hanya untuk karyawan (kasir/admin/staf), bukan pemilik.
+      if (!isOwner && can(Permission.transactionList))
         _Shortcut(
           icon: Icons.play_circle_outline,
           label: 'Buka Shift',
           onTap: () => context.go(Routes.shifts),
         ),
-      if (can(Permission.customerManagement))
+      if (can(Permission.transactionList))
         _Shortcut(
           icon: Icons.receipt_long_outlined,
-          label: 'Kas Bon',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const KasBonListScreen(),
-          )),
+          label: 'Riwayat Transaksi',
+          onTap: () => push(const TransactionHistoryScreen()),
         ),
       if (can(Permission.productManagement))
         _Shortcut(
           icon: Icons.move_to_inbox_outlined,
           label: 'Stok Masuk',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const StockInScreen(),
-          )),
+          onTap: () => push(const StockInScreen()),
         ),
-      if (can(Permission.productManagement))
+      if (isOwner && can(Permission.addProduct))
         _Shortcut(
-          icon: Icons.local_shipping_outlined,
-          label: 'Pembelian',
-          onTap: () => context.go(Routes.purchases),
+          icon: Icons.add_box_outlined,
+          label: 'Tambah Produk',
+          onTap: () => push(const ProductFormScreen()),
+        ),
+      if (can(Permission.customerManagement))
+        _Shortcut(
+          icon: Icons.request_quote_outlined,
+          label: 'Kas Bon',
+          onTap: () => push(const KasBonListScreen()),
         ),
       if (can(Permission.customerManagement))
         _Shortcut(
@@ -63,19 +75,19 @@ class DashboardPage extends ConsumerWidget {
           label: 'Kas',
           onTap: () => context.go(Routes.wallets),
         ),
-      if (can(Permission.productManagement))
+      if (isOwner && can(Permission.productManagement))
         _Shortcut(
-          icon: Icons.fact_check_outlined,
-          label: 'Stok Opname',
-          onTap: () => context.go(Routes.stockOpname),
+          icon: Icons.local_shipping_outlined,
+          label: 'Pembelian',
+          onTap: () => context.go(Routes.purchases),
         ),
-      if (can(Permission.productManagement))
+      if (can(Permission.ppobSell))
         _Shortcut(
-          icon: Icons.storefront_outlined,
-          label: 'Supplier',
-          onTap: () => context.go(Routes.suppliers),
+          icon: Icons.bolt_outlined,
+          label: 'Riwayat PPOB',
+          onTap: () => push(const PpobHistoryScreen()),
         ),
-    ];
+    ].take(8).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

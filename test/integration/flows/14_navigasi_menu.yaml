@@ -61,18 +61,22 @@ tags: [smoke, navigasi]
     visible: "Pintasan"
     timeout: 5000
 - takeScreenshot: 14_pintasan
+# Pemilik tak perlu buka shift; Stok Opname & Supplier cukup di "Lainnya".
+- assertNotVisible: "Buka Shift"
+- assertNotVisible: "Stok Opname"
+- assertNotVisible: "Supplier"
 - runFlow:
     file: ../subflows/cek_tujuan.yaml
-    env: { LABEL: "Buka Shift", EXPECT: "Riwayat Shift" }
-- runFlow:
-    file: ../subflows/cek_tujuan.yaml
-    env: { LABEL: "Kas Bon", EXPECT: "Daftar Kas Bon" }
+    env: { LABEL: "Riwayat Transaksi", EXPECT: ".*INV-.*" }
 - runFlow:
     file: ../subflows/cek_tujuan.yaml
     env: { LABEL: "Stok Masuk", EXPECT: "Belum ada barang di sesi ini" }
 - runFlow:
     file: ../subflows/cek_tujuan.yaml
-    env: { LABEL: "Pembelian", EXPECT: "Kulakan" }
+    env: { LABEL: "Tambah Produk", EXPECT: "Produk Baru" }
+- runFlow:
+    file: ../subflows/cek_tujuan.yaml
+    env: { LABEL: "Kas Bon", EXPECT: "Daftar Kas Bon" }
 - runFlow:
     file: ../subflows/cek_tujuan.yaml
     env: { LABEL: "Pelanggan", EXPECT: "Cari nama atau telepon.*" }
@@ -81,8 +85,5 @@ tags: [smoke, navigasi]
     env: { LABEL: "Kas", EXPECT: "Total Saldo Semua Kas.*" }
 - runFlow:
     file: ../subflows/cek_tujuan.yaml
-    env: { LABEL: "Stok Opname", EXPECT: "Opname Baru" }
-- runFlow:
-    file: ../subflows/cek_tujuan.yaml
-    env: { LABEL: "Supplier", EXPECT: "C CV Sumber Rejeki.*" }
+    env: { LABEL: "Pembelian", EXPECT: "Kulakan" }
 - stopRecording
