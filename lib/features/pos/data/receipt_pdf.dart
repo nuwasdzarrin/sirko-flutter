@@ -101,7 +101,22 @@ class ReceiptPdfBuilder {
               divider(),
               // Item.
               for (final line in data.lines) ...[
-                pw.Text(line.name, style: pw.TextStyle(fontSize: base)),
+                pw.Text(line.title,
+                    style: pw.TextStyle(
+                        fontSize: base,
+                        fontWeight: line.details.isEmpty
+                            ? null
+                            : pw.FontWeight.bold)),
+                // Rincian PPOB: satu informasi per baris, berlabel.
+                for (final d in line.details)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.only(left: 6),
+                    child: pw.Text(d.text,
+                        style: pw.TextStyle(
+                            fontSize: d.emphasis ? base : small,
+                            fontWeight:
+                                d.emphasis ? pw.FontWeight.bold : null)),
+                  ),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
@@ -143,7 +158,7 @@ class ReceiptPdfBuilder {
                 child: pw.Text(
                   data.footerText?.isNotEmpty == true
                       ? data.footerText!
-                      : 'Terima kasih 🙏',
+                      : 'Terima kasih',
                   textAlign: pw.TextAlign.center,
                   style: pw.TextStyle(fontSize: small),
                 ),

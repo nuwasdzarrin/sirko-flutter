@@ -21,6 +21,54 @@ class ReceiptLine {
     required this.discount,
     required this.lineTotal,
   });
+
+  /// Nama item PPOB disimpan satu baris dipisah " · " (produk · nomor ·
+  /// a.n. · Token/SN · #ref). Di struk dipecah: [title] + baris rincian
+  /// berlabel agar mudah dibaca. Barang biasa: [details] kosong.
+  String get title => _parts.first;
+
+  List<ReceiptDetail> get details => [
+        for (final p in _parts.skip(1)) ReceiptDetail.parse(p),
+      ];
+
+  List<String> get _parts {
+    final parts = name.split(' · ').map((e) => e.trim()).toList();
+    return parts.length < 2 ? [name] : parts;
+  }
+}
+
+/// Satu baris rincian item PPOB di struk.
+class ReceiptDetail {
+  final String label;
+  final String value;
+
+  /// Ditebalkan (token listrik — yang dicari pembeli).
+  final bool emphasis;
+  const ReceiptDetail(this.label, this.value, {this.emphasis = false});
+
+  static ReceiptDetail parse(String part) {
+    if (part.startsWith('a.n. ')) {
+      return ReceiptDetail('Nama', part.substring(5));
+    }
+    if (part.startsWith('Token ')) {
+      return ReceiptDetail('Token', part.substring(6), emphasis: true);
+    }
+    if (part.startsWith('SN ')) return ReceiptDetail('SN', part.substring(3));
+    if (part.startsWith('#')) return ReceiptDetail('Ref', part.substring(1));
+    if (part.startsWith('DIPROSES')) {
+      return ReceiptDetail(
+          'Status',
+          part.contains('token')
+              ? 'Diproses, token menyusul'
+              : 'Diproses');
+    }
+    if (RegExp(r'^[0-9+]{6,}$').hasMatch(part)) {
+      return ReceiptDetail('No', part);
+    }
+    return ReceiptDetail('', part);
+  }
+
+  String get text => label.isEmpty ? value : '$label: $value';
 }
 
 /// Satu baris pembayaran pada struk.

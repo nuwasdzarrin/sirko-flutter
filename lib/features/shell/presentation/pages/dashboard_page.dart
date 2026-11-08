@@ -9,6 +9,7 @@ import '../../../pos/presentation/transaction_history_screen.dart';
 import '../../../ppob/presentation/ppob_history_screen.dart';
 import '../../../products/presentation/product_form_screen.dart';
 import '../../../products/presentation/stock_in_screen.dart';
+import '../../../products/presentation/widgets/low_stock_card.dart';
 import '../../../reports/presentation/dashboard_view.dart';
 import '../../../users/application/user_providers.dart';
 import '../../../users/domain/permission.dart';
@@ -94,6 +95,8 @@ class DashboardPage extends ConsumerWidget {
       children: [
         const TopupBanner(),
         if (shortcuts.isNotEmpty) _ShortcutCard(shortcuts: shortcuts),
+        // Produk yang harus segera di-restok (pemilik & karyawan).
+        const LowStockCard(),
         const Expanded(child: DashboardView()),
       ],
     );

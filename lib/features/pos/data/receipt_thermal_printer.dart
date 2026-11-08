@@ -99,7 +99,13 @@ class ReceiptThermalPrinter {
     bytes += g.hr();
 
     for (final line in data.lines) {
-      bytes += g.text(line.name);
+      final details = line.details;
+      bytes += g.text(line.title,
+          styles: PosStyles(bold: details.isNotEmpty));
+      // Rincian PPOB: satu informasi per baris, berlabel; token ditebalkan.
+      for (final d in details) {
+        bytes += g.text('  ${d.text}', styles: PosStyles(bold: d.emphasis));
+      }
       bytes += g.row([
         PosColumn(text: '${line.qty} x ${_rp(line.unitPrice)}', width: 7),
         PosColumn(

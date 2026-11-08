@@ -11,6 +11,7 @@ import '../../customers/application/customer_providers.dart';
 import '../../customers/domain/installment_view.dart';
 import '../../customers/presentation/widgets/installment_plan_sheet.dart';
 import '../../customers/presentation/widgets/pay_debt_sheet.dart';
+import '../domain/receipt_data.dart';
 import '../application/transaction_history_providers.dart';
 import '../domain/transaction_detail.dart';
 import 'widgets/receipt_actions.dart';
@@ -348,9 +349,28 @@ class _ItemRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.nameSnapshot,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                // PPOB: judul + rincian berlabel (sama dengan struk).
+                Builder(builder: (_) {
+                  final rl = ReceiptLine(
+                      name: item.nameSnapshot,
+                      qty: item.qty,
+                      unitPrice: item.unitPrice,
+                      discount: item.discount,
+                      lineTotal: item.lineTotal);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(rl.title,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600)),
+                      for (final d in rl.details)
+                        SelectableText(d.text,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight:
+                                    d.emphasis ? FontWeight.bold : null)),
+                    ],
+                  );
+                }),
                 Text(
                   '${item.qty} x ${Money(item.unitPrice).format()}'
                   '${item.discount > 0 ? '  (−${Money(item.discount).format()})' : ''}',
