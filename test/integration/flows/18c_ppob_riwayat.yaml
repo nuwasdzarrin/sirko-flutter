@@ -35,9 +35,12 @@ tags: [ppob]
 - tapOn:
     text: ".*INV-.*"
     index: 0
+# Rincian PPOB tampil per baris berlabel (sama dengan struk).
 - extendedWaitUntil:
-    visible: ".*Token PLN 20.000.*Token 1234-5678-9012-3456-7890.*"
+    visible: "Token: 1234-5678-9012-3456-7890"
     timeout: 15000
+- assertVisible: ".*Token PLN 20.000.*"
+- assertVisible: "No: 51234567890"
 - assertNotVisible: ".*DIPROSES.*"
 - takeScreenshot: 18c_nota_berisi_token
 - stopRecording

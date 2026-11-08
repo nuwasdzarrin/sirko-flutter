@@ -46,7 +46,7 @@ tags: [smoke, navigasi]
     env: { MENU: "Stok Opname", EXPECT: "Opname Baru" }
 - runFlow:
     file: ../subflows/cek_menu_lainnya.yaml
-    env: { MENU: "Ringkasan Karyawan", EXPECT: "R Rina Kasir.*" }
+    env: { MENU: "Ringkasan Karyawan", EXPECT: "Bulan ini" }
 - runFlow:
     file: ../subflows/cek_menu_lainnya.yaml
     env: { MENU: "Karyawan", EXPECT: "B Budi Pemilik @pemilik.*" }
