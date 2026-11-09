@@ -183,9 +183,24 @@ class CatalogSyncController extends _$CatalogSyncController {
       await settings.setValue(_kLastSync, '$now');
       state = CatalogSyncState(
           syncing: false, processed: processed, lastSyncAt: now);
+      _refreshCache();
     } catch (e) {
       state = CatalogSyncState(
           syncing: false, processed: state.processed, error: e);
+    }
+  }
+
+  /// Daftar & thumbnail cache dibaca sekali (FutureProvider) → muat ulang
+  /// setelah sync agar perubahan nama/foto langsung tampil.
+  void _refreshCache([String? barcode]) {
+    if (!ref.mounted) return;
+    ref.invalidate(catalogCacheSearchProvider);
+    if (barcode == null) {
+      ref.invalidate(catalogThumbProvider);
+      ref.invalidate(catalogPhotoUrlProvider);
+    } else {
+      ref.invalidate(catalogThumbProvider(barcode));
+      ref.invalidate(catalogPhotoUrlProvider(barcode));
     }
   }
 
@@ -194,6 +209,7 @@ class CatalogSyncController extends _$CatalogSyncController {
     final item = await ref.read(cloudCatalogRepositoryProvider).lookup(barcode);
     if (item != null) {
       await ref.read(publicCatalogRepositoryProvider).upsertItems([item]);
+      _refreshCache(barcode);
     }
     return item;
   }

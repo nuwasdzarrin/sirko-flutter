@@ -29,9 +29,24 @@ class CatalogThumb extends ConsumerWidget {
     if (barcode.isEmpty) return placeholder;
 
     final thumb = ref.watch(catalogThumbProvider(barcode));
+    // Tanpa blob lokal (mis. foto baru dari server) → foto online.
+    Widget network() {
+      final url = ref.watch(catalogPhotoUrlProvider(barcode)).asData?.value;
+      if (url == null) return placeholder;
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(url,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+            errorBuilder: (_, __, ___) => placeholder),
+      );
+    }
+
     return thumb.maybeWhen(
       data: (bytes) => bytes == null
-          ? placeholder
+          ? network()
           : ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.memory(

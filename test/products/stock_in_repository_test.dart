@@ -138,4 +138,34 @@ void main() {
         .get();
     expect(cats.length, 1);
   });
+
+  test('produk baru dengan harga diisi di Stok Masuk → siap jual', () async {
+    await repo.commitSession(const [
+      StockInDraftLine(
+        barcode: '777',
+        name: 'Aqua btl',
+        qty: 5,
+        source: StockInSource.manualNew,
+        costPrice: 3000,
+        sellingPrice: 4000,
+      ),
+      StockInDraftLine(
+        barcode: '778',
+        name: 'Tanpa Harga',
+        qty: 1,
+        source: StockInSource.fromCatalog,
+      ),
+    ]);
+    final priced = await (db.select(db.products)
+          ..where((t) => t.barcode.equals('777')))
+        .getSingle();
+    expect(priced.costPrice, 3000);
+    expect(priced.sellingPrice, 4000);
+    expect(priced.needsPrice, isFalse);
+    expect(priced.stock, 5);
+    final unpriced = await (db.select(db.products)
+          ..where((t) => t.barcode.equals('778')))
+        .getSingle();
+    expect(unpriced.needsPrice, isTrue);
+  });
 }

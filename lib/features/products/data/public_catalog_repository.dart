@@ -53,6 +53,26 @@ class PublicCatalogRepository {
   /// Dipakai sync per-produk & sync massal.
   Future<void> upsertItems(List<CatalogItem> items) async {
     if (items.isEmpty) return;
+    // Foto di server berubah → thumbnail seed lokal sudah basi: hapus agar
+    // tampilan memakai foto baru (photoUrl) — lihat CatalogThumb.
+    final codes = [
+      for (final it in items)
+        if (it.barcode.isNotEmpty) it.barcode
+    ];
+    final oldPhoto = {
+      for (final r in await (_db.select(_db.publicProducts)
+            ..where((t) => t.barcode.isIn(codes)))
+          .get())
+        r.barcode: r.photoUrl
+    };
+    final photoChanged = [
+      for (final it in items)
+        if (oldPhoto.containsKey(it.barcode) &&
+            it.photoUrl != null &&
+            it.photoUrl!.isNotEmpty &&
+            oldPhoto[it.barcode] != it.photoUrl)
+          it.barcode
+    ];
     await _db.batch((b) {
       for (final it in items) {
         if (it.barcode.isEmpty) continue;
@@ -104,7 +124,24 @@ class PublicCatalogRepository {
               )),
         );
       }
+      if (photoChanged.isNotEmpty) {
+        b.deleteWhere(
+            _db.publicProductThumbs, (t) => t.barcode.isIn(photoChanged));
+        b.update(_db.publicProducts,
+            const PublicProductsCompanion(thumbPresent: Value(false)),
+            where: (t) => t.barcode.isIn(photoChanged));
+      }
     });
+  }
+
+  /// URL foto katalog per barcode (fallback thumbnail bila blob lokal tak ada).
+  Future<String?> getPhotoUrl(String barcode) async {
+    final row = await (_db.select(_db.publicProducts)
+          ..where((t) => t.barcode.equals(barcode.trim()))
+          ..limit(1))
+        .getSingleOrNull();
+    final u = row?.photoUrl;
+    return (u == null || u.isEmpty) ? null : u;
   }
 
   /// Jumlah produk katalog lokal (untuk gate/diagnostik).

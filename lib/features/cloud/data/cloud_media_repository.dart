@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../../core/media/image_compressor.dart';
 import '../../../core/network/cloud_api.dart';
 import 'cloud_api_client.dart';
 
@@ -12,15 +13,19 @@ class CloudMediaRepository {
   final http.Client _http;
   const CloudMediaRepository(this._api, this._http);
 
-  /// Upload gambar katalog; return `publicUrl` untuk dikirim sebagai `photoUrl`.
-  Future<String> uploadCatalogImage(File file) async {
-    final bytes = await file.readAsBytes();
-    final contentType = _contentType(file.path);
-    final fileName = file.path.split(Platform.pathSeparator).last;
+  /// Upload foto **usulan katalog** dari toko: dikompres ≤200 KB (JPEG),
+  /// nama berkas rapi (lihat [uploadFileName]), lalu diunggah dengan scope
+  /// `product` (scope `catalog` khusus admin Sirko — toko biasa ditolak).
+  /// Return `publicUrl` untuk dikirim sebagai `photoUrl`.
+  Future<String> uploadCatalogImage(File file, {String? originalName}) async {
+    final compressed = await compressForUpload(await file.readAsBytes(),
+        originalName ?? file.path.split(Platform.pathSeparator).last);
+    final bytes = compressed.bytes;
+    final contentType = compressed.contentType;
 
     final json = await _api.postJson('/v1/media/sign-upload', {
-      'scope': 'catalog',
-      'fileName': fileName,
+      'scope': 'product',
+      'fileName': compressed.fileName,
       'contentType': contentType,
       'size': bytes.length,
     });
@@ -39,12 +44,5 @@ class CloudMediaRepository {
           statusCode: res.statusCode);
     }
     return publicUrl;
-  }
-
-  String _contentType(String path) {
-    final p = path.toLowerCase();
-    if (p.endsWith('.png')) return 'image/png';
-    if (p.endsWith('.webp')) return 'image/webp';
-    return 'image/jpeg';
   }
 }

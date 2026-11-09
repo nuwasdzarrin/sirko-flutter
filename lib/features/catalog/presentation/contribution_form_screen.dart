@@ -39,6 +39,7 @@ class _ContributionFormScreenState
   String? _category;
   File? _photo;
   bool _submitting = false;
+  String? _photoName;
 
   bool get _isEdit => widget.existing != null;
 
@@ -101,9 +102,16 @@ class _ContributionFormScreenState
       ),
     );
     if (source == null) return;
+    // Kompresi akhir (≤200 KB) dilakukan saat unggah; di sini cukup batasi
+    // dimensi agar pratinjau ringan.
     final picked = await ImagePicker()
-        .pickImage(source: source, maxWidth: 1024, imageQuality: 80);
-    if (picked != null && mounted) setState(() => _photo = File(picked.path));
+        .pickImage(source: source, maxWidth: 1600, imageQuality: 90);
+    if (picked != null && mounted) {
+      setState(() {
+        _photo = File(picked.path);
+        _photoName = picked.name;
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -113,7 +121,8 @@ class _ContributionFormScreenState
       String? photoUrl = widget.existing?.photoUrl;
       if (_photo != null) {
         photoUrl =
-            await ref.read(cloudMediaRepositoryProvider).uploadCatalogImage(_photo!);
+            await ref.read(cloudMediaRepositoryProvider)
+                .uploadCatalogImage(_photo!, originalName: _photoName);
       }
       final netSize = double.tryParse(_netSize.text.trim().replaceAll(',', '.'));
       final input = ContributionInput(

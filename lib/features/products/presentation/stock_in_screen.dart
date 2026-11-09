@@ -2,17 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/money/money.dart';
+import '../../catalog/application/catalog_umum_providers.dart';
+import '../../catalog/domain/catalog_item.dart';
+import '../../cloud/application/cloud_providers.dart';
 import '../../pos/presentation/pos_scan_screen.dart';
 import '../application/product_providers.dart';
 import '../application/catalog_providers.dart';
 import '../application/stock_in_providers.dart';
 import '../domain/stock_in_draft.dart';
 import 'widgets/catalog_thumb.dart';
+import 'widgets/rupiah_field.dart';
 
 /// **Stok Masuk** (bangun inventaris cukup scan). Alur:
 /// scan beruntun → tiap barcode diproyeksikan ke panel sesi (stok N → N+1) →
-/// koreksi/hapus → **Simpan** (satu transaksi). Produk baru dari katalog dibuat
-/// otomatis (identitas prefilled) & bertanda perlu-harga (spec 13 §6, §7).
+/// koreksi/hapus → **Simpan** (satu transaksi). Barang baru dicari di katalog
+/// online (maks 3 dtk) → katalog offline → isi nama manual. Harga modal & jual
+/// bisa langsung diisi di sini; tanpa harga jual produk bertanda perlu-harga.
 class StockInScreen extends ConsumerStatefulWidget {
   const StockInScreen({super.key});
 
@@ -51,7 +57,20 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
           '${existing.name}: stok ${existing.stock} → ${existing.stock + qty}');
     }
 
-    // 2) Ada di katalog publik → buat produk (identitas prefilled) + perlu-harga.
+    // 2) Barang baru: katalog ONLINE dulu (maks 3 dtk, bila tersambung) —
+    //    data terbaru & ikut disimpan ke cache; lalu katalog offline.
+    final online = await _lookupOnline(code);
+    if (online != null) {
+      final qty = controller.addOrIncrement(StockInDraftLine(
+        barcode: code,
+        name: online.name,
+        qty: 1,
+        source: StockInSource.fromCatalog,
+        categoryName: online.category,
+        unitName: online.netUnit ?? online.defaultUnit,
+      ));
+      return ScanFeedback('Baru dari katalog: ${online.name} ×$qty — isi harga');
+    }
     final PublicProduct? cat =
         await ref.read(publicCatalogRepositoryProvider).findByBarcode(code);
     if (cat != null) {
@@ -63,56 +82,92 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
         categoryName: cat.category,
         unitName: cat.netUnit ?? cat.defaultUnit,
       ));
-      return ScanFeedback('Baru dari katalog: ${cat.name} (perlu harga) ×$qty');
+      return ScanFeedback('Baru dari katalog: ${cat.name} ×$qty — isi harga');
     }
 
-    // 3) Tak ada di katalog → mini-form cepat (nama minimal).
+    // 3) Tak ada di katalog mana pun → isi nama & harga sekaligus.
     if (!mounted) return const ScanFeedback('Dibatalkan', success: false);
-    final name = await _askName(code);
-    if (name == null || name.trim().isEmpty) {
+    final input = await _askNewProduct(code);
+    if (input == null || input.name.trim().isEmpty) {
       return ScanFeedback('Barcode "$code" dilewati', success: false);
     }
     final qty = controller.addOrIncrement(StockInDraftLine(
       barcode: code,
-      name: name.trim(),
+      name: input.name.trim(),
       qty: 1,
       source: StockInSource.manualNew,
+      costPrice: input.cost,
+      sellingPrice: input.sell,
     ));
-    return ScanFeedback('Baru: ${name.trim()} (perlu harga) ×$qty');
+    return ScanFeedback('Baru: ${input.name.trim()} ×$qty');
   }
 
-  /// Mini-form nama untuk barcode tak dikenal (menahan alur scan sementara).
-  Future<String?> _askName(String code) {
-    final ctrl = TextEditingController();
-    return showDialog<String>(
+  /// Katalog online, dibatasi 3 detik. Offline/lambat/tak ketemu → null
+  /// (lanjut ke katalog offline). Hasil disimpan ke cache lokal.
+  Future<CatalogItem?> _lookupOnline(String code) async {
+    final connected =
+        ref.read(cloudSessionProvider).asData?.value.connected ?? false;
+    if (!connected) return null;
+    final remote = ref.read(cloudCatalogRepositoryProvider);
+    final cache = ref.read(publicCatalogRepositoryProvider);
+    try {
+      final item =
+          await remote.lookup(code).timeout(const Duration(seconds: 3));
+      if (item == null) return null;
+      await cache.upsertItems([item]);
+      if (mounted) {
+        ref.invalidate(catalogThumbProvider(code));
+        ref.invalidate(catalogPhotoUrlProvider(code));
+      }
+      return item;
+    } catch (_) {
+      return null; // timeout / jaringan / server → katalog offline
+    }
+  }
+
+  /// Produk tak dikenal: nama + harga modal & jual dalam satu dialog.
+  Future<({String name, int cost, int sell})?> _askNewProduct(String code) {
+    final name = TextEditingController();
+    final cost = RupiahEditingController();
+    final sell = RupiahEditingController();
+    return showDialog<({String name, int cost, int sell})>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: const Text('Produk baru'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Barcode: $code',
-                style: Theme.of(dialogCtx).textTheme.bodySmall),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Nama produk',
-                hintText: 'mis. Kopi Sachet',
-                border: OutlineInputBorder(),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Barcode: $code · tak ada di katalog',
+                  style: Theme.of(dialogCtx).textTheme.bodySmall),
+              const SizedBox(height: 12),
+              TextField(
+                controller: name,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Nama produk',
+                  hintText: 'mis. Kopi Sachet',
+                  border: OutlineInputBorder(),
+                ),
               ),
-              onSubmitted: (v) => Navigator.of(dialogCtx).pop(v),
-            ),
-          ],
+              const SizedBox(height: 12),
+              RupiahField(controller: cost, label: 'Harga modal'),
+              const SizedBox(height: 12),
+              RupiahField(controller: sell, label: 'Harga jual'),
+              const SizedBox(height: 4),
+              Text('Harga boleh dikosongkan & diisi nanti.',
+                  style: Theme.of(dialogCtx).textTheme.bodySmall),
+            ],
+          ),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(dialogCtx).pop(),
               child: const Text('Lewati')),
           FilledButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(ctrl.text),
+              onPressed: () => Navigator.of(dialogCtx).pop(
+                  (name: name.text, cost: cost.rupiah, sell: sell.rupiah)),
               child: const Text('Tambah')),
         ],
       ),
@@ -195,46 +250,122 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
   }
 }
 
+/// Satu baris sesi: nama (2 baris) & info stok di kiri, kontrol jumlah di
+/// kanan; untuk produk baru ada tombol harga di baris sendiri (tak lagi
+/// bertabrakan dengan kontrol jumlah).
 class _DraftTile extends ConsumerWidget {
   final StockInDraftLine line;
   const _DraftTile({required this.line});
+
+  Future<void> _editPrice(BuildContext context, WidgetRef ref) async {
+    final cost = RupiahEditingController(initial: line.costPrice ?? 0);
+    final sell = RupiahEditingController(initial: line.sellingPrice ?? 0);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(line.name),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          RupiahField(controller: cost, label: 'Harga modal'),
+          const SizedBox(height: 12),
+          RupiahField(controller: sell, label: 'Harga jual'),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('Batal')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              child: const Text('Simpan harga')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      if (sell.rupiah > 0 && sell.rupiah < cost.rupiah && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                'Peringatan: harga jual ${line.name} di bawah modal.')));
+      }
+      ref
+          .read(stockInControllerProvider.notifier)
+          .setPrice(line.barcode, cost: cost.rupiah, sell: sell.rupiah);
+    }
+    cost.dispose();
+    sell.dispose();
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ctrl = ref.read(stockInControllerProvider.notifier);
     final theme = Theme.of(context);
-    return ListTile(
-      leading: CatalogThumb(barcode: line.barcode),
-      title: Text(line.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Row(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 4, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(line.source == StockInSource.existingProduct
-              ? 'Stok ${line.currentStock} → ${line.projectedStock}'
-              : 'Baru • stok ${line.qty}'),
-          if (line.needsPrice) ...[
-            const SizedBox(width: 8),
-            _Badge(
-              label: 'perlu harga',
-              color: theme.colorScheme.error,
+          CatalogThumb(barcode: line.barcode),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(line.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall),
+                const SizedBox(height: 2),
+                Text(
+                    line.isNew
+                        ? 'Produk baru · stok ${line.qty}'
+                        : 'Stok ${line.currentStock} → ${line.projectedStock}',
+                    style: theme.textTheme.bodySmall),
+                if (line.isNew) ...[
+                  const SizedBox(height: 6),
+                  line.needsPrice
+                      ? _Badge(
+                          label: 'Perlu harga · Isi harga',
+                          color: theme.colorScheme.error,
+                          icon: Icons.sell_outlined,
+                          onTap: () => _editPrice(context, ref),
+                        )
+                      : _Badge(
+                          label: 'Modal ${Money(line.costPrice ?? 0).format()}'
+                              ' · Jual ${Money(line.sellingPrice ?? 0).format()}',
+                          color: theme.colorScheme.primary,
+                          icon: Icons.edit_outlined,
+                          onTap: () => _editPrice(context, ref),
+                        ),
+                ],
+              ],
             ),
-          ],
-        ],
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.remove_circle_outline),
-            onPressed: () => ctrl.decrement(line.barcode),
           ),
-          Text('${line.qty}', style: theme.textTheme.titleMedium),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline),
-            onPressed: () => ctrl.increment(line.barcode),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => ctrl.remove(line.barcode),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Kurangi',
+                icon: const Icon(Icons.remove_circle_outline),
+                onPressed: () => ctrl.decrement(line.barcode),
+              ),
+              SizedBox(
+                width: 28,
+                child: Text('${line.qty}',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Tambah',
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: () => ctrl.increment(line.barcode),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Hapus',
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () => ctrl.remove(line.barcode),
+              ),
+            ],
           ),
         ],
       ),
@@ -245,19 +376,35 @@ class _DraftTile extends ConsumerWidget {
 class _Badge extends StatelessWidget {
   final String label;
   final Color color;
-  const _Badge({required this.label, required this.color});
+  final IconData? icon;
+  final VoidCallback? onTap;
+  const _Badge(
+      {required this.label, required this.color, this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+          ],
+          Flexible(
+            child: Text(label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
+        ]),
       ),
-      child: Text(label,
-          style: TextStyle(
-              color: color, fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -282,7 +429,7 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Tekan “Scan” lalu arahkan ke barcode. Barang lama → stok +1; '
-              'barang katalog → produk terbuat otomatis; tak dikenal → isi nama.',
+              'barang baru → dicari di katalog, harga bisa langsung diisi.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline),

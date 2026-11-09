@@ -12,7 +12,8 @@ import '../domain/stock_in_result.dart';
 ///
 /// - existingProduct → `stock += qty` + log `in`.
 /// - fromCatalog / manualNew → find-or-create kategori & satuan, buat produk
-///   (identitas prefilled, harga 0, `needsPrice = true`, `stock = qty`) + log
+///   (identitas prefilled, harga dari sesi bila diisi — jual > 0 → siap jual;
+///   selainnya harga 0 & `needsPrice = true`; `stock = qty`) + log
 ///   `in`. Produk perlu-harga tak bisa masuk keranjang sampai harga diisi (§7).
 class StockInRepository {
   final AppDatabase _db;
@@ -65,10 +66,10 @@ class StockInRepository {
                   barcode: Value(line.barcode),
                   categoryId: Value(categoryId),
                   unitId: Value(unitId),
-                  sellingPrice: const Value(0),
-                  costPrice: const Value(0),
+                  sellingPrice: Value(line.sellingPrice ?? 0),
+                  costPrice: Value(line.costPrice ?? 0),
                   stock: Value(line.qty),
-                  needsPrice: const Value(true),
+                  needsPrice: Value(line.needsPrice),
                   createdAt: now,
                   updatedAt: now,
                 ),

@@ -30,6 +30,11 @@ class StockInDraftLine {
   final String? categoryName;
   final String? unitName;
 
+  /// Harga yang diisi langsung di Stok Masuk (produk baru). Harga jual > 0 →
+  /// produk dibuat siap jual (tak bertanda perlu-harga).
+  final int? costPrice;
+  final int? sellingPrice;
+
   const StockInDraftLine({
     required this.barcode,
     required this.name,
@@ -39,15 +44,20 @@ class StockInDraftLine {
     this.currentStock = 0,
     this.categoryName,
     this.unitName,
+    this.costPrice,
+    this.sellingPrice,
   });
 
-  /// True bila produk (baru) akan bertanda perlu-harga.
-  bool get needsPrice => source != StockInSource.existingProduct;
+  bool get isNew => source != StockInSource.existingProduct;
+
+  /// True bila produk (baru) akan bertanda perlu-harga (harga jual belum ada).
+  bool get needsPrice => isNew && (sellingPrice ?? 0) <= 0;
 
   /// Proyeksi stok setelah Simpan (untuk tampilan panel).
   int get projectedStock => currentStock + qty;
 
-  StockInDraftLine copyWith({int? qty}) => StockInDraftLine(
+  StockInDraftLine copyWith({int? qty, int? costPrice, int? sellingPrice}) =>
+      StockInDraftLine(
         barcode: barcode,
         name: name,
         qty: qty ?? this.qty,
@@ -56,5 +66,7 @@ class StockInDraftLine {
         currentStock: currentStock,
         categoryName: categoryName,
         unitName: unitName,
+        costPrice: costPrice ?? this.costPrice,
+        sellingPrice: sellingPrice ?? this.sellingPrice,
       );
 }

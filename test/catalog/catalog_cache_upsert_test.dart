@@ -78,6 +78,43 @@ void main() {
       expect(created.thumbPresent, isFalse); // baru dari cloud → tanpa thumb
     });
 
+    test('foto di server berubah → thumbnail lama dihapus, foto baru dipakai',
+        () async {
+      await db.into(db.publicProducts).insert(PublicProductsCompanion.insert(
+            id: 'id-9',
+            barcode: '999',
+            name: 'Aqua',
+            photoUrl: const Value('https://x/lama.jpg'),
+            thumbPresent: const Value(true),
+          ));
+      await db.into(db.publicProductThumbs).insert(
+          PublicProductThumbsCompanion.insert(
+              barcode: '999', thumb: Uint8List.fromList([1, 2, 3])));
+
+      // Foto sama → thumbnail tetap.
+      await repo.upsertItems(const [
+        CatalogItem(
+            id: 'id-9',
+            barcode: '999',
+            name: 'Aqua 1.5L',
+            photoUrl: 'https://x/lama.jpg'),
+      ]);
+      expect(await repo.getThumb('999'), isNotNull);
+
+      // Foto baru → thumbnail basi dihapus; URL foto baru jadi sumber gambar.
+      await repo.upsertItems(const [
+        CatalogItem(
+            id: 'id-9',
+            barcode: '999',
+            name: 'Aqua 1.5L',
+            photoUrl: 'https://x/baru.jpg'),
+      ]);
+      expect(await repo.getThumb('999'), isNull);
+      expect(await repo.getPhotoUrl('999'), 'https://x/baru.jpg');
+      expect((await repo.findByBarcode('999'))!.thumbPresent, isFalse);
+      expect((await repo.findByBarcode('999'))!.name, 'Aqua 1.5L');
+    });
+
     test('idempoten: upsert 2× tak menggandakan', () async {
       const items = [
         CatalogItem(id: 'a', barcode: 'a1', name: 'A'),

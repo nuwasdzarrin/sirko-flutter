@@ -49,6 +49,17 @@ class StockInController extends _$StockInController {
     ];
   }
 
+  /// Isi harga produk baru langsung dari Stok Masuk.
+  void setPrice(String barcode, {required int cost, required int sell}) {
+    state = [
+      for (final l in state)
+        if (l.barcode == barcode)
+          l.copyWith(costPrice: cost, sellingPrice: sell)
+        else
+          l,
+    ];
+  }
+
   void increment(String barcode) {
     final l = lineFor(barcode);
     if (l != null) setQty(barcode, l.qty + 1);

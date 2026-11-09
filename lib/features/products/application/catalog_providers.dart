@@ -36,6 +36,13 @@ CatalogSeedImporter catalogSeedImporter(Ref ref) => CatalogSeedImporter(
 
 /// Thumbnail katalog per-barcode (BLOB lokal). Ditulis manual (family) &
 /// autoDispose — dibaca hanya saat render tile/prefill (spec 13 §6.5).
+/// URL foto katalog (fallback bila thumbnail lokal tak ada / sudah basi).
+final catalogPhotoUrlProvider =
+    FutureProvider.autoDispose.family<String?, String>(
+  (ref, barcode) =>
+      ref.watch(publicCatalogRepositoryProvider).getPhotoUrl(barcode),
+);
+
 final catalogThumbProvider =
     FutureProvider.autoDispose.family<Uint8List?, String>(
   (ref, barcode) => ref.watch(publicCatalogRepositoryProvider).getThumb(barcode),
