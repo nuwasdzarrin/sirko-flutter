@@ -88,9 +88,14 @@ tags: [kasir]
     checked: true
 - back
 
-# --- Hubungi Bantuan ---
-- runFlow:
-    file: ../subflows/buka_menu_lainnya.yaml
-    env: { MENU: "Hubungi Bantuan.*" }
+# --- Hubungi Bantuan --- (cukup pastikan tampil; mengetuknya membuka
+# WhatsApp/Chrome di emulator — Chrome first-run bisa ANR & mengganggu flow
+# berikutnya)
+- tapOn: "Lainnya.*"
+- scrollUntilVisible:
+    element: "Hubungi Bantuan.*"
+    direction: DOWN
+    timeout: 15000
+- assertVisible: "Hubungi Bantuan.*Chat WhatsApp Layanan Admin Sirko.*"
 - takeScreenshot: 19_hubungi_bantuan
 - stopRecording
